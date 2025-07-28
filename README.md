@@ -10,7 +10,7 @@ Este projeto implementa uma aplicação web em **FastAPI** de código aberto par
 ### 1. Clone o Repositório
 ```bash
 git clone <url-do-repositorio>
-cd FluxoCaixaCodex
+cd FluxoDeCaixa
 ```
 
 ### 2. Criação do Ambiente Virtual
