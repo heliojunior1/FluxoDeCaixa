@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center mb-6">
+    <a href="{{ url_for('index') }}" class="text-gray-500 hover:text-gray-700">
+        <i data-lucide="arrow-left-circle" class="w-8 h-8"></i>
+    </a>
+    <h2 class="text-xl font-semibold text-gray-700 ml-4">Extrato Bancário</h2>
+</div>
+<table class="min-w-full bg-white border">
+    <thead class="bg-gray-100">
+        <tr>
+            <th class="border px-2 py-1">Data</th>
+            <th class="border px-2 py-1">Descrição</th>
+            <th class="border px-2 py-1 text-right">Valor (R$)</th>
+            <th class="border px-2 py-1 text-right">Saldo (R$)</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for m in movimentos %}
+        <tr>
+            <td class="border px-2 py-1">{{ m.data }}</td>
+            <td class="border px-2 py-1">{{ m.descricao }}</td>
+            <td class="border px-2 py-1 text-right">{{ '%.2f'|format(m.valor) }}</td>
+            <td class="border px-2 py-1 text-right">{{ '%.2f'|format(m.saldo) }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+<div class="mt-4">
+    <div class="flex justify-between items-center mb-4">
+        <button onclick="history.back()" class="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
+            <i data-lucide="arrow-left-circle" class="w-8 h-8"></i>
+        </button>
+    </div>
+</div>
+{% endblock %}

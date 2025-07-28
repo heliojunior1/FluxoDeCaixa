@@ -1,0 +1,249 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <div class="flex items-center">
+        <a href="{{ url_for('index') }}" class="text-gray-500 hover:text-gray-700">
+            <i data-lucide="arrow-left-circle" class="w-8 h-8"></i>
+        </a>
+        <h2 class="text-2xl font-bold text-gray-800 ml-4">Gestão de Mapeamentos</h2>
+    </div>
+    <button id="add-mapeamento-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center">
+        <i data-lucide="plus" class="w-5 h-5 mr-2"></i>
+        <span>Novo Mapeamento</span>
+    </button>
+</div>
+
+<!-- Filtros -->
+<div class="bg-white p-4 rounded-lg shadow-md mb-6">
+    <h3 class="text-lg font-semibold mb-3">Filtros</h3>
+    <form method="GET" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+            <label for="status" class="block text-sm font-medium text-gray-700">Status</label>
+            <select name="status" id="status" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                <option value="">Todos</option>
+                <option value="A" {% if status_filter == 'A' %}selected{% endif %}>Ativo</option>
+                <option value="I" {% if status_filter == 'I' %}selected{% endif %}>Inativo</option>
+            </select>
+        </div>
+        <div>
+            <label for="tipo" class="block text-sm font-medium text-gray-700">Tipo</label>
+            <select name="tipo" id="tipo" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                <option value="">Todos</option>
+                <option value="receita" {% if tipo_filter == 'receita' %}selected{% endif %}>Receita</option>
+                <option value="despesa" {% if tipo_filter == 'despesa' %}selected{% endif %}>Despesa</option>
+            </select>
+        </div>
+        <div class="flex items-end">
+            <button type="submit" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg">
+                Filtrar
+            </button>
+            <a href="{{ url_for('mapeamentos') }}" class="ml-2 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">
+                Limpar
+            </a>
+        </div>
+    </form>
+</div>
+
+<!-- Tabela de Mapeamentos -->
+<div class="bg-white rounded-lg shadow-md overflow-hidden">
+    <table class="min-w-full">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qualificador</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descrição</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Condição</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            {% for mapeamento in mapeamentos %}
+            <tr class="hover:bg-gray-50">
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">{{ mapeamento.qualificador.num_qualificador }}</div>
+                    <div class="text-sm text-gray-500">{{ mapeamento.qualificador.dsc_qualificador }}</div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="text-sm text-gray-900">{{ mapeamento.dsc_mapeamento }}</div>
+                </td>
+                <td class="px-6 py-4">
+                    <div class="text-sm text-gray-900">{{ mapeamento.txt_condicao or '-' }}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full 
+                        {% if mapeamento.qualificador.tipo_fluxo == 'receita' %}bg-green-100 text-green-800
+                        {% elif mapeamento.qualificador.tipo_fluxo == 'despesa' %}bg-red-100 text-red-800
+                        {% else %}bg-gray-100 text-gray-800{% endif %}">
+                        {{ mapeamento.qualificador.tipo_fluxo|title }}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full 
+                        {% if mapeamento.ind_status == 'A' %}bg-green-100 text-green-800
+                        {% else %}bg-red-100 text-red-800{% endif %}">
+                        {{ 'Ativo' if mapeamento.ind_status == 'A' else 'Inativo' }}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button onclick="editMapeamento({{ mapeamento.seq_mapeamento }})" class="text-blue-600 hover:text-blue-900 mr-3">
+                        <i data-lucide="edit" class="w-4 h-4"></i>
+                    </button>
+                    {% if mapeamento.ind_status == 'A' %}
+                    <form method="POST" action="{{ url_for('delete_mapeamento', seq_mapeamento=mapeamento.seq_mapeamento) }}" class="inline" onsubmit="return confirm('Tem certeza que deseja desativar este mapeamento?')">
+                        <button type="submit" class="text-red-600 hover:text-red-900">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" class="px-6 py-4 text-center text-gray-500">Nenhum mapeamento encontrado</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal de Adição de Mapeamento -->
+<div id="add-mapeamento-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center pb-3 border-b">
+            <h3 class="text-xl font-bold text-gray-800">Novo Mapeamento</h3>
+            <button id="close-add-modal-btn" class="text-gray-500 hover:text-gray-800">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </div>
+        <div class="mt-5">
+            <form action="{{ url_for('add_mapeamento') }}" method="POST">
+                <div class="grid grid-cols-1 gap-4">
+                    <div>
+                        <label for="seq_qualificador" class="block text-sm font-medium text-gray-700">Qualificador</label>
+                        <select name="seq_qualificador" id="seq_qualificador" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                            <option value="">Selecione um qualificador</option>
+                            {% for q in qualificadores %}
+                            <option value="{{ q.seq_qualificador }}">{{ q.num_qualificador }} - {{ q.dsc_qualificador }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="dsc_mapeamento" class="block text-sm font-medium text-gray-700">Descrição do Mapeamento</label>
+                        <input type="text" name="dsc_mapeamento" id="dsc_mapeamento" class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="Ex: Mapeamento para análise específica" required>
+                    </div>
+                    <div>
+                        <label for="txt_condicao" class="block text-sm font-medium text-gray-700">Condição</label>
+                        <textarea name="txt_condicao" id="txt_condicao" rows="3" class="form-textarea mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="Ex: Valores acima de R$ 1000, origens específicas, etc."></textarea>
+                    </div>
+                </div>
+                <div class="flex justify-end mt-6">
+                    <button type="button" id="cancel-add-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg mr-4">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">
+                        Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Edição de Mapeamento -->
+<div id="edit-mapeamento-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center pb-3 border-b">
+            <h3 class="text-xl font-bold text-gray-800">Editar Mapeamento</h3>
+            <button id="close-edit-modal-btn" class="text-gray-500 hover:text-gray-800">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </div>
+        <div class="mt-5">
+            <form id="edit-mapeamento-form" action="" method="POST">
+                <div class="grid grid-cols-1 gap-4">
+                    <div>
+                        <label for="edit_seq_qualificador" class="block text-sm font-medium text-gray-700">Qualificador</label>
+                        <select name="seq_qualificador" id="edit_seq_qualificador" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                            <option value="">Selecione um qualificador</option>
+                            {% for q in qualificadores %}
+                            <option value="{{ q.seq_qualificador }}">{{ q.num_qualificador }} - {{ q.dsc_qualificador }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="edit_dsc_mapeamento" class="block text-sm font-medium text-gray-700">Descrição do Mapeamento</label>
+                        <input type="text" name="dsc_mapeamento" id="edit_dsc_mapeamento" class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                    </div>
+                    <div>
+                        <label for="edit_txt_condicao" class="block text-sm font-medium text-gray-700">Condição</label>
+                        <textarea name="txt_condicao" id="edit_txt_condicao" rows="3" class="form-textarea mt-1 block w-full rounded-md border-gray-300 shadow-sm"></textarea>
+                    </div>
+                </div>
+                <div class="flex justify-end mt-6">
+                    <button type="button" id="cancel-edit-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg mr-4">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">
+                        Atualizar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Modal de Adição
+document.getElementById('add-mapeamento-btn').addEventListener('click', function() {
+    document.getElementById('add-mapeamento-modal').classList.remove('hidden');
+});
+
+document.getElementById('close-add-modal-btn').addEventListener('click', function() {
+    document.getElementById('add-mapeamento-modal').classList.add('hidden');
+});
+
+document.getElementById('cancel-add-btn').addEventListener('click', function() {
+    document.getElementById('add-mapeamento-modal').classList.add('hidden');
+});
+
+// Modal de Edição
+document.getElementById('close-edit-modal-btn').addEventListener('click', function() {
+    document.getElementById('edit-mapeamento-modal').classList.add('hidden');
+});
+
+document.getElementById('cancel-edit-btn').addEventListener('click', function() {
+    document.getElementById('edit-mapeamento-modal').classList.add('hidden');
+});
+
+// Função para editar mapeamento
+function editMapeamento(seqMapeamento) {
+    fetch(`/mapeamentos/get/${seqMapeamento}`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('edit-mapeamento-form').action = `/mapeamentos/edit/${seqMapeamento}`;
+            document.getElementById('edit_seq_qualificador').value = data.seq_qualificador;
+            document.getElementById('edit_dsc_mapeamento').value = data.dsc_mapeamento;
+            document.getElementById('edit_txt_condicao').value = data.txt_condicao;
+            document.getElementById('edit-mapeamento-modal').classList.remove('hidden');
+        })
+        .catch(error => {
+            console.error('Erro ao carregar dados do mapeamento:', error);
+            alert('Erro ao carregar dados do mapeamento');
+        });
+}
+
+// Fechar modais ao clicar fora
+window.addEventListener('click', function(event) {
+    const addModal = document.getElementById('add-mapeamento-modal');
+    const editModal = document.getElementById('edit-mapeamento-modal');
+    
+    if (event.target === addModal) {
+        addModal.classList.add('hidden');
+    }
+    if (event.target === editModal) {
+        editModal.classList.add('hidden');
+    }
+});
+</script>
+{% endblock %}

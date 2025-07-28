@@ -1,0 +1,89 @@
+<!-- Nó da árvore de qualificadores -->
+<div class="qualificador-node" data-id="{{ q.seq_qualificador }}" data-nivel="{{ q.nivel }}">
+    <div class="node-content flex items-center py-3 px-4 hover:bg-gray-50 border-b border-gray-100 transition-colors">
+        <!-- Botão de expansão/colapso -->
+        <div class="flex-shrink-0 w-6 h-6 mr-3">
+            {% if q.filhos and q.filhos|selectattr("ind_status", "equalto", "A")|list %}
+                <button class="toggle-btn w-6 h-6 rounded flex items-center justify-center hover:bg-gray-200 transition-colors" 
+                        data-id="{{ q.seq_qualificador }}">
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-gray-600 chevron-icon"></i>
+                </button>
+            {% else %}
+                <div class="w-6 h-6 flex items-center justify-center">
+                    <div class="w-2 h-2 bg-gray-300 rounded-full"></div>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Ícone do tipo -->
+        <div class="flex-shrink-0 w-8 h-8 mr-3 flex items-center justify-center rounded-lg
+            {% if q.nivel == 0 %}bg-blue-100{% elif q.nivel == 1 %}bg-green-100{% else %}bg-yellow-100{% endif %}">
+            {% if q.nivel == 0 %}
+                <i data-lucide="folder" class="w-5 h-5 text-blue-600"></i>
+            {% elif q.filhos and q.filhos|selectattr("ind_status", "equalto", "A")|list %}
+                <i data-lucide="folder-open" class="w-5 h-5 text-green-600"></i>
+            {% else %}
+                <i data-lucide="file-text" class="w-5 h-5 text-yellow-600"></i>
+            {% endif %}
+        </div>
+        
+        <!-- Informações do qualificador -->
+        <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        {{ q.num_qualificador }}
+                    </span>
+                    <h3 class="text-sm font-semibold text-gray-900 truncate">
+                        {{ q.dsc_qualificador }}
+                    </h3>
+                </div>
+                
+                <div class="flex items-center space-x-2">
+                    <span class="text-xs text-gray-500">
+                        {{ q.dat_inclusao.strftime('%d/%m/%Y') }}
+                    </span>
+                    
+                    <!-- Ações -->
+                    <div class="flex items-center space-x-1">
+                        <button type="button" class="edit-qualificador-btn p-2 text-indigo-600 hover:text-indigo-900 hover:bg-indigo-50 rounded transition-colors"
+                                data-seq_qualificador="{{ q.seq_qualificador }}"
+                                data-num_qualificador="{{ q.num_qualificador }}"
+                                data-dsc_qualificador="{{ q.dsc_qualificador }}"
+                                data-cod_qualificador_pai="{{ q.cod_qualificador_pai if q.cod_qualificador_pai else '' }}"
+                                title="Editar">
+                            <i data-lucide="edit-2" class="w-4 h-4"></i>
+                        </button>
+                        
+                        <button type="button" class="add-child-btn p-2 text-green-600 hover:text-green-900 hover:bg-green-50 rounded transition-colors"
+                                data-parent-id="{{ q.seq_qualificador }}"
+                                data-parent-num="{{ q.num_qualificador }}"
+                                data-parent-desc="{{ q.dsc_qualificador }}"
+                                title="Adicionar Filho">
+                            <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                        </button>
+                        
+                        {% if not q.filhos or not q.filhos|selectattr("ind_status", "equalto", "A")|list %}
+                        <form action="{{ url_for('delete_qualificador', seq_qualificador=q.seq_qualificador) }}" method="POST" class="inline-block" onsubmit="return confirm('Tem certeza que deseja excluir este qualificador?');">
+                            <button type="submit" class="p-2 text-red-600 hover:text-red-900 hover:bg-red-50 rounded transition-colors" title="Excluir">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filhos (inicialmente ocultos) -->
+    {% if q.filhos and q.filhos|selectattr("ind_status", "equalto", "A")|list %}
+    <div class="children-container hidden ml-9 border-l-2 border-gray-200 pl-4" data-parent="{{ q.seq_qualificador }}">
+        {% for filho in q.filhos if filho.ind_status == 'A' %}
+            {% with q=filho %}
+                {% include 'qualificador_tree_node.html' %}
+            {% endwith %}
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>

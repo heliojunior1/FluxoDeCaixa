@@ -1,0 +1,294 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <div class="flex items-center">
+        <a href="{{ url_for('index') }}" class="text-gray-500 hover:text-gray-700">
+            <i data-lucide="arrow-left-circle" class="w-8 h-8"></i>
+        </a>
+        <h2 class="text-2xl font-bold text-gray-800 ml-4">Lançamentos Recentes</h2>
+    </div>
+    <button id="manual-entry-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center">
+        <i data-lucide="plus" class="w-5 h-5 mr-2"></i>
+        <span>Inserção Manual</span>
+    </button>
+</div>
+
+<!-- Importação de lançamentos -->
+<form action="{{ url_for('import_lancamentos') }}" method="post" enctype="multipart/form-data" class="bg-white p-4 rounded-lg shadow-md mb-6 flex items-center gap-4">
+    <input type="file" name="file" accept=".csv,.xlsx" class="border rounded px-2 py-1" required>
+    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Importar Arquivo</button>
+    <a href="{{ url_for('download_lancamento_template') }}" class="text-blue-600 underline" download>Baixar Modelo</a>
+</form>
+
+<!-- Filtros -->
+<form method="POST" action="{{ url_for('saldos') }}" class="bg-white p-6 rounded-lg shadow-md mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div>
+            <label for="competencia" class="block text-sm font-medium text-gray-700">Competência</label>
+            <div class="flex items-center mt-1">
+                <input type="date" name="start_date" class="form-input block w-full rounded-md border-gray-300 shadow-sm" placeholder="de">
+                <span class="mx-2 text-gray-500">-</span>
+                <input type="date" name="end_date" class="form-input block w-full rounded-md border-gray-300 shadow-sm" placeholder="a">
+            </div>
+        </div>
+        <div>
+            <label for="tipo" class="block text-sm font-medium text-gray-700">Tipo</label>
+            <select name="tipo" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                <option value="">Todos</option>
+                {% for t in tipos %}
+                <option value="{{ t.cod_tipo_lancamento }}">{{ t.dsc_tipo_lancamento }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="descricao" class="block text-sm font-medium text-gray-700">Descrição</label>
+            <input type="text" name="descricao" class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="Buscar por descrição...">
+        </div>
+        <div>
+            <label for="origem" class="block text-sm font-medium text-gray-700">Qualificador</label>
+            <select name="qualificador_folha" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                <option value="">Todos</option>
+                {% for q in qualificadores_folha %}
+                <option value="{{ q.seq_qualificador }}">{{ q.num_qualificador }} - {{ q.dsc_qualificador }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div class="flex justify-end mt-6">
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">
+            Consultar
+        </button>
+    </div>
+</form>
+
+<!-- Tabela de Lançamentos -->
+<div class="bg-white p-6 rounded-lg shadow-md">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descrição</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Valor (R$)</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origem</th>
+                <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            {% for l in lancamentos %}
+            <tr>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ l.dat_lancamento.strftime('%Y-%m-%d') }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-medium">{{ l.qualificador.num_qualificador }} - {{ l.qualificador.dsc_qualificador }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold {% if l.val_lancamento < 0 %}text-red-600{% else %}text-green-600{% endif %}">
+                    {{ l.val_lancamento|format_currency }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ l.tipo.dsc_tipo_lancamento }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                    {% if l.ind_origem == 'M' %}
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Manual</span>
+                    {% elif l.ind_origem == 'A' %}
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Automático</span>
+                    {% else %}
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">{{ l.ind_origem }}</span>
+                    {% endif %}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                    <button type="button" class="edit-entry-btn text-indigo-600 hover:text-indigo-900"
+                            data-seq_lancamento="{{ l.seq_lancamento }}"
+                            data-dat_lancamento="{{ l.dat_lancamento.strftime('%Y-%m-%d') }}"
+                            data-seq_qualificador="{{ l.seq_qualificador }}"
+                            data-val_lancamento="{{ l.val_lancamento }}"
+                            data-cod_tipo_lancamento="{{ l.cod_tipo_lancamento }}"
+                            data-cod_origem_lancamento="{{ l.cod_origem_lancamento }}">
+                        <i data-lucide="edit" class="w-5 h-5"></i>
+                    </button>
+                    <form action="{{ url_for('delete_lancamento', seq_lancamento=l.seq_lancamento) }}" method="POST" class="inline-block" onsubmit="return confirm('Tem certeza que deseja excluir este lançamento?');">
+                        <button type="submit" class="text-red-600 hover:text-red-900 ml-4 bg-transparent border-none p-0">
+                            <i data-lucide="trash-2" class="w-5 h-5"></i>
+                        </button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal de Inserção Manual -->
+<div id="manual-entry-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center pb-3 border-b">
+            <h3 class="text-2xl font-bold text-gray-800">Inserção Manual de Lançamento</h3>
+            <button id="close-modal-btn" class="text-gray-500 hover:text-gray-800">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </div>
+        <div class="mt-5">
+            <form id="manual-entry-form" action="{{ url_for('add_lancamento') }}" method="POST">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="dat_lancamento" class="block text-sm font-medium text-gray-700">Data</label>
+                        <input type="date" name="dat_lancamento" id="dat_lancamento" class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                    </div>
+                    <div>
+                        <label for="seq_qualificador" class="block text-sm font-medium text-gray-700">Qualificador</label>
+                        <select name="seq_qualificador" id="seq_qualificador" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                            <option value="">Selecione um qualificador...</option>
+                            {% for q in qualificadores %}
+                            {% if q.is_folha() %}
+                            <option value="{{ q.seq_qualificador }}">{{ q.num_qualificador }} - {{ q.path_completo }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="val_lancamento" class="block text-sm font-medium text-gray-700">Valor (R$)</label>
+                        <input type="number" step="0.01" name="val_lancamento" id="val_lancamento" class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="0.00" required>
+                    </div>
+                    <div>
+                        <label for="cod_tipo_lancamento" class="block text-sm font-medium text-gray-700">Tipo</label>
+                        <select name="cod_tipo_lancamento" id="cod_tipo_lancamento" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                            {% for t in tipos %}
+                            <option value="{{ t.cod_tipo_lancamento }}">{{ t.dsc_tipo_lancamento }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="cod_origem_lancamento" class="block text-sm font-medium text-gray-700">Origem</label>
+                        <select name="cod_origem_lancamento" id="cod_origem_lancamento" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                            {% for o in origens %}
+                            <option value="{{ o.cod_origem_lancamento }}">{{ o.dsc_origem_lancamento }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end mt-8">
+                    <button type="button" id="cancel-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg mr-4">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">
+                        Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Edição de Lançamento -->
+<div id="edit-entry-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center pb-3 border-b">
+            <h3 class="text-2xl font-bold text-gray-800">Editar Lançamento</h3>
+            <button id="close-edit-modal-btn" class="text-gray-500 hover:text-gray-800">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </div>
+        <div class="mt-5">
+            <form id="edit-entry-form" action="" method="POST">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="edit_dat_lancamento" class="block text-sm font-medium text-gray-700">Data</label>
+                        <input type="date" name="dat_lancamento" id="edit_dat_lancamento" class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                    </div>
+                    <div>
+                        <label for="edit_seq_qualificador" class="block text-sm font-medium text-gray-700">Qualificador</label>
+                        <select name="seq_qualificador" id="edit_seq_qualificador" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                            {% for q in qualificadores %}
+                            {% if q.is_folha() %}
+                            <option value="{{ q.seq_qualificador }}">{{ q.num_qualificador }} - {{ q.path_completo }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="edit_val_lancamento" class="block text-sm font-medium text-gray-700">Valor (R$)</label>
+                        <input type="number" step="0.01" name="val_lancamento" id="edit_val_lancamento" class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                    </div>
+                    <div>
+                        <label for="edit_cod_tipo_lancamento" class="block text-sm font-medium text-gray-700">Tipo</label>
+                        <select name="cod_tipo_lancamento" id="edit_cod_tipo_lancamento" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                            {% for t in tipos %}
+                            <option value="{{ t.cod_tipo_lancamento }}">{{ t.dsc_tipo_lancamento }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="edit_cod_origem_lancamento" class="block text-sm font-medium text-gray-700">Origem</label>
+                        <select name="cod_origem_lancamento" id="edit_cod_origem_lancamento" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                            {% for o in origens %}
+                            <option value="{{ o.cod_origem_lancamento }}">{{ o.dsc_origem_lancamento }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end mt-8">
+                    <button type="button" id="cancel-edit-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg mr-4">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">
+                        Salvar Alterações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Modal de Inserção Manual
+        const manualEntryBtn = document.getElementById('manual-entry-btn');
+        const manualModal = document.getElementById('manual-entry-modal');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const cancelBtn = document.getElementById('cancel-btn');
+
+        if (manualEntryBtn) {
+            manualEntryBtn.addEventListener('click', () => manualModal.classList.remove('hidden'));
+        }
+        if (closeModalBtn) {
+            closeModalBtn.addEventListener('click', () => manualModal.classList.add('hidden'));
+        }
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => manualModal.classList.add('hidden'));
+        }
+
+        // Modal de Edição
+        const editModal = document.getElementById('edit-entry-modal');
+        const closeEditModalBtn = document.getElementById('close-edit-modal-btn');
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+        const editForm = document.getElementById('edit-entry-form');
+        const editButtons = document.querySelectorAll('.edit-entry-btn');
+
+        const closeEditModal = () => {
+            if (editModal) editModal.classList.add('hidden');
+        };
+
+        editButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const seq = button.dataset.seq_lancamento;
+                editForm.action = `/saldos/edit/${seq}`;
+
+                document.getElementById('edit_dat_lancamento').value = button.dataset.dat_lancamento;
+                document.getElementById('edit_seq_qualificador').value = button.dataset.seq_qualificador;
+                document.getElementById('edit_val_lancamento').value = button.dataset.val_lancamento;
+                document.getElementById('edit_cod_tipo_lancamento').value = button.dataset.cod_tipo_lancamento;
+                document.getElementById('edit_cod_origem_lancamento').value = button.dataset.cod_origem_lancamento;
+
+                editModal.classList.remove('hidden');
+            });
+        });
+
+        if (closeEditModalBtn) closeEditModalBtn.addEventListener('click', closeEditModal);
+        if (cancelEditBtn) cancelEditBtn.addEventListener('click', closeEditModal);
+
+        window.addEventListener('click', (event) => {
+            if (event.target === manualModal) manualModal.classList.add('hidden');
+            if (event.target === editModal) editModal.classList.add('hidden');
+        });
+    });
+</script>
+{% endblock %}

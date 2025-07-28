@@ -1,0 +1,585 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <div class="flex items-center">
+        <a href="{{ url_for('relatorios') }}" class="text-gray-500 hover:text-gray-700">
+            <i data-lucide="arrow-left-circle" class="w-8 h-8"></i>
+        </a>
+        <h2 class="text-2xl font-bold text-gray-800 ml-4">Resumo do Fluxo de Caixa</h2>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="bg-white p-6 rounded-lg shadow-md mb-6">
+    <form method="POST" class="space-y-4" id="filter-form">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <!-- Seleção de Ano -->
+            <div>
+                <label for="ano" class="block text-sm font-medium text-gray-700 mb-1">Ano</label>
+                <select name="ano" id="ano" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                    {% for ano in anos_disponiveis %}
+                        <option value="{{ ano }}" {% if ano == ano_selecionado %}selected{% endif %}>{{ ano }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Seleção de Estratégia -->
+            <div>
+                <label for="estrategia" class="block text-sm font-medium text-gray-700 mb-1">Estratégia</label>
+                <select name="estrategia" id="estrategia" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                    <option value="realizado" {% if estrategia_selecionada == 'realizado' %}selected{% endif %}>Realizado</option>
+                    <option value="projetado" {% if estrategia_selecionada == 'projetado' %}selected{% endif %}>Projetado</option>
+                </select>
+            </div>
+
+            <!-- Seleção de Cenário (condicional) -->
+            <div id="cenario-container" class="{% if estrategia_selecionada != 'projetado' %}hidden{% endif %}">
+                <label for="cenario_id" class="block text-sm font-medium text-gray-700 mb-1">Cenário</label>
+                <select name="cenario_id" id="cenario_id" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                    <option value="">Selecione um cenário</option>
+                    {% for cenario in cenarios_disponiveis %}
+                        <option value="{{ cenario.seq_cenario }}" {% if cenario.seq_cenario == cenario_selecionado_id %}selected{% endif %}>{{ cenario.nom_cenario }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Seleção de Meses -->
+            <div class="relative">
+                <label for="meses-dropdown" class="block text-sm font-medium text-gray-700 mb-1">Meses para Análise</label>
+                <div class="relative">
+                    <button type="button" id="meses-dropdown-btn" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white text-left flex items-center justify-between">
+                        <span id="meses-selected-text">Todos os Meses</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                    </button>
+                    <div id="meses-dropdown-menu" class="absolute z-50 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg hidden max-h-60 overflow-y-auto">
+                        <div class="p-2">
+                            <!-- Opção "Todos" -->
+                            <label class="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                <input type="checkbox" id="todos-meses" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                <span class="text-sm font-semibold text-blue-600">Todos os Meses</span>
+                            </label>
+                            <hr class="my-2 border-gray-200">
+                            <!-- Lista de meses individuais -->
+                            {% for mes_num, mes_nome in meses_nomes.items() %}
+                                <label class="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                    <input type="checkbox" name="meses" value="{{ mes_num }}" 
+                                           {% if mes_num|string in meses_selecionados %}checked{% endif %}
+                                           class="mes-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="text-sm text-gray-700">{{ mes_nome }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Botão Filtrar -->
+            <div class="flex items-end">
+                <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-4 focus:ring-blue-300">
+                    <i data-lucide="filter" class="w-4 h-4 inline mr-1"></i>
+                    Filtrar
+                </button>
+            </div>
+        </div>
+
+        <!-- Indicador de Projeção Ativa -->
+        {% if estrategia_selecionada == 'projetado' and cenario_selecionado_id %}
+            {% set cenario_nome = cenarios_disponiveis|selectattr('seq_cenario', 'equalto', cenario_selecionado_id)|map(attribute='nom_cenario')|first %}
+            <div class="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-sm">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="bg-blue-100 rounded-full p-2 mr-3">
+                            <i data-lucide="trending-up" class="w-5 h-5 text-blue-600"></i>
+                        </div>
+                        <div>
+                            <h4 class="text-sm font-semibold text-blue-900">Projeção Ativa</h4>
+                            <p class="text-lg font-bold text-blue-800">{{ cenario_nome }}</p>
+                            <p class="text-xs text-blue-600 mt-1">
+                                {% if ano_selecionado < (2025|int) %}
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                        <i data-lucide="archive" class="w-3 h-3 mr-1"></i>
+                                        Ano {{ ano_selecionado }}: Dados consolidados (ano finalizado)
+                                    </span>
+                                {% elif ano_selecionado == (2025|int) %}
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mr-2">
+                                        <i data-lucide="check-circle" class="w-3 h-3 mr-1"></i>
+                                        Jan-Mai: Reais
+                                    </span>
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                        <i data-lucide="trending-up" class="w-3 h-3 mr-1"></i>
+                                        Jun-Dez: Projetados
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                                        <i data-lucide="crystal-ball" class="w-3 h-3 mr-1"></i>
+                                        Ano {{ ano_selecionado }}: Projeção baseada em {{ ano_selecionado - 1 }}
+                                    </span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Ações do Cenário -->
+                    <div class="flex items-center space-x-2">
+                        <button type="button" 
+                                class="inline-flex items-center px-3 py-1.5 border border-blue-300 rounded-md text-xs font-medium text-blue-700 bg-white hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+                                title="Visualizar detalhes do cenário">
+                            <i data-lucide="eye" class="w-3 h-3 mr-1"></i>
+                            Visualizar
+                        </button>
+                        <button type="button" 
+                                class="inline-flex items-center px-3 py-1.5 border border-amber-300 rounded-md text-xs font-medium text-amber-700 bg-white hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-500 transition-colors"
+                                title="Editar cenário de projeção">
+                            <i data-lucide="edit-3" class="w-3 h-3 mr-1"></i>
+                            Editar
+                        </button>
+                        <button type="button" 
+                                class="inline-flex items-center px-3 py-1.5 border border-green-300 rounded-md text-xs font-medium text-green-700 bg-white hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors"
+                                title="Duplicar cenário">
+                            <i data-lucide="copy" class="w-3 h-3 mr-1"></i>
+                            Duplicar
+                        </button>
+                        <button type="button" 
+                                class="inline-flex items-center px-3 py-1.5 border border-red-300 rounded-md text-xs font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                                title="Remover projeção">
+                            <i data-lucide="trash-2" class="w-3 h-3 mr-1"></i>
+                            Remover
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Informações Adicionais -->
+                <div class="mt-3 pt-3 border-t border-blue-200">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                        <div class="flex items-center">
+                            <i data-lucide="calendar" class="w-4 h-4 text-blue-500 mr-2"></i>
+                            <span class="text-blue-700">
+                                <strong>Período:</strong> {{ ano_selecionado }}
+                            </span>
+                        </div>
+                        <div class="flex items-center">
+                            <i data-lucide="target" class="w-4 h-4 text-blue-500 mr-2"></i>
+                            <span class="text-blue-700">
+                                <strong>Estratégia:</strong> {{ estrategia_selecionada|title }}
+                            </span>
+                        </div>
+                        <div class="flex items-center">
+                            <i data-lucide="layers" class="w-4 h-4 text-blue-500 mr-2"></i>
+                            <span class="text-blue-700">
+                                <strong>Cenário:</strong> ID {{ cenario_selecionado_id }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+    </form>
+</div>
+
+<!-- Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <!-- Total Entradas (Período) -->
+    <div class="bg-white p-6 rounded-lg shadow-md flex items-center">
+        <div class="bg-green-100 rounded-full p-3 mr-4">
+            <i data-lucide="arrow-up" class="w-6 h-6 text-green-600"></i>
+        </div>
+        <div>
+            <p class="text-gray-500 text-sm">
+                Total Entradas (Período)
+                {% if estrategia_selecionada == 'projetado' and cenario_selecionado_id %}
+                    <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full ml-2">
+                        Inclui Projeções
+                    </span>
+                {% endif %}
+            </p>
+            <p class="text-2xl font-bold text-gray-800">{{ total_entradas_periodo|format_currency }}</p>
+        </div>
+    </div>
+    <!-- Total Saídas (Período) -->
+    <div class="bg-white p-6 rounded-lg shadow-md flex items-center">
+        <div class="bg-red-100 rounded-full p-3 mr-4">
+            <i data-lucide="arrow-down" class="w-6 h-6 text-red-600"></i>
+        </div>
+        <div>
+            <p class="text-gray-500 text-sm">
+                Total Saídas (Período)
+                {% if estrategia_selecionada == 'projetado' and cenario_selecionado_id %}
+                    <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full ml-2">
+                        Inclui Projeções
+                    </span>
+                {% endif %}
+            </p>
+            <p class="text-2xl font-bold text-gray-800">{{ total_saidas_periodo|format_currency }}</p>
+        </div>
+    </div>
+    <!-- Saldo do Período -->
+    <div class="bg-white p-6 rounded-lg shadow-md flex items-center">
+        <div class="bg-blue-100 rounded-full p-3 mr-4">
+            <i data-lucide="landmark" class="w-6 h-6 text-blue-600"></i>
+        </div>
+        <div>
+            <p class="text-gray-500 text-sm">
+                Saldo do Período
+                {% if estrategia_selecionada == 'projetado' and cenario_selecionado_id %}
+                    <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full ml-2">
+                        Inclui Projeções
+                    </span>
+                {% endif %}
+            </p>
+            <p class="text-2xl font-bold text-gray-800 {% if disponibilidade_periodo < 0 %}text-red-600{% else %}text-green-600{% endif %}">{{ disponibilidade_periodo|format_currency }}</p>
+        </div>
+    </div>
+</div>
+
+<!-- Chart -->
+<div class="bg-white p-6 rounded-lg shadow-md mb-8">
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold text-gray-700">Fluxo de Caixa do Período</h3>
+        {% if estrategia_selecionada == 'projetado' and cenario_selecionado_id %}
+            <div class="flex items-center text-sm text-gray-600">
+                <span class="mr-2">Legenda:</span>
+                <span class="mr-4">Real</span>
+                <span class="mr-2">•</span>
+                <span>(P) Projetado</span>
+            </div>
+        {% endif %}
+    </div>
+    <div class="relative h-96 mb-6">
+        <canvas id="cashFlowChart"></canvas>
+    </div>
+    
+    <!-- Tabela de dados -->
+    <div class="overflow-x-auto">
+        <table class="w-full text-left min-w-[800px]">
+            <thead class="bg-gray-50 text-sm">
+                <tr>
+                    <th class="p-3 font-semibold text-gray-700">Mês</th>
+                    <th class="p-3 text-right font-semibold text-green-600">Receita</th>
+                    <th class="p-3 text-right font-semibold text-red-600">Despesa</th>
+                    <th class="p-3 text-right font-semibold text-blue-600">Saldo</th>
+                    <th class="p-3 text-right font-semibold text-gray-700">Saldo Final</th>
+                </tr>
+            </thead>
+            <tbody id="fluxo-table">
+                <!-- Dados serão preenchidos via JavaScript -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // --- LÓGICA PARA FILTROS DE ESTRATÉGIA E CENÁRIO ---
+        const estrategiaSelect = document.getElementById('estrategia');
+        const cenarioContainer = document.getElementById('cenario-container');
+
+        estrategiaSelect.addEventListener('change', function() {
+            if (this.value === 'projetado') {
+                cenarioContainer.classList.remove('hidden');
+            } else {
+                cenarioContainer.classList.add('hidden');
+            }
+        });
+
+        // Controle do dropdown de meses
+        const mesesDropdownBtn = document.getElementById('meses-dropdown-btn');
+        const mesesDropdownMenu = document.getElementById('meses-dropdown-menu');
+        const mesesSelectedText = document.getElementById('meses-selected-text');
+        const todosMeses = document.getElementById('todos-meses');
+        const mesCheckboxes = document.querySelectorAll('.mes-checkbox');
+
+        // Toggle dropdown
+        mesesDropdownBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            mesesDropdownMenu.classList.toggle('hidden');
+        });
+
+        // Fechar dropdown ao clicar fora
+        document.addEventListener('click', function(e) {
+            if (!mesesDropdownBtn.contains(e.target) && !mesesDropdownMenu.contains(e.target)) {
+                mesesDropdownMenu.classList.add('hidden');
+            }
+        });
+
+        // Função para atualizar o texto do botão dropdown
+        function updateDropdownText() {
+            const selectedCheckboxes = Array.from(mesCheckboxes).filter(cb => cb.checked);
+            const selectedCount = selectedCheckboxes.length;
+            
+            if (selectedCount === 0) {
+                mesesSelectedText.textContent = 'Nenhum mês selecionado';
+            } else if (selectedCount === mesCheckboxes.length) {
+                mesesSelectedText.textContent = 'Todos os Meses';
+            } else if (selectedCount === 1) {
+                const selectedMonth = selectedCheckboxes[0].parentElement.querySelector('span').textContent;
+                mesesSelectedText.textContent = selectedMonth;
+            } else {
+                mesesSelectedText.textContent = `${selectedCount} meses selecionados`;
+            }
+        }
+
+        // Função para verificar se todos os meses estão selecionados
+        function checkAllSelected() {
+            const selectedCount = Array.from(mesCheckboxes).filter(cb => cb.checked).length;
+            if (selectedCount === mesCheckboxes.length) {
+                todosMeses.checked = true;
+                todosMeses.indeterminate = false;
+            } else if (selectedCount === 0) {
+                todosMeses.checked = false;
+                todosMeses.indeterminate = false;
+            } else {
+                todosMeses.checked = false;
+                todosMeses.indeterminate = true;
+            }
+            updateDropdownText();
+        }
+
+        // Handle "Todos os Meses" checkbox (elemento pai)
+        todosMeses.addEventListener('change', function() {
+            mesCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            updateDropdownText();
+        });
+
+        // Handle individual month checkboxes
+        mesCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', checkAllSelected);
+        });
+
+        checkAllSelected(); // Initial check
+
+        // Dados do Gráfico
+        const cashFlowData = {{ cash_flow_data | tojson | safe }};
+        const ctx = document.getElementById('cashFlowChart').getContext('2d');
+
+        // Configurações do gráfico
+        const data = {
+            labels: cashFlowData.labels.map((label, index) => {
+                // Adiciona indicador visual para meses projetados
+                return cashFlowData.meses_projetados[index] ? label + ' (P)' : label;
+            }),
+            datasets: [{
+                label: 'Receita',
+                data: cashFlowData.receitas,
+                backgroundColor: 'rgba(52, 211, 153, 0.8)',
+                borderColor: 'rgb(52, 211, 153)',
+                borderWidth: 1,
+                stack: 'stack1'
+            }, {
+                label: 'Despesa',
+                data: cashFlowData.despesas.map(val => -val), // Valores negativos para empilhar corretamente
+                backgroundColor: 'rgba(156, 163, 175, 0.8)', // Cinza como na imagem
+                borderColor: 'rgb(156, 163, 175)',
+                borderWidth: 1,
+                stack: 'stack1'
+            }] 
+        };
+
+        const options = {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: {
+                padding: {
+                    top: 50, // Espaço extra no topo para as setas e valores
+                    bottom: 10,
+                    left: 10,
+                    right: 10
+                }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            if (label) {
+                                label += ': ';
+                            }
+                            // Para despesas, mostrar valor positivo no tooltip
+                            const value = context.dataset.label === 'Despesa' ? 
+                                Math.abs(context.parsed.y) : context.parsed.y;
+                            label += new Intl.NumberFormat('pt-BR', {
+                                style: 'currency',
+                                currency: 'BRL',
+                                notation: 'compact',
+                                compactDisplay: 'short'
+                            }).format(value * 1000000000);
+                            return label;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    stacked: true,
+                    title: {
+                        display: true,
+                        text: 'Mês',
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        }
+                    },
+                    grid: {
+                        display: false
+                    }
+                },
+                y: {
+                    stacked: true,
+                    title: {
+                        display: true,
+                        text: 'Valor',
+                        font: {
+                            size: 14,
+                            weight: 'bold'
+                        }
+                    },
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.1)',
+                        drawBorder: false
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return 'R$ ' + value.toFixed(1);
+                        }
+                    }
+                }
+            }
+        };
+
+        // Plugin customizado para desenhar setas e saldos
+        const saldoIndicatorPlugin = {
+            id: 'saldoIndicator',
+            afterDatasetsDraw: function(chart) {
+                const ctx = chart.ctx;
+                const data = chart.data;
+                const chartArea = chart.chartArea;
+                
+                ctx.save();
+                
+                data.labels.forEach((label, index) => {
+                    const saldo = cashFlowData.saldos[index];
+                    const receita = cashFlowData.receitas[index];
+                    
+                    // Só desenha se há receita e saldo não é zero
+                    if (receita > 0 && Math.abs(saldo) > 0.01) {
+                        const meta = chart.getDatasetMeta(0); // Dataset de receitas
+                        const bar = meta.data[index];
+                        
+                        if (bar) {
+                            // Posição da barra - centralizar horizontalmente na barra
+                            const barWidth = bar.width;
+                            const centerX = bar.x; // Centro horizontal da barra
+                            const barTop = bar.y;
+                            const barBottom = bar.base; // Posição do valor zero (início da barra)
+                            
+                            // Posição Y no início da barra (valor zero)
+                            const baseY = barBottom - 10; // Um pouco acima do valor zero
+                            
+                            // Determina se o saldo é positivo ou negativo
+                            const isPositive = saldo > 0;
+                            const saldoAbsoluto = Math.abs(saldo); // Valor direto (já vem em reais do backend)
+                            
+                            // Formatação do valor abreviado com uma casa decimal
+                            let saldoFormatted;
+                            
+                            if (saldoAbsoluto >= 1000000000000) { // >= 1 trilhão
+                                saldoFormatted = `R$ ${(saldoAbsoluto / 1000000000000).toFixed(1)} Tri`;
+                            } else if (saldoAbsoluto >= 1000000000) { // >= 1 bilhão
+                                saldoFormatted = `R$ ${(saldoAbsoluto / 1000000000).toFixed(1)} Bi`;
+                            } else if (saldoAbsoluto >= 1000000) { // >= 1 milhão
+                                saldoFormatted = `R$ ${(saldoAbsoluto / 1000000).toFixed(1)} Mi`;
+                            } else if (saldoAbsoluto >= 1000) { // >= 1 mil
+                                saldoFormatted = `R$ ${(saldoAbsoluto / 1000).toFixed(1)} K`;
+                            } else {
+                                saldoFormatted = `R$ ${saldoAbsoluto.toFixed(0)}`;
+                            }
+                            
+                            // Configuração das cores das setas (igual aos cards)
+                            const arrowColor = isPositive ? '#059669' : '#DC2626'; // Verde escuro ou vermelho escuro
+                            
+                            // Desenhar seta maior centralizada horizontalmente
+                            const arrowSize = 14; // Seta maior
+                            const arrowX = centerX; // Centro horizontal da barra
+                            const arrowY = baseY - 25; // Seta acima do texto, no início da barra
+                            
+                            ctx.fillStyle = arrowColor;
+                            ctx.beginPath();
+                            if (isPositive) {
+                                // Seta para cima (arrow-up style) - centralizada horizontalmente
+                                ctx.moveTo(arrowX, arrowY - arrowSize/2);
+                                ctx.lineTo(arrowX - arrowSize/2, arrowY + arrowSize/3);
+                                ctx.lineTo(arrowX - arrowSize/4, arrowY + arrowSize/3);
+                                ctx.lineTo(arrowX - arrowSize/4, arrowY + arrowSize/2);
+                                ctx.lineTo(arrowX + arrowSize/4, arrowY + arrowSize/2);
+                                ctx.lineTo(arrowX + arrowSize/4, arrowY + arrowSize/3);
+                                ctx.lineTo(arrowX + arrowSize/2, arrowY + arrowSize/3);
+                            } else {
+                                // Seta para baixo (arrow-down style) - centralizada horizontalmente
+                                ctx.moveTo(arrowX, arrowY + arrowSize/2);
+                                ctx.lineTo(arrowX - arrowSize/2, arrowY - arrowSize/3);
+                                ctx.lineTo(arrowX - arrowSize/4, arrowY - arrowSize/3);
+                                ctx.lineTo(arrowX - arrowSize/4, arrowY - arrowSize/2);
+                                ctx.lineTo(arrowX + arrowSize/4, arrowY - arrowSize/2);
+                                ctx.lineTo(arrowX + arrowSize/4, arrowY - arrowSize/3);
+                                ctx.lineTo(arrowX + arrowSize/2, arrowY - arrowSize/3);
+                            }
+                            ctx.closePath();
+                            ctx.fill();
+                            
+                            // Configuração do texto centralizado horizontalmente
+                            ctx.textAlign = 'center'; // Centralizar horizontalmente
+                            ctx.textBaseline = 'middle';
+                            ctx.font = 'bold 11px Arial';
+                            
+                            // Texto do saldo centralizado horizontalmente e abaixo da seta
+                            ctx.fillStyle = '#000000'; // Preto para melhor contraste
+                            ctx.fillText(saldoFormatted, centerX, baseY); // Texto no centro horizontal, no início da barra
+                        }
+                    }
+                });
+                
+                ctx.restore();
+            }
+        };
+
+        const cashFlowChart = new Chart(ctx, {
+            type: 'bar',
+            data: data,
+            options: options,
+            plugins: [saldoIndicatorPlugin]
+        });
+
+        // Preencher a tabela com os dados
+        const tableBody = document.getElementById('fluxo-table');
+        cashFlowData.labels.forEach((label, index) => {
+            const row = `
+                <tr class="border-b">
+                    <td class="p-3 font-medium text-gray-700">${label}</td>
+                    <td class="p-3 text-right text-green-600">${cashFlowData.receitas[index].toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td class="p-3 text-right text-red-600">${cashFlowData.despesas[index].toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td class="p-3 text-right text-blue-600">${cashFlowData.saldos[index].toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                    <td class="p-3 text-right text-gray-700">${cashFlowData.saldo_final[index].toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                </tr>
+            `;
+            tableBody.innerHTML += row;
+        });
+    });
+</script>
+{% endblock %}

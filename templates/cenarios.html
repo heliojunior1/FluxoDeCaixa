@@ -1,0 +1,347 @@
+{% extends 'base.html' %}
+
+{% macro render_qualificador_input(qualificador, mes) %}
+    {# Usamos um data attribute para facilitar a busca dos elementos de cada linha #}
+    <div class="grid grid-cols-12 gap-2 items-center mb-2" data-qualificador-row="{{ qualificador.seq_qualificador }}">
+        <label class="col-span-4 text-sm text-gray-600" style="padding-left: {{ qualificador.nivel * 1.5 }}rem;">
+            {{ qualificador.dsc_qualificador }}
+        </label>
+        <div class="col-span-3">
+            <select name="cod_tipo_ajuste_{{ mes }}_{{ qualificador.seq_qualificador }}" class="w-full border rounded px-2 py-1 text-sm">
+                <option value="P">%</option>
+                <option value="V">R$</option>
+            </select>
+        </div>
+        <div class="col-span-5">
+            <input type="number" step="0.01" name="val_ajuste_{{ mes }}_{{ qualificador.seq_qualificador }}"
+                   class="w-full border rounded px-2 py-1 text-sm" 
+                   placeholder="0,00">
+        </div>
+    </div>
+{% endmacro %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-4">
+    <button onclick="history.back()" class="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
+        <i data-lucide="arrow-left-circle" class="w-8 h-8"></i>
+    </button>
+</div>
+
+<div class="flex justify-between items-center mb-4">
+    <h2 class="text-xl font-semibold text-gray-700">Projeções de Cenários</h2>
+    <button id="add-cenario-btn" class="bg-blue-600 text-white px-4 py-2 rounded">Adicionar Cenário</button>
+</div>
+
+<table class="min-w-full bg-white border">
+    <thead class="bg-gray-100">
+        <tr>
+            <th class="border px-2 py-1 text-left">Nome</th>
+            <th class="border px-2 py-1 text-left">Descrição</th>
+            <th class="border px-2 py-1 text-center">Status</th>
+            <th class="border px-2 py-1 text-center">Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for c in cenarios %}
+        <tr>
+            <td class="border px-2 py-1">{{ c.nom_cenario }}</td>
+            <td class="border px-2 py-1">{{ c.dsc_cenario }}</td>
+            <td class="border px-2 py-1 text-center">{{ 'Ativo' if c.ind_status=='A' else 'Inativo' }}</td>
+            <td class="border px-2 py-1 text-center">
+                <button data-id="{{ c.seq_cenario }}" class="edit-cenario-btn text-blue-600 hover:underline mr-2 p-1" type="button" title="Editar">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.5L14.732 5.232z" /></svg>
+                </button>
+                <form action="{{ url_for('delete_cenario', id=c.seq_cenario) }}" method="POST" class="inline" onsubmit="return confirm('Tem certeza que deseja inativar este cenário?');">
+                    <button type="submit" class="text-red-600 hover:underline p-1" title="Excluir">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                </form>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<!-- Modal para Adicionar/Editar Cenário -->
+<div id="cenario-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+    <div class="relative top-5 mx-auto p-5 border w-3/4 shadow-lg rounded-md bg-white">
+        <form id="cenario-form" action="{{ url_for('add_cenario') }}" method="post">
+            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4" id="modal-title">Adicionar Novo Cenário</h3>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                    <label for="nom_cenario" class="block text-sm font-medium text-gray-700">Nome do Cenário</label>
+                    <input type="text" name="nom_cenario" id="nom_cenario" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                </div>
+                <div>
+                    <label for="dsc_cenario" class="block text-sm font-medium text-gray-700">Descrição</label>
+                    <input type="text" name="dsc_cenario" id="dsc_cenario" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                </div>
+                <div>
+                    <label for="ano" class="block text-sm font-medium text-gray-700">Ano</label>
+                    <input type="number" name="ano" id="ano" value="{{ current_year }}" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" required>
+                </div>
+                <div class="md:col-span-3">
+                    <label for="xlsx-file-input" class="block text-sm font-medium text-gray-700">Planilha de valores (opcional)</label>
+                    <input type="file" id="xlsx-file-input" accept=".xlsx" class="mt-1 block w-full text-sm text-gray-700 border border-gray-300 rounded-md">
+                    <div class="mt-2 flex gap-2">
+                        <button type="button" id="import-xlsx-btn" class="px-3 py-1 bg-blue-600 text-white rounded">Carregar Planilha</button>
+                        <a href="/projecoes/template-xlsx" class="px-3 py-1 bg-gray-200 text-gray-700 rounded" download>Baixar Modelo</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Default Percentage Inputs -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-4 p-4 border rounded-md bg-gray-50">
+                <div>
+                    <label for="default-percent-receita" class="block text-sm font-medium text-gray-700">Aplicar % em todas as receitas</label>
+                    <div class="mt-1 flex rounded-md shadow-sm">
+                        <input type="number" step="0.01" id="default-percent-receita" class="flex-1 block w-full rounded-none rounded-l-md sm:text-sm border-gray-300 px-3 py-2" placeholder="Ex: 5 para 5%">
+                        <button type="button" id="apply-percent-receita" class="inline-flex items-center px-3 py-2 border border-l-0 border-gray-300 bg-gray-200 text-gray-700 rounded-r-md text-sm hover:bg-gray-300">
+                            Aplicar
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label for="default-percent-despesa" class="block text-sm font-medium text-gray-700">Aplicar % em todas as despesas</label>
+                    <div class="mt-1 flex rounded-md shadow-sm">
+                        <input type="number" step="0.01" id="default-percent-despesa" class="flex-1 block w-full rounded-none rounded-l-md sm:text-sm border-gray-300 px-3 py-2" placeholder="Ex: -2 para -2%">
+                        <button type="button" id="apply-percent-despesa" class="inline-flex items-center px-3 py-2 border border-l-0 border-gray-300 bg-gray-200 text-gray-700 rounded-r-md text-sm hover:bg-gray-300">
+                            Aplicar
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ajustes (Scrollable Area) -->
+            <div class="max-h-[50vh] overflow-y-auto p-1">
+                <ul class="flex border-b mb-2" id="mes-tabs">
+                    {% for m in range(1,13) %}
+                    <li class="mr-1">
+                        <button type="button" data-month-tab="{{ m }}" class="month-tab bg-white text-blue-600 border border-blue-600 rounded-t px-2 py-1">
+                            {{ meses_nomes[m] }}
+                        </button>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% for m in range(1,13) %}
+                <div id="mes-{{m}}" class="month-content hidden transition-opacity duration-200">
+                    <div class="text-right mb-2">
+                        <button type="button" class="replicar-btn text-blue-600 text-xs" data-mes="{{m}}">Replicar para todos</button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <!-- Coluna de Receitas -->
+                    <div id="receitas-col-{{m}}">
+                        <div class="p-3 bg-green-100 rounded-t-lg border-b-2 border-green-500 sticky top-0 z-10">
+                            <h6 class="m-0 font-bold text-green-800">Entradas</h6>
+                        </div>
+                        <div class="p-4 border-l border-r border-b rounded-b-lg">
+                            {% for qualificador in qualificadores_receita %}
+                                {{ render_qualificador_input(qualificador, m) }}
+                            {% else %}
+                                <p class="text-gray-500">Nenhum qualificador de receita encontrado.</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <!-- Coluna de Despesas -->
+                    <div id="despesas-col-{{m}}">
+                        <div class="p-3 bg-red-100 rounded-t-lg border-b-2 border-red-500 sticky top-0 z-10">
+                            <h6 class="m-0 font-bold text-red-800">Saídas</h6>
+                        </div>
+                        <div class="p-4 border-l border-r border-b rounded-b-lg">
+                            {% for qualificador in qualificadores_despesa %}
+                                {{ render_qualificador_input(qualificador, m) }}
+                            {% else %}
+                                <p class="text-gray-500">Nenhum qualificador de despesa encontrado.</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Botões -->
+            <div class="items-center px-4 py-3 mt-4 text-right">
+                <button id="cancel-modal-btn" type="button" class="px-4 py-2 bg-gray-200 text-gray-800 text-base font-medium rounded-md shadow-sm hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-500 mr-2">Cancelar</button>
+                <button id="submit-modal-btn" type="submit" class="px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const modal = document.getElementById('cenario-modal');
+    const addBtn = document.getElementById('add-cenario-btn');
+    const cancelBtn = document.getElementById('cancel-modal-btn');
+    const form = document.getElementById('cenario-form');
+    const modalTitle = document.getElementById('modal-title');
+
+    function openModalForAdd() {
+        form.reset();
+        form.action = "{{ url_for('add_cenario') }}";
+        modalTitle.textContent = 'Adicionar Novo Cenário';
+        document.getElementById('ano').value = new Date().getFullYear();
+        showMonth(1);
+        modal.classList.remove('hidden');
+    }
+
+    function openModalForEdit(id) {
+        fetch(`/projecoes/get/${id}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                form.reset();
+                form.action = `/projecoes/edit/${id}`;
+                modalTitle.textContent = 'Editar Cenário';
+
+                document.getElementById('nom_cenario').value = data.nom_cenario;
+                document.getElementById('dsc_cenario').value = data.dsc_cenario;
+                document.getElementById('ano').value = Object.values(data.ajustes)[0]?.ano || new Date().getFullYear();
+                
+                // Limpa campos de ajuste antes de preencher
+                form.querySelectorAll('select[name^="cod_tipo_ajuste_"]').forEach(s => s.value = 'P');
+                form.querySelectorAll('input[name^="val_ajuste_"]').forEach(i => i.value = '');
+
+                // Preenche os ajustes do cenário existente
+                if (data.ajustes) {
+                    for (const key in data.ajustes) {
+                        const ajuste = data.ajustes[key];
+                        const parts = key.split('_');
+                        const mes = parts[1];
+                        const seq = parts[2];
+                        const tipoSelect = form.querySelector(`select[name="cod_tipo_ajuste_${mes}_${seq}"]`);
+                        const valInput = form.querySelector(`input[name="val_ajuste_${mes}_${seq}"]`);
+                        if (tipoSelect && valInput) {
+                            tipoSelect.value = ajuste.cod_tipo_ajuste;
+                            valInput.value = ajuste.val_ajuste;
+                        }
+                    }
+                }
+
+                showMonth(1);
+                modal.classList.remove('hidden');
+            })
+            .catch(error => console.error('Error fetching scenario data:', error));
+    }
+
+    function closeModal() {
+        modal.classList.add('hidden');
+    }
+
+    addBtn.addEventListener('click', openModalForAdd);
+    cancelBtn.addEventListener('click', closeModal);
+
+    document.querySelectorAll('.edit-cenario-btn').forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            const id = button.dataset.id;
+            openModalForEdit(id);
+        });
+    });
+
+    const monthTabs = document.querySelectorAll('.month-tab');
+    const monthContents = document.querySelectorAll('.month-content');
+
+    function showMonth(m) {
+        monthContents.forEach(c => c.classList.add('hidden'));
+        document.getElementById(`mes-${m}`).classList.remove('hidden');
+        monthTabs.forEach(t => {
+            t.classList.remove('bg-blue-600', 'text-white', 'font-semibold');
+            t.classList.add('bg-white', 'text-blue-600');
+        });
+        const active = document.querySelector(`.month-tab[data-month-tab="${m}"]`);
+        if (active) {
+            active.classList.remove('bg-white', 'text-blue-600');
+            active.classList.add('bg-blue-600', 'text-white', 'font-semibold');
+        }
+    }
+
+    monthTabs.forEach(tab => {
+        tab.addEventListener('click', () => showMonth(tab.dataset.monthTab));
+    });
+
+    function replicateMonth(m) {
+        const inputs = document.querySelectorAll(`input[name^="val_ajuste_${m}_"]`);
+        inputs.forEach(input => {
+            const seq = input.name.split('_').pop();
+            const val = input.value;
+            const tipo = document.querySelector(`select[name="cod_tipo_ajuste_${m}_${seq}"]`).value;
+            for (let i = 1; i <= 12; i++) {
+                if (i == m) continue;
+                const tgtVal = document.querySelector(`input[name="val_ajuste_${i}_${seq}"]`);
+                const tgtTipo = document.querySelector(`select[name="cod_tipo_ajuste_${i}_${seq}"]`);
+                if (tgtVal) tgtVal.value = val;
+                if (tgtTipo) tgtTipo.value = tipo;
+            }
+        });
+    }
+
+    document.querySelectorAll('.replicar-btn').forEach(btn => {
+        btn.addEventListener('click', () => replicateMonth(parseInt(btn.dataset.mes)));
+    });
+
+    showMonth(1);
+
+    // Import adjustments from XLSX
+    document.getElementById('import-xlsx-btn').addEventListener('click', function() {
+        const fileInput = document.getElementById('xlsx-file-input');
+        if (!fileInput.files.length) return;
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        fetch('/projecoes/import-xlsx', {method: 'POST', body: formData})
+            .then(resp => resp.json())
+            .then(data => {
+                if (!data.ajustes) return;
+                for (const key in data.ajustes) {
+                    const adj = data.ajustes[key];
+                    const mes = adj.mes;
+                    const seq = key.split('_')[2];
+                    const input = document.querySelector(`input[name="val_ajuste_${mes}_${seq}"]`);
+                    const tipo = document.querySelector(`select[name="cod_tipo_ajuste_${mes}_${seq}"]`);
+                    if (input) input.value = adj.val_ajuste;
+                    if (tipo) tipo.value = adj.cod_tipo_ajuste;
+                }
+            })
+            .catch(err => console.error('Erro ao importar planilha:', err));
+    });
+
+    // Handle applying default percentages
+    document.getElementById('apply-percent-receita').addEventListener('click', function() {
+        const percentValue = document.getElementById('default-percent-receita').value;
+        if (percentValue === '') return;
+
+        const receitaRows = document.querySelectorAll('div[id^="receitas-col-"] [data-qualificador-row]');
+        receitaRows.forEach(row => {
+            const typeSelect = row.querySelector('select');
+            const valueInput = row.querySelector('input[type="number"]');
+            if (typeSelect && valueInput) {
+                typeSelect.value = 'P'; // Set to Percentage
+                valueInput.value = percentValue;
+            }
+        });
+    });
+
+    document.getElementById('apply-percent-despesa').addEventListener('click', function() {
+        const percentValue = document.getElementById('default-percent-despesa').value;
+        if (percentValue === '') return;
+
+        const despesaRows = document.querySelectorAll('div[id^="despesas-col-"] [data-qualificador-row]');
+        despesaRows.forEach(row => {
+            const typeSelect = row.querySelector('select');
+            const valueInput = row.querySelector('input[type="number"]');
+            if (typeSelect && valueInput) {
+                typeSelect.value = 'P'; // Set to Percentage
+                valueInput.value = percentValue;
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

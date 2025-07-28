@@ -1,0 +1,294 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <div class="flex items-center">
+        <a href="{{ url_for('index') }}" class="text-gray-500 hover:text-gray-700">
+            <i data-lucide="arrow-left-circle" class="w-8 h-8"></i>
+        </a>
+        <h2 class="text-2xl font-bold text-gray-800 ml-4">Gestão de Qualificadores</h2>
+    </div>
+    <div class="flex space-x-3">
+        <button id="expand-all-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg flex items-center">
+            <i data-lucide="chevron-down" class="w-5 h-5 mr-2"></i>
+            <span>Expandir Todos</span>
+        </button>
+        <button id="collapse-all-btn" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg flex items-center">
+            <i data-lucide="chevron-up" class="w-5 h-5 mr-2"></i>
+            <span>Recolher Todos</span>
+        </button>
+        <button id="add-qualificador-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center">
+            <i data-lucide="plus" class="w-5 h-5 mr-2"></i>
+            <span>Novo Qualificador</span>
+        </button>
+    </div>
+</div>
+
+<!-- Árvore de Qualificadores -->
+<div class="bg-white p-6 rounded-lg shadow-md">
+    <div class="qualificador-tree">
+        {% for q in qualificadores %}
+            {% include 'qualificador_tree_node.html' %}
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal de Adição de Qualificador -->
+<div id="add-qualificador-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center pb-3 border-b">
+            <h3 class="text-xl font-bold text-gray-800">Novo Qualificador</h3>
+            <button id="close-add-modal-btn" class="text-gray-500 hover:text-gray-800">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </div>
+        <div class="mt-5">
+            <form action="{{ url_for('add_qualificador') }}" method="POST">
+                <div class="mb-4">
+                    <label for="num_qualificador" class="block text-sm font-medium text-gray-700">Numeração</label>
+                    <input type="text" name="num_qualificador" id="num_qualificador" class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="Ex: 1.0.1" required>
+                </div>
+                <div class="mb-4">
+                    <label for="dsc_qualificador" class="block text-sm font-medium text-gray-700">Descrição</label>
+                    <input type="text" name="dsc_qualificador" id="dsc_qualificador" class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="Ex: ICMS" required>
+                </div>
+                <div class="mb-4">
+                    <label for="cod_qualificador_pai" class="block text-sm font-medium text-gray-700">Qualificador Pai</label>
+                    <select name="cod_qualificador_pai" id="cod_qualificador_pai" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        <option value="">Nenhum (Nível Raiz)</option>
+                        {% for q in todos_qualificadores %}
+                        <option value="{{ q.seq_qualificador }}">{{ q.num_qualificador }} - {{ q.dsc_qualificador }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="flex justify-end mt-6">
+                    <button type="button" id="cancel-add-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg mr-4">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">
+                        Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Edição de Qualificador -->
+<div id="edit-qualificador-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-lg shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center pb-3 border-b">
+            <h3 class="text-xl font-bold text-gray-800">Editar Qualificador</h3>
+            <button id="close-edit-modal-btn" class="text-gray-500 hover:text-gray-800">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </div>
+        <div class="mt-5">
+            <form id="edit-qualificador-form" action="" method="POST">
+                <div class="mb-4">
+                    <label for="edit_num_qualificador" class="block text-sm font-medium text-gray-700">Numeração</label>
+                    <input type="text" name="num_qualificador" id="edit_num_qualificador" class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                </div>
+                <div class="mb-4">
+                    <label for="edit_dsc_qualificador" class="block text-sm font-medium text-gray-700">Descrição</label>
+                    <input type="text" name="dsc_qualificador" id="edit_dsc_qualificador" class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                </div>
+                <div class="mb-4">
+                    <label for="edit_cod_qualificador_pai" class="block text-sm font-medium text-gray-700">Qualificador Pai</label>
+                    <select name="cod_qualificador_pai" id="edit_cod_qualificador_pai" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        <option value="">Nenhum (Nível Raiz)</option>
+                        {% for q in todos_qualificadores %}
+                        <option value="{{ q.seq_qualificador }}">{{ q.num_qualificador }} - {{ q.dsc_qualificador }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="flex justify-end mt-6">
+                    <button type="button" id="cancel-edit-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg mr-4">
+                        Cancelar
+                    </button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">
+                        Atualizar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Modal de Adição
+        const addBtn = document.getElementById('add-qualificador-btn');
+        const addModal = document.getElementById('add-qualificador-modal');
+        const closeAddModalBtn = document.getElementById('close-add-modal-btn');
+        const cancelAddBtn = document.getElementById('cancel-add-btn');
+
+        const closeAddModal = () => {
+            if (addModal) addModal.classList.add('hidden');
+        };
+
+        if (addBtn) addBtn.addEventListener('click', () => addModal.classList.remove('hidden'));
+        if (closeAddModalBtn) closeAddModalBtn.addEventListener('click', closeAddModal);
+        if (cancelAddBtn) cancelAddBtn.addEventListener('click', closeAddModal);
+
+        // Modal de Edição
+        const editModal = document.getElementById('edit-qualificador-modal');
+        const closeEditModalBtn = document.getElementById('close-edit-modal-btn');
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+        const editForm = document.getElementById('edit-qualificador-form');
+        const editButtons = document.querySelectorAll('.edit-qualificador-btn');
+
+        const closeEditModal = () => {
+            if (editModal) editModal.classList.add('hidden');
+        };
+
+        editButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const seq = button.dataset.seq_qualificador;
+                editForm.action = `/qualificadores/edit/${seq}`;
+                document.getElementById('edit_num_qualificador').value = button.dataset.num_qualificador;
+                document.getElementById('edit_dsc_qualificador').value = button.dataset.dsc_qualificador;
+                document.getElementById('edit_cod_qualificador_pai').value = button.dataset.cod_qualificador_pai;
+                editModal.classList.remove('hidden');
+            });
+        });
+
+        if (closeEditModalBtn) closeEditModalBtn.addEventListener('click', closeEditModal);
+        if (cancelEditBtn) cancelEditBtn.addEventListener('click', closeEditModal);
+
+        // Close modals when clicking outside
+        window.addEventListener('click', (event) => {
+            if (event.target === addModal) closeAddModal();
+            if (event.target === editModal) closeEditModal();
+        });
+
+        // Funcionalidade da árvore de qualificadores
+        initializeTree();
+    });
+
+    function initializeTree() {
+        // Toggle de expansão/colapso
+        document.querySelectorAll('.toggle-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const nodeId = this.dataset.id;
+                const childrenContainer = document.querySelector(`.children-container[data-parent="${nodeId}"]`);
+                
+                if (childrenContainer) {
+                    const isHidden = childrenContainer.classList.contains('hidden');
+                    
+                    if (isHidden) {
+                        childrenContainer.classList.remove('hidden');
+                        this.classList.add('expanded');
+                    } else {
+                        childrenContainer.classList.add('hidden');
+                        this.classList.remove('expanded');
+                    }
+                }
+            });
+        });
+
+        // Expandir todos
+        document.getElementById('expand-all-btn')?.addEventListener('click', function() {
+            document.querySelectorAll('.children-container').forEach(container => {
+                container.classList.remove('hidden');
+            });
+            document.querySelectorAll('.toggle-btn').forEach(btn => {
+                btn.classList.add('expanded');
+            });
+        });
+
+        // Recolher todos
+        document.getElementById('collapse-all-btn')?.addEventListener('click', function() {
+            document.querySelectorAll('.children-container').forEach(container => {
+                container.classList.add('hidden');
+            });
+            document.querySelectorAll('.toggle-btn').forEach(btn => {
+                btn.classList.remove('expanded');
+            });
+        });
+
+        // Adicionar filho
+        document.querySelectorAll('.add-child-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const parentId = this.dataset.parentId;
+                const parentNum = this.dataset.parentNum;
+                const parentDesc = this.dataset.parentDesc;
+                
+                // Preencher campos do modal com dados do pai
+                document.getElementById('cod_qualificador_pai').value = parentId;
+                document.getElementById('num_qualificador').value = parentNum + '.';
+                document.getElementById('num_qualificador').focus();
+                
+                // Abrir modal
+                addModal.classList.remove('hidden');
+            });
+        });
+    }
+</script>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .qualificador-tree {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+    
+    .qualificador-node {
+        transition: all 0.2s ease-in-out;
+    }
+    
+    .node-content:hover {
+        transform: translateX(2px);
+    }
+    
+    .toggle-btn {
+        transition: transform 0.2s ease-in-out;
+    }
+    
+    .toggle-btn.expanded .chevron-icon {
+        transform: rotate(90deg);
+    }
+    
+    .children-container {
+        animation: slideDown 0.3s ease-out;
+    }
+    
+    .children-container.hidden {
+        animation: slideUp 0.3s ease-in;
+    }
+    
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            max-height: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            max-height: 500px;
+            transform: translateY(0);
+        }
+    }
+    
+    @keyframes slideUp {
+        from {
+            opacity: 1;
+            max-height: 500px;
+            transform: translateY(0);
+        }
+        to {
+            opacity: 0;
+            max-height: 0;
+            transform: translateY(-10px);
+        }
+    }
+    
+    .node-level-0 { border-left: 4px solid #3B82F6; }
+    .node-level-1 { border-left: 4px solid #10B981; }
+    .node-level-2 { border-left: 4px solid #F59E0B; }
+    .node-level-3 { border-left: 4px solid #EF4444; }
+</style>
+{% endblock %}

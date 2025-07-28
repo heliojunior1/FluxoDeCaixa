@@ -1,0 +1,241 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <div class="flex items-center">
+        <a href="{{ url_for('relatorios') }}" class="text-gray-500 hover:text-gray-700">
+            <i data-lucide="arrow-left-circle" class="w-8 h-8"></i>
+        </a>
+        <h2 class="text-2xl font-bold text-gray-800 ml-4">
+            <i data-lucide="layers" class="w-6 h-6 inline mr-2"></i>
+            Análise Comparativa de {% if tipo_analise == 'receitas' %}Receitas{% else %}Despesas{% endif %}
+        </h2>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="bg-white p-6 rounded-lg shadow-md mb-6">
+    <form method="POST" class="space-y-4" id="filter-form">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <!-- Tipo de Análise -->
+            <div>
+                <label for="tipo_analise" class="block text-sm font-medium text-gray-700 mb-1">Tipo de Análise</label>
+                <select name="tipo_analise" id="tipo_analise" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" onchange="this.form.submit()">
+                    <option value="receitas" {% if tipo_analise == 'receitas' %}selected{% endif %}>Receitas</option>
+                    <option value="despesas" {% if tipo_analise == 'despesas' %}selected{% endif %}>Despesas</option>
+                </select>
+            </div>
+            
+            <!-- Seleção de Anos -->
+            <div>
+                <label for="ano1" class="block text-sm font-medium text-gray-700 mb-1">Primeiro Ano</label>
+                <select name="ano1" id="ano1" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                    {% for ano in anos_disponiveis %}
+                        <option value="{{ ano }}" {% if ano == ano1 %}selected{% endif %}>{{ ano }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label for="ano2" class="block text-sm font-medium text-gray-700 mb-1">Segundo Ano</label>
+                <select name="ano2" id="ano2" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                    {% for ano in anos_disponiveis %}
+                        <option value="{{ ano }}" {% if ano == ano2 %}selected{% endif %}>{{ ano }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Seleção de Meses -->
+            <div class="relative">
+                <label for="meses-dropdown" class="block text-sm font-medium text-gray-700 mb-1">Meses</label>
+                <div class="relative">
+                    <button type="button" id="meses-dropdown-btn" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white text-left flex justify-between items-center">
+                        <span id="meses-selected-text">Todos os Meses</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                    </button>
+                    <div id="meses-dropdown-menu" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg hidden max-h-48 overflow-y-auto">
+                        <div class="p-2">
+                            <!-- Opção "Todos" -->
+                            <label class="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded mb-1">
+                                <input type="checkbox" id="todos-meses" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                <span class="text-sm font-bold text-blue-600">Todos os Meses</span>
+                            </label>
+                            <hr class="my-1 border-gray-200">
+                            <!-- Meses individuais -->
+                            {% for mes_num, mes_nome in meses_nomes.items() %}
+                                <label class="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                                    <input type="checkbox" name="meses" value="{{ mes_num }}" 
+                                           {% if mes_num|string in meses_selecionados %}checked{% endif %}
+                                           class="mes-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="text-sm text-gray-700">{{ mes_nome }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Botão Filtrar -->
+            <div class="flex items-end">
+                <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-4 focus:ring-blue-300">
+                    <i data-lucide="filter" class="w-4 h-4 inline mr-1"></i>
+                    Filtrar
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Tabela de Análise Comparativa -->
+<div class="bg-white p-4 rounded-lg shadow-md">
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10">
+                        {% if tipo_analise == 'receitas' %}Receita{% else %}Despesa{% endif %}
+                    </th>
+                    {% for mes_num in meses_selecionados %}
+                    <th scope="col" colspan="3" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        {{ meses_nomes[mes_num|int] }}
+                    </th>
+                    {% endfor %}
+                    <th scope="col" colspan="3" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-100">
+                        Total
+                    </th>
+                </tr>
+                <tr>
+                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10"></th>
+                    {% for _ in meses_selecionados %}
+                    <th scope="col" class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{{ ano1 }}</th>
+                    <th scope="col" class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">{{ ano2 }}</th>
+                    <th scope="col" class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">%</th>
+                    {% endfor %}
+                    <th scope="col" class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-100">{{ ano1 }}</th>
+                    <th scope="col" class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-100">{{ ano2 }}</th>
+                    <th scope="col" class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-gray-100">%</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for item, valores in data.items() %}
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white z-10">{{ item }}</td>
+                    {% for mes in meses_selecionados %}
+                        {% set val1 = valores[mes|string][ano1|string] or 0 %}
+                        {% set val2 = valores[mes|string][ano2|string] or 0 %}
+                        {% set percent = ((val2 - val1) / val1 * 100) if val1 != 0 else 0 %}
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{{ val1 | format_currency }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">{{ val2 | format_currency }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right {% if percent < 0 %}text-red-500{% else %}text-green-500{% endif %}">
+                            {{ "%.2f"|format(percent) }}%
+                        </td>
+                    {% endfor %}
+                    <!-- Totais por item -->
+                    {% set total1 = valores['total'][ano1|string] or 0 %}
+                    {% set total2 = valores['total'][ano2|string] or 0 %}
+                    {% set total_percent = ((total2 - total1) / total1 * 100) if total1 != 0 else 0 %}
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right font-bold bg-gray-50">{{ total1 | format_currency }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right font-bold bg-gray-50">{{ total2 | format_currency }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-bold bg-gray-50 {% if total_percent < 0 %}text-red-500{% else %}text-green-500{% endif %}">
+                        {{ "%.2f"|format(total_percent) }}%
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot class="bg-gray-100">
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 sticky left-0 bg-gray-100 z-10">Total Geral</td>
+                    {% for mes in meses_selecionados %}
+                        {% set total_mes1 = totals[mes|string][ano1|string] or 0 %}
+                        {% set total_mes2 = totals[mes|string][ano2|string] or 0 %}
+                        {% set percent_mes = ((total_mes2 - total_mes1) / total_mes1 * 100) if total_mes1 != 0 else 0 %}
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700 text-right">{{ total_mes1 | format_currency }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-700 text-right">{{ total_mes2 | format_currency }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-right {% if percent_mes < 0 %}text-red-500{% else %}text-green-500{% endif %}">
+                            {{ "%.2f"|format(percent_mes) }}%
+                        </td>
+                    {% endfor %}
+                    <!-- Total Geral Final -->
+                    {% set grand_total1 = totals['total'][ano1|string] or 0 %}
+                    {% set grand_total2 = totals['total'][ano2|string] or 0 %}
+                    {% set grand_percent = ((grand_total2 - grand_total1) / grand_total1 * 100) if grand_total1 != 0 else 0 %}
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-extrabold text-gray-900 text-right bg-gray-200">{{ grand_total1 | format_currency }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-extrabold text-gray-900 text-right bg-gray-200">{{ grand_total2 | format_currency }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-extrabold text-right bg-gray-200 {% if grand_percent < 0 %}text-red-500{% else %}text-green-500{% endif %}">
+                        {{ "%.2f"|format(grand_percent) }}%
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Controle do dropdown de meses
+    const mesDropdown = document.getElementById('meses-dropdown-btn');
+    const mesDropdownMenu = document.getElementById('meses-dropdown-menu');
+    const mesSelectedText = document.getElementById('meses-selected-text');
+    const todosMeses = document.getElementById('todos-meses');
+    const mesCheckboxes = document.querySelectorAll('.mes-checkbox');
+
+    // Toggle dropdown
+    mesDropdown.addEventListener('click', function() {
+        mesDropdownMenu.classList.toggle('hidden');
+    });
+
+    // Fechar dropdown ao clicar fora
+    document.addEventListener('click', function(event) {
+        if (!mesDropdown.contains(event.target) && !mesDropdownMenu.contains(event.target)) {
+            mesDropdownMenu.classList.add('hidden');
+        }
+    });
+
+    // Função para atualizar o texto do dropdown
+    function updateDropdownText() {
+        const selectedMeses = Array.from(mesCheckboxes).filter(cb => cb.checked);
+        if (selectedMeses.length === 0) {
+            mesSelectedText.textContent = 'Nenhum mês selecionado';
+        } else if (selectedMeses.length === mesCheckboxes.length) {
+            mesSelectedText.textContent = 'Todos os Meses';
+        } else if (selectedMeses.length === 1) {
+            const mesNome = selectedMeses[0].nextElementSibling.textContent;
+            mesSelectedText.textContent = mesNome;
+        } else {
+            mesSelectedText.textContent = `${selectedMeses.length} meses selecionados`;
+        }
+    }
+
+    // Função para verificar se todos os meses estão selecionados
+    function checkAllSelected() {
+        const selectedCount = Array.from(mesCheckboxes).filter(cb => cb.checked).length;
+        if (selectedCount === mesCheckboxes.length) {
+            todosMeses.checked = true;
+            todosMeses.indeterminate = false;
+        } else if (selectedCount === 0) {
+            todosMeses.checked = false;
+            todosMeses.indeterminate = false;
+        } else {
+            todosMeses.checked = false;
+            todosMeses.indeterminate = true;
+        }
+        updateDropdownText();
+    }
+
+    // Handle "Todos os Meses" checkbox
+    todosMeses.addEventListener('change', function() {
+        mesCheckboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+        updateDropdownText();
+    });
+
+    // Handle individual month checkboxes
+    mesCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', checkAllSelected);
+    });
+
+    // Inicialização
+    checkAllSelected();
+});
+</script>
+{% endblock %}

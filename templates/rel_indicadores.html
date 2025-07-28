@@ -1,0 +1,303 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <div class="flex items-center">
+        <a href="{{ url_for('relatorios') }}" class="text-gray-500 hover:text-gray-700">
+            <i data-lucide="arrow-left-circle" class="w-8 h-8"></i>
+        </a>
+        <h2 class="text-2xl font-bold text-gray-800 ml-4">Indicadores do Fluxo de Caixa</h2>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="bg-white p-6 rounded-lg shadow-md mb-6">
+    <form method="POST" class="space-y-4" id="filter-form">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Seleção de Ano -->
+            <div>
+                <label for="ano" class="block text-sm font-medium text-gray-700 mb-1">Ano</label>
+                <select name="ano" id="ano" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                    {% for ano in anos_disponiveis %}
+                        <option value="{{ ano }}" {% if ano == ano_selecionado %}selected{% endif %}>{{ ano }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <!-- Seleção de Tipo -->
+            <div>
+                <label for="tipo" class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                <select name="tipo" id="tipo" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                    <option value="ambos" {% if tipo_selecionado == 'ambos' %}selected{% endif %}>Receitas e Despesas</option>
+                    <option value="receita" {% if tipo_selecionado == 'receita' %}selected{% endif %}>Apenas Receitas</option>
+                    <option value="despesa" {% if tipo_selecionado == 'despesa' %}selected{% endif %}>Apenas Despesas</option>
+                </select>
+            </div>
+            
+            <!-- Seleção de Meses -->
+            <div class="relative">
+                <label for="meses-dropdown" class="block text-sm font-medium text-gray-700 mb-1">Meses</label>
+                <div class="relative">
+                    <button type="button" id="meses-dropdown-btn" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white text-left flex justify-between items-center">
+                        <span id="meses-selected-text">Todos os Meses</span>
+                        <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                    </button>
+                    <div id="meses-dropdown-menu" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg hidden max-h-48 overflow-y-auto">
+                        <div class="p-2">
+                            <!-- Opção "Todos" -->
+                            <label class="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded mb-1">
+                                <input type="checkbox" id="todos-meses" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                <span class="text-sm font-bold text-blue-600">Todos os Meses</span>
+                            </label>
+                            <hr class="my-1 border-gray-200">
+                            <!-- Meses individuais -->
+                            {% for mes_num, mes_nome in meses_nomes.items() %}
+                                <label class="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
+                                    <input type="checkbox" name="meses" value="{{ mes_num }}" 
+                                           {% if mes_num|string in meses_selecionados %}checked{% endif %}
+                                           class="mes-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="text-sm text-gray-700">{{ mes_nome }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Botão Filtrar -->
+            <div class="flex items-end">
+                <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-4 focus:ring-blue-300">
+                    <i data-lucide="filter" class="w-4 h-4 inline mr-1"></i>
+                    Filtrar
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <!-- Gráfico de Área (Receita vs. Despesa) -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-lg font-semibold text-gray-700 mb-4">Evolução Mensal (Receita vs. Despesa)</h3>
+        <div class="h-80">
+            <canvas id="areaChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Gráfico de Pizza (Distribuição) -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-lg font-semibold text-gray-700 mb-4">Distribuição por Origem</h3>
+        <div class="h-80">
+            <canvas id="pieChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Projeção de Saldo Acumulado -->
+    <div class="bg-white p-6 rounded-lg shadow-md lg:col-span-2">
+        <h3 class="text-lg font-semibold text-gray-700 mb-4">Projeção de Saldo Acumulado</h3>
+        <div class="h-80">
+            <canvas id="projectionChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Controle do dropdown de meses
+    const mesDropdown = document.getElementById('meses-dropdown-btn');
+    const mesDropdownMenu = document.getElementById('meses-dropdown-menu');
+    const mesSelectedText = document.getElementById('meses-selected-text');
+    const todosMeses = document.getElementById('todos-meses');
+    const mesCheckboxes = document.querySelectorAll('.mes-checkbox');
+
+    // Toggle dropdown
+    mesDropdown.addEventListener('click', function() {
+        mesDropdownMenu.classList.toggle('hidden');
+    });
+
+    // Fechar dropdown ao clicar fora
+    document.addEventListener('click', function(event) {
+        if (!mesDropdown.contains(event.target) && !mesDropdownMenu.contains(event.target)) {
+            mesDropdownMenu.classList.add('hidden');
+        }
+    });
+
+    // Função para atualizar o texto do dropdown
+    function updateDropdownText() {
+        const selectedMeses = Array.from(mesCheckboxes).filter(cb => cb.checked);
+        if (selectedMeses.length === 0) {
+            mesSelectedText.textContent = 'Nenhum mês selecionado';
+        } else if (selectedMeses.length === mesCheckboxes.length) {
+            mesSelectedText.textContent = 'Todos os Meses';
+        } else if (selectedMeses.length === 1) {
+            const mesNome = selectedMeses[0].nextElementSibling.textContent;
+            mesSelectedText.textContent = mesNome;
+        } else {
+            mesSelectedText.textContent = `${selectedMeses.length} meses selecionados`;
+        }
+    }
+
+    // Função para verificar se todos os meses estão selecionados
+    function checkAllSelected() {
+        const selectedCount = Array.from(mesCheckboxes).filter(cb => cb.checked).length;
+        if (selectedCount === mesCheckboxes.length) {
+            todosMeses.checked = true;
+            todosMeses.indeterminate = false;
+        } else if (selectedCount === 0) {
+            todosMeses.checked = false;
+            todosMeses.indeterminate = false;
+        } else {
+            todosMeses.checked = false;
+            todosMeses.indeterminate = true;
+        }
+        updateDropdownText();
+    }
+
+    // Handle "Todos os Meses" checkbox
+    todosMeses.addEventListener('change', function() {
+        mesCheckboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+        updateDropdownText();
+    });
+
+    // Handle individual month checkboxes
+    mesCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', checkAllSelected);
+    });
+
+    // Inicialização
+    checkAllSelected();
+
+    // Dados dos gráficos passados do backend
+    const areaData = {{ area_chart_data | tojson | safe }};
+    const pieData = {{ pie_chart_data | tojson | safe }};
+    const projectionData = {{ projection_chart_data | tojson | safe }};
+
+    // 1. Gráfico de Área (Receita vs. Despesa)
+    const areaCtx = document.getElementById('areaChart').getContext('2d');
+    new Chart(areaCtx, {
+        type: 'line',
+        data: {
+            labels: areaData.labels,
+            datasets: [{
+                label: 'Receita',
+                data: areaData.receitas,
+                borderColor: 'rgb(34, 197, 94)',
+                backgroundColor: 'rgba(34, 197, 94, 0.2)',
+                fill: true,
+                tension: 0.4
+            }, {
+                label: 'Despesa',
+                data: areaData.despesas,
+                borderColor: 'rgb(239, 68, 68)',
+                backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'R$ ' + (value / 1000000000).toFixed(1) + ' Bi';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // 2. Gráfico de Pizza (Distribuição)
+    const pieCtx = document.getElementById('pieChart').getContext('2d');
+    new Chart(pieCtx, {
+        type: 'doughnut',
+        data: {
+            labels: pieData.labels,
+            datasets: [{
+                data: pieData.values,
+                backgroundColor: [
+                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+                    '#FF9F40', '#FF6384', '#C9CBCF', '#4BC0C0', '#36A2EB'
+                ],
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'right',
+                    labels: {
+                        boxWidth: 15,
+                        padding: 15
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.parsed;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((value / total) * 100).toFixed(1);
+                            return context.label + ': ' + percentage + '%';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // 3. Projeção de Saldo Acumulado
+    const projectionCtx = document.getElementById('projectionChart').getContext('2d');
+    new Chart(projectionCtx, {
+        type: 'line',
+        data: {
+            labels: projectionData.labels,
+            datasets: [{
+                label: 'Saldo Acumulado',
+                data: projectionData.saldo,
+                borderColor: 'rgb(59, 130, 246)',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: 'rgb(59, 130, 246)',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top'
+                }
+            },
+            scales: {
+                y: {
+                    ticks: {
+                        callback: function(value) {
+                            return 'R$ ' + (value / 1000000000).toFixed(1) + ' Bi';
+                        }
+                    }
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fluxo de Caixa</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {font-family: 'Inter', sans-serif; background-color: #f8f9fa;}
+        :root {
+            --sefaz-header-bg: #2A3F54;
+            --sefaz-primary-blue: #337AB7;
+            --sefaz-border-color: #E6E9ED;
+            --sefaz-card-bg: #FFFFFF;
+        }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #aaa; }
+    </style>
+</head>
+<body>
+<header style="background-color: var(--sefaz-header-bg);" class="text-white shadow-md">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+            <div class="flex items-center">
+                <img src="{{ url_for('static', path='img/fluxocaixa.png') }}" alt="Logo FLUXO DE CAIXA" class="h-10 mr-4" onerror="this.onerror=null;this.src='https://placehold.co/200x50/FFFFFF/2A3F54?text=SEFAZ-AL';">
+                <span class="border-l border-white/50 h-8 mr-4"></span>
+                <h1 class="text-xl font-semibold">Fluxo de Caixa</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <p class="text-sm hidden sm:block">Usuário: Francisco Helio</p>
+                <img src="https://placehold.co/40x40/E2E8F0/4A5568?text=FH" class="rounded-full" alt="Avatar">
+            </div>
+        </div>
+    </div>
+</header>
+<main class="container mx-auto p-4 sm:p-6 lg:p-8">
+    {% block content %}{% endblock %}
+</main>
+{% block scripts %}{% endblock %}
+<script>
+    // Initialize Lucide icons after all scripts have loaded
+    document.addEventListener('DOMContentLoaded', function () {
+        lucide.createIcons();
+    });
+</script>
+</body>
+</html>

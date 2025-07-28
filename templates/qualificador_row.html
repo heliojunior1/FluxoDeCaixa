@@ -1,0 +1,34 @@
+<!-- Template recursivo para exibir qualificadores hierarquicamente -->
+{% set nivel = nivel or 0 %}
+<tr>
+    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ q.seq_qualificador }}</td>
+    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ q.num_qualificador }}</td>
+    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-medium">
+        {% for _ in range(nivel) %}
+            <span class="text-gray-400 mr-2">└─</span>
+        {% endfor %}
+        {{ q.dsc_qualificador }}
+    </td>
+    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ q.dat_inclusao.strftime('%Y-%m-%d') }}</td>
+    <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+        <button type="button" class="edit-qualificador-btn text-indigo-600 hover:text-indigo-900"
+                data-seq_qualificador="{{ q.seq_qualificador }}"
+                data-num_qualificador="{{ q.num_qualificador }}"
+                data-dsc_qualificador="{{ q.dsc_qualificador }}"
+                data-cod_qualificador_pai="{{ q.cod_qualificador_pai if q.cod_qualificador_pai else '' }}">
+            <i data-lucide="edit" class="w-5 h-5"></i>
+        </button>
+        <form action="{{ url_for('delete_qualificador', seq_qualificador=q.seq_qualificador) }}" method="POST" class="inline-block" onsubmit="return confirm('Tem certeza que deseja excluir este qualificador?');">
+            <button type="submit" class="text-red-600 hover:text-red-900 ml-4 bg-transparent border-none p-0">
+                <i data-lucide="trash-2" class="w-5 h-5"></i>
+            </button>
+        </form>
+    </td>
+</tr>
+
+<!-- Recursivamente inclui os filhos -->
+{% for filho in q.filhos if filho.ind_status == 'A' %}
+    {% with q=filho, nivel=nivel+1 %}
+        {% include 'qualificador_row.html' %}
+    {% endwith %}
+{% endfor %}
