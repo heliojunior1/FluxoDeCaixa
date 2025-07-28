@@ -1,5 +1,11 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker, scoped_session
+from sqlalchemy.orm import (
+    declarative_base,
+    sessionmaker,
+    scoped_session,
+    Query,
+)
+from fastapi import HTTPException
 
 from ..config import Config
 
@@ -9,6 +15,19 @@ SessionLocal = scoped_session(sessionmaker(bind=engine, autocommit=False, autofl
 
 Base = declarative_base()
 Base.query = SessionLocal.query_property()
+
+
+def _query_get_or_404(self: Query, ident, description=None):
+    obj = self.get(ident)
+    if obj is None:
+        if description is None:
+            model = self.column_descriptions[0]["type"].__name__
+            description = f"{model} not found"
+        raise HTTPException(status_code=404, detail=description)
+    return obj
+
+
+Query.get_or_404 = _query_get_or_404
 
 
 class _DB:
