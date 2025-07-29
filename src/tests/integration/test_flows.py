@@ -1,8 +1,15 @@
 from fastapi.testclient import TestClient
-from fluxocaixa.models import db, Lancamento, Pagamento, Qualificador, TipoLancamento, OrigemLancamento, Orgao
 
 
 def test_add_lancamento_flow(client: TestClient):
+    from fluxocaixa.models import (
+        db,
+        Lancamento,
+        Qualificador,
+        TipoLancamento,
+        OrigemLancamento,
+    )
+
     # initial count
     initial = db.session.query(Lancamento).count()
     qual = Qualificador.query.first()
@@ -17,13 +24,15 @@ def test_add_lancamento_flow(client: TestClient):
             'cod_tipo_lancamento': tipo.cod_tipo_lancamento,
             'cod_origem_lancamento': origem.cod_origem_lancamento,
         },
-        allow_redirects=False,
+        follow_redirects=False,
     )
     assert resp.status_code == 303
     assert db.session.query(Lancamento).count() == initial + 1
 
 
 def test_add_pagamento_flow(client: TestClient):
+    from fluxocaixa.models import db, Pagamento, Orgao
+
     initial = db.session.query(Pagamento).count()
     orgao = Orgao.query.first()
     resp = client.post(
@@ -34,7 +43,7 @@ def test_add_pagamento_flow(client: TestClient):
             'val_pagamento': '200.00',
             'dsc_pagamento': 'Teste de pagamento',
         },
-        allow_redirects=False,
+        follow_redirects=False,
     )
     assert resp.status_code == 303
     assert db.session.query(Pagamento).count() == initial + 1

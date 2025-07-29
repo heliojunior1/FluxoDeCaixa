@@ -1,6 +1,3 @@
-import pytest
-
-
 def test_pagamentos_page(client):
     response = client.get('/pagamentos')
     assert response.status_code == 200
