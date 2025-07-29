@@ -1,6 +1,13 @@
 # Fluxo de Caixa 
 
-Este projeto implementa uma aplicação web em **FastAPI** de código aberto para serem utilizados por Estados e Municipios que tenham interesse no tema. 
+Sistema web de fluxo de caixa voltado para prefeituras, estados  e órgãos públicos, com código aberto e reutilizável por outros municípios e estados.
+
+## 🌐 Página do Projeto e Comunicação
+
+Acompanhe novidades e o código mais recente em [https://github.com/heliojunior1/FluxoDeCaixa](https://github.com/heliojunior1/FluxoDeCaixa). Se o serviço estiver em execução no Render, acesse [https://fluxodecaixa-1kxt.onrender.com/](https://fluxodecaixa-1kxt.onrender.com/).
+
+Para dúvidas ou sugestões, abra uma [issue](https://github.com/heliojunior1/FluxoDeCaixa/issues).
+
 ## 🚀 Como Executar o Projeto
 
 ### Pré-requisitos
@@ -289,5 +296,7 @@ Para deploy em produção, configure:
 3. **Servidor web** como Nginx + Gunicorn
 
 ---
+> **Licença:** este projeto está sob a [MIT License](LICENSE).
 
-Esta implementação oferece uma base sólida e modular para evoluir o sistema conforme os requisitos completos do SEFAZ/AL.
+## English Summary
+This FastAPI application helps manage public revenues and expenses. The full documentation is available in [Portuguese](#fluxo-de-caixa).
