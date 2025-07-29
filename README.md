@@ -8,35 +8,30 @@ Sistema web de fluxo de caixa voltado para prefeituras, estados  e órgãos púb
 Veja abaixo algumas das principais telas do sistema em funcionamento.
 
 **Tela de Login e Dashboard Principal**
-<p align="center">
-  <img src="docs/images/home.png" width="60%" alt="Tela Principal">
-</p>
+
+![Tela Principal](docs/images/home.png)
 
 **Lançamentos e Relatórios**
-<p align="center">
-  <img src="docs/images/fluxo_caixa.png" width="48%" alt="Fluxo de Caixa">
-  <img src="docs/images/indicadores.png" width="48%" alt="Indicadores">
-</p>
 
-<p align="center">
-  <img src="docs/images/analise_comparativa.png" width="60%" alt="Análise Comparativa">
-</p>
+![Fluxo de Caixa](docs/images/fluxo_caixa.png)
+
+![Indicadores](docs/images/indicadores.png)
+
+![Análise Comparativa](docs/images/analise_comparativa.png)
 
 **Saldos**
-<p align="center">
-  <img src="docs/images/saldos.png" width="60%" alt="Saldos">
-</p>
+
+![Saldos](docs/images/saldos.png)
 
 **Cenários**
-<p align="center">
-  <img src="docs/images/cenarios.png" width="48%" alt="Cenários">
-  <img src="docs/images/modelos_economicos.png" width="48%" alt="Modelos Econômicos">
-</p>
+
+![Cenários](docs/images/cenarios.png)
+
+![Modelos Econômicos](docs/images/modelos_economicos.png)
 
 **Mapeamento**
-<p align="center">
-  <img src="docs/images/mapeamento.png" width="60%" alt="Mapeamento">
-</p>
+
+![Mapeamento](docs/images/mapeamento.png)
 
 
 
