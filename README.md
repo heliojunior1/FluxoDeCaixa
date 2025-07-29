@@ -2,6 +2,41 @@
 
 Sistema web de fluxo de caixa voltado para prefeituras, estados  e órgãos públicos, com código aberto e reutilizável por outros municípios e estados.
 
+
+## 📸 Demonstração Visual
+
+Veja abaixo algumas das principais telas do sistema em funcionamento.
+
+**Tela de Login e Dashboard Principal**
+<p align="center">
+  <img src="docs/images/home.png" width="48%">
+</p>
+
+**Lançamentos e Relatórios**
+<p align="center">
+  <img src="docs/images/fluxo_caixa.png" width="48%">
+  <img src="docs/images/indicadores.png" width="48%">
+  <img src="docs/images/analise_comparativa.png" width="48%">
+</p>
+
+**Saldos**
+<p align="center">
+  <img src="docs/images/saldos.png" width="48%">
+</p>
+
+**Cenários**
+<p align="center">
+  <img src="docs/images/cenarios.png" width="48%">
+  <img src="docs/images/modelos_economicos.png" width="48%">
+</p>
+
+**Mapeamento**
+<p align="center">
+  <img src="docs/images/mapeamento.png" width="48%">
+</p>
+
+
+
 ## 🌐 Página do Projeto e Comunicação
 
 Acompanhe novidades e o código mais recente em [https://github.com/heliojunior1/FluxoDeCaixa](https://github.com/heliojunior1/FluxoDeCaixa). Se o serviço estiver em execução no Render, acesse [https://fluxodecaixa-1kxt.onrender.com/](https://fluxodecaixa-1kxt.onrender.com/).
