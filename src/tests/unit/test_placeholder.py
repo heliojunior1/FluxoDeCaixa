@@ -1,7 +1,4 @@
-from fastapi import FastAPI
-
-
-def test_root(client):
+def test_index_page(client):
     response = client.get("/")
     assert response.status_code == 200
-    assert response.json() == {"message": "ok"}
+    assert "Módulos do Sistema" in response.text

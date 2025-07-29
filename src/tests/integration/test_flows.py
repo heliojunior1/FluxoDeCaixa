@@ -1,0 +1,46 @@
+from fastapi.testclient import TestClient
+from fluxocaixa.models import db, Lancamento, Pagamento, Qualificador, TipoLancamento, OrigemLancamento, Orgao
+
+
+def test_add_lancamento_flow(client: TestClient):
+    # initial count
+    initial = db.session.query(Lancamento).count()
+    qual = Qualificador.query.first()
+    tipo = TipoLancamento.query.first()
+    origem = OrigemLancamento.query.first()
+    resp = client.post(
+        '/saldos/add',
+        data={
+            'dat_lancamento': '2025-01-01',
+            'seq_qualificador': qual.seq_qualificador,
+            'val_lancamento': '123.45',
+            'cod_tipo_lancamento': tipo.cod_tipo_lancamento,
+            'cod_origem_lancamento': origem.cod_origem_lancamento,
+        },
+        allow_redirects=False,
+    )
+    assert resp.status_code == 303
+    assert db.session.query(Lancamento).count() == initial + 1
+
+
+def test_add_pagamento_flow(client: TestClient):
+    initial = db.session.query(Pagamento).count()
+    orgao = Orgao.query.first()
+    resp = client.post(
+        '/pagamentos/add',
+        data={
+            'dat_pagamento': '2025-02-01',
+            'cod_orgao': orgao.cod_orgao,
+            'val_pagamento': '200.00',
+            'dsc_pagamento': 'Teste de pagamento',
+        },
+        allow_redirects=False,
+    )
+    assert resp.status_code == 303
+    assert db.session.query(Pagamento).count() == initial + 1
+
+
+def test_relatorio_resumo_page(client: TestClient):
+    resp = client.get('/relatorios/resumo')
+    assert resp.status_code == 200
+    assert 'Resumo do Fluxo de Caixa' in resp.text
