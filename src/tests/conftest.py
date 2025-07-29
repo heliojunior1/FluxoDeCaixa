@@ -1,19 +1,18 @@
+import os
 import pytest
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 
 @pytest.fixture(scope="session")
-def app() -> FastAPI:
-    application = FastAPI()
+def app():
+    """Create the real FastAPI application using an in-memory DB."""
+    os.environ["DATABASE_URL"] = "sqlite:///./test.db"
+    from fluxocaixa import create_app
 
-    @application.get("/")
-    def read_root() -> dict[str, str]:
-        return {"message": "ok"}
-
+    application = create_app()
     return application
 
 
 @pytest.fixture()
-def client(app: FastAPI) -> TestClient:
+def client(app) -> TestClient:
     return TestClient(app)
