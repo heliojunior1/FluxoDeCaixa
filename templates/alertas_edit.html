@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center mb-6">
+    <a href="{{ url_for('alertas') }}" class="text-gray-500 hover:text-gray-700">
+        <i data-lucide="arrow-left-circle" class="w-8 h-8"></i>
+    </a>
+    <h2 class="text-xl font-semibold text-gray-700 ml-4">Editar Regra de Alerta</h2>
+</div>
+<form action="{{ url_for('update_alerta', seq_alerta=alerta.seq_alerta) }}" method="post" class="space-y-6 bg-white p-6 rounded-md">
+    <div>
+        <label class="block text-sm font-medium text-gray-700">Nome do Alerta</label>
+        <input type="text" name="nom_alerta" value="{{ alerta.nom_alerta }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+    </div>
+    <div>
+        <label class="block text-sm font-medium text-gray-700">Métrica</label>
+        <select name="metric" id="metric" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            <option value="saldo" {{ 'selected' if alerta.metric == 'saldo' else '' }}>Saldo Final da Conta</option>
+            <option value="qualificador" {{ 'selected' if alerta.metric == 'qualificador' else '' }}>Valor de um Qualificador</option>
+            <option value="comparativo" {{ 'selected' if alerta.metric == 'comparativo' else '' }}>Comparativo Realizado vs Projetado</option>
+        </select>
+    </div>
+    <div id="qualificador-select" class="{{ '' if alerta.metric in ['qualificador','comparativo'] else 'hidden' }}">
+        <label class="block text-sm font-medium text-gray-700">Qualificador</label>
+        <select name="seq_qualificador" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            {% for q in qualificadores %}
+            <option value="{{ q.seq_qualificador }}" {{ 'selected' if alerta.seq_qualificador==q.seq_qualificador else '' }}>{{ q.dsc_qualificador }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div id="period-select" class="{{ '' if alerta.metric != 'comparativo' else 'hidden' }}">
+        <label class="block text-sm font-medium text-gray-700">Período</label>
+        <select name="period" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            <option value="dia" {{ 'selected' if alerta.period=='dia' else '' }}>Dia</option>
+            <option value="mes" {{ 'selected' if alerta.period=='mes' else '' }}>Mês</option>
+            <option value="ano" {{ 'selected' if alerta.period=='ano' else '' }}>Ano</option>
+        </select>
+    </div>
+    <div>
+        <label class="block text-sm font-medium text-gray-700">Lógica</label>
+        <select name="logic" id="logic" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            <option value="menor" {{ 'selected' if alerta.logic=='menor' else '' }}>for menor que</option>
+            <option value="maior" {{ 'selected' if alerta.logic=='maior' else '' }}>for maior que</option>
+        </select>
+    </div>
+    <div id="value-input">
+        <label class="block text-sm font-medium text-gray-700">Valor</label>
+        <input type="number" step="0.01" name="valor" value="{{ alerta.valor }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+    </div>
+    <label class="flex items-center">
+        <input type="checkbox" name="notif_system" value="S" class="h-4 w-4 rounded border-gray-300 mr-2" {{ 'checked' if alerta.notif_system=='S' else '' }}> Notificação no Sistema
+    </label>
+    <label class="flex items-center">
+        <input type="checkbox" name="notif_email" value="S" class="h-4 w-4 rounded border-gray-300 mr-2" id="chk-email" {{ 'checked' if alerta.notif_email=='S' else '' }}> Enviar E-mail
+    </label>
+    <div id="email-input" class="{{ '' if alerta.notif_email=='S' else 'hidden' }}">
+        <label class="block text-sm font-medium text-gray-700">Destinatários</label>
+        <input type="text" name="emails" value="{{ alerta.emails }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+    </div>
+    <div class="text-right">
+        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Salvar</button>
+    </div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    const metric = document.getElementById('metric');
+    const qualifierDiv = document.getElementById('qualificador-select');
+    const periodDiv = document.getElementById('period-select');
+    const emailChk = document.getElementById('chk-email');
+    const emailInput = document.getElementById('email-input');
+    function toggleFields(){
+        const needsQualifier = metric.value === 'qualificador' || metric.value === 'comparativo';
+        qualifierDiv.classList.toggle('hidden', !needsQualifier);
+        const needsPeriod = metric.value !== 'comparativo';
+        periodDiv.classList.toggle('hidden', !needsPeriod);
+    }
+    metric.addEventListener('change', toggleFields);
+    emailChk.addEventListener('change', () => {
+        emailInput.classList.toggle('hidden', !emailChk.checked);
+    });
+    toggleFields();
+});
+</script>
+{% endblock %}

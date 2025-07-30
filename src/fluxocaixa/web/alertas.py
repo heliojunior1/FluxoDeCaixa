@@ -1,3 +1,4 @@
+from datetime import date
 from fastapi import Request
 from fastapi.responses import RedirectResponse
 
@@ -27,8 +28,52 @@ async def criar_alerta(request: Request):
         emails=form.get('emails'),
         notif_system='S' if form.get('notif_system') else 'N',
         notif_email='S' if form.get('notif_email') else 'N',
+        cod_pessoa_inclusao=1,
     )
     db.session.add(alerta)
+    db.session.commit()
+    return RedirectResponse(request.url_for('alertas'), status_code=303)
+
+
+@router.get('/alertas/edit/{seq_alerta}')
+async def edit_alerta(request: Request, seq_alerta: int):
+    alerta = Alerta.query.get_or_404(seq_alerta)
+    qualificadores = (
+        Qualificador.query.filter_by(ind_status='A')
+        .order_by(Qualificador.dsc_qualificador)
+        .all()
+    )
+    return templates.TemplateResponse(
+        'alertas_edit.html',
+        {'request': request, 'alerta': alerta, 'qualificadores': qualificadores},
+    )
+
+
+@router.post('/alertas/edit/{seq_alerta}')
+async def update_alerta(request: Request, seq_alerta: int):
+    alerta = Alerta.query.get_or_404(seq_alerta)
+    form = await request.form()
+    alerta.nom_alerta = form.get('nom_alerta')
+    alerta.metric = form.get('metric')
+    alerta.seq_qualificador = form.get('seq_qualificador') or None
+    alerta.logic = form.get('logic')
+    alerta.valor = form.get('valor') or None
+    alerta.period = form.get('period') or None
+    alerta.emails = form.get('emails')
+    alerta.notif_system = 'S' if form.get('notif_system') else 'N'
+    alerta.notif_email = 'S' if form.get('notif_email') else 'N'
+    alerta.dat_alteracao = date.today()
+    alerta.cod_pessoa_alteracao = 1
+    db.session.commit()
+    return RedirectResponse(request.url_for('alertas'), status_code=303)
+
+
+@router.post('/alertas/delete/{seq_alerta}')
+async def delete_alerta(request: Request, seq_alerta: int):
+    alerta = Alerta.query.get_or_404(seq_alerta)
+    alerta.ind_status = 'I'
+    alerta.dat_alteracao = date.today()
+    alerta.cod_pessoa_alteracao = 1
     db.session.commit()
     return RedirectResponse(request.url_for('alertas'), status_code=303)
 

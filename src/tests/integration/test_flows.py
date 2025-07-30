@@ -74,6 +74,37 @@ def test_criar_alerta_flow(client: TestClient):
     assert db.session.query(Alerta).count() == initial + 1
 
 
+def test_editar_e_desativar_alerta_flow(client: TestClient):
+    from fluxocaixa.models import db, Alerta
+
+    alerta = Alerta(
+        nom_alerta='Editar',
+        metric='saldo',
+        logic='menor',
+        valor=50,
+        period='dia',
+        notif_system='S',
+        cod_pessoa_inclusao=1,
+    )
+    db.session.add(alerta)
+    db.session.commit()
+
+    resp = client.post(
+        f'/alertas/edit/{alerta.seq_alerta}',
+        data={'nom_alerta': 'Editado', 'metric': 'saldo', 'logic': 'maior', 'valor': '60', 'period': 'mes'},
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    db.session.refresh(alerta)
+    assert alerta.nom_alerta == 'Editado'
+    assert alerta.logic == 'maior'
+
+    resp = client.post(f'/alertas/delete/{alerta.seq_alerta}', follow_redirects=False)
+    assert resp.status_code == 303
+    db.session.refresh(alerta)
+    assert alerta.ind_status == 'I'
+
+
 def test_criar_alerta_comparativo_flow(client: TestClient):
     from fluxocaixa.models import db, Alerta, Qualificador
 

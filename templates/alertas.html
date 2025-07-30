@@ -14,7 +14,10 @@
         <tr>
             <th class="border px-2 py-1">Nome do Alerta</th>
             <th class="border px-2 py-1">Período</th>
+            <th class="border px-2 py-1 text-center">Cad.</th>
+            <th class="border px-2 py-1 text-center">Alt.</th>
             <th class="border px-2 py-1 text-center">Estado</th>
+            <th class="border px-2 py-1 text-center">Ações</th>
         </tr>
     </thead>
     <tbody>
@@ -22,11 +25,25 @@
         <tr>
             <td class="border px-2 py-1">{{ r.nom_alerta }}</td>
             <td class="border px-2 py-1">{{ r.period or '-' }}</td>
+            <td class="border px-2 py-1 text-center">{{ r.cod_pessoa_inclusao }}</td>
+            <td class="border px-2 py-1 text-center">{% if r.dat_alteracao %}{{ r.dat_alteracao }} ({{ r.cod_pessoa_alteracao }}){% else %}-{% endif %}</td>
             <td class="border px-2 py-1 text-center">
                 {% if r.ind_status == 'A' %}
                 <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Ativo</span>
                 {% else %}
                 <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Inativo</span>
+                {% endif %}
+            </td>
+            <td class="border px-2 py-1 text-center space-x-2">
+                <a href="{{ url_for('edit_alerta', seq_alerta=r.seq_alerta) }}" class="text-blue-600 hover:text-blue-800">
+                    <i data-lucide="edit" class="w-4 h-4"></i>
+                </a>
+                {% if r.ind_status == 'A' %}
+                <form method="post" action="{{ url_for('delete_alerta', seq_alerta=r.seq_alerta) }}" class="inline" onsubmit="return confirm('Desativar este alerta?')">
+                    <button type="submit" class="text-red-600 hover:text-red-800">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </form>
                 {% endif %}
             </td>
         </tr>
