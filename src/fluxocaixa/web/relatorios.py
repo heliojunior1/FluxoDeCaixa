@@ -11,6 +11,7 @@ from ..models import (
     Pagamento,
     Lancamento,
     Orgao,
+    Qualificador,
     Cenario,
     CenarioAjusteMensal,
 )
@@ -402,6 +403,99 @@ async def relatorio_analise_comparativa(request: Request):
             'ano2': ano2,
             'anos_disponiveis': anos_disponiveis,
             'meses_selecionados': [str(m) for m in meses_selecionados],
+            'meses_nomes': meses_nomes,
+        },
+    )
+
+@router.get('/relatorios/dre')
+@router.post('/relatorios/dre')
+async def relatorio_dre(request: Request):
+    lancamento_years = db.session.query(extract('year', Lancamento.dat_lancamento)).distinct().all()
+    anos_disponiveis = sorted({y[0] for y in lancamento_years}, reverse=True)
+    ano_default = anos_disponiveis[0] if anos_disponiveis else date.today().year
+    form = await request.form() if request.method == 'POST' else {}
+    ano_selecionado = int(form.get('ano', ano_default))
+    periodo = form.get('periodo', 'anual')
+    mes_selecionado = int(form.get('mes', date.today().month))
+
+    labels = []
+    periodo_field = None
+    if periodo == 'mensal':
+        num_dias = calendar.monthrange(ano_selecionado, mes_selecionado)[1]
+        labels = list(range(1, num_dias + 1))
+        periodo_field = extract('day', Lancamento.dat_lancamento)
+    else:
+        labels = list(range(1, 13))
+        periodo_field = extract('month', Lancamento.dat_lancamento)
+
+    tipo_entrada = TipoLancamento.query.filter_by(dsc_tipo_lancamento='Entrada').first()
+    tipo_saida = TipoLancamento.query.filter_by(dsc_tipo_lancamento='Saída').first()
+    id_entrada = tipo_entrada.cod_tipo_lancamento if tipo_entrada else -1
+    id_saida = tipo_saida.cod_tipo_lancamento if tipo_saida else -1
+
+    query = db.session.query(
+        Lancamento.seq_qualificador,
+        periodo_field.label('periodo'),
+        Lancamento.cod_tipo_lancamento,
+        func.sum(Lancamento.val_lancamento).label('total')
+    ).filter(
+        extract('year', Lancamento.dat_lancamento) == ano_selecionado,
+        Lancamento.ind_status == 'A'
+    )
+    if periodo == 'mensal':
+        query = query.filter(extract('month', Lancamento.dat_lancamento) == mes_selecionado)
+    results = query.group_by('periodo', Lancamento.seq_qualificador, Lancamento.cod_tipo_lancamento).all()
+
+    qualificadores = Qualificador.query.filter_by(ind_status='A').order_by(Qualificador.num_qualificador).all()
+
+    class Node:
+        def __init__(self, qual):
+            self.qual = qual
+            self.children = []
+            self.values = [0.0] * len(labels)
+
+    nodes = {q.seq_qualificador: Node(q) for q in qualificadores}
+    roots = []
+    for q in qualificadores:
+        if q.cod_qualificador_pai and q.cod_qualificador_pai in nodes:
+            nodes[q.cod_qualificador_pai].children.append(nodes[q.seq_qualificador])
+        else:
+            roots.append(nodes[q.seq_qualificador])
+
+    for seq, periodo_val, cod_tipo, total in results:
+        if seq in nodes:
+            idx = int(periodo_val) - 1
+            valor = float(total or 0)
+            if cod_tipo == id_saida:
+                valor = -valor
+            nodes[seq].values[idx] += valor
+
+    def aggregate(node):
+        for child in node.children:
+            aggregate(child)
+            for i, v in enumerate(child.values):
+                node.values[i] += v
+    for r in roots:
+        aggregate(r)
+
+    totais_footer = [0.0]*len(labels)
+    for r in roots:
+        for i, v in enumerate(r.values):
+            totais_footer[i] += v
+
+    meses_nomes = {i: calendar.month_name[i].capitalize() for i in range(1, 13)}
+
+    return templates.TemplateResponse(
+        'rel_dre.html',
+        {
+            'request': request,
+            'arvore': roots,
+            'labels': labels,
+            'totais_footer': totais_footer,
+            'periodo': periodo,
+            'ano_selecionado': ano_selecionado,
+            'mes_selecionado': mes_selecionado,
+            'anos_disponiveis': anos_disponiveis,
             'meses_nomes': meses_nomes,
         },
     )

@@ -1,0 +1,14 @@
+{% set nivel = nivel or 0 %}
+<tr>
+    <td class="px-6 py-2 whitespace-nowrap text-sm text-gray-700 sticky left-0 bg-white" style="padding-left: {{ nivel*20 }}px;">
+        {{ node.qual.num_qualificador }} - {{ node.qual.dsc_qualificador }}
+    </td>
+    {% for val in node.values %}
+        <td class="px-6 py-2 whitespace-nowrap text-sm text-right">{{ val|format_currency }}</td>
+    {% endfor %}
+</tr>
+{% for filho in node.children %}
+    {% with node=filho, nivel=nivel+1 %}
+        {% include 'dre_row.html' %}
+    {% endwith %}
+{% endfor %}

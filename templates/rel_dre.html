@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <div class="flex items-center">
+        <a href="{{ url_for('relatorios') }}" class="text-gray-500 hover:text-gray-700">
+            <i data-lucide="arrow-left-circle" class="w-8 h-8"></i>
+        </a>
+        <h2 class="text-2xl font-bold text-gray-800 ml-4">Demonstração do Resultado</h2>
+    </div>
+</div>
+<div class="bg-white p-6 rounded-lg shadow-md mb-6">
+    <form method="POST" class="grid grid-cols-1 md:grid-cols-4 gap-4" id="filter-form">
+        <div>
+            <label for="ano" class="block text-sm font-medium text-gray-700 mb-1">Ano</label>
+            <select name="ano" id="ano" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                {% for ano in anos_disponiveis %}
+                    <option value="{{ ano }}" {% if ano == ano_selecionado %}selected{% endif %}>{{ ano }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="periodo" class="block text-sm font-medium text-gray-700 mb-1">Período</label>
+            <select name="periodo" id="periodo" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" onchange="this.form.submit()">
+                <option value="anual" {% if periodo == 'anual' %}selected{% endif %}>Anual</option>
+                <option value="mensal" {% if periodo == 'mensal' %}selected{% endif %}>Mensal</option>
+            </select>
+        </div>
+        <div id="mes-container" class="{% if periodo != 'mensal' %}hidden{% endif %}">
+            <label for="mes" class="block text-sm font-medium text-gray-700 mb-1">Mês</label>
+            <select name="mes" id="mes" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                {% for m_num, m_nome in meses_nomes.items() %}
+                    <option value="{{ m_num }}" {% if m_num == mes_selecionado %}selected{% endif %}>{{ m_nome }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="flex items-end">
+            <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-4 focus:ring-blue-300">
+                <i data-lucide="filter" class="w-4 h-4 inline mr-1"></i>Filtrar
+            </button>
+        </div>
+    </form>
+</div>
+<div class="overflow-auto bg-white p-6 rounded-lg shadow-md">
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <thead>
+            <tr>
+                <th class="px-6 py-3 text-left font-semibold text-gray-700 sticky left-0 bg-white">Qualificador</th>
+                {% for lbl in labels %}
+                    <th class="px-6 py-3 text-right font-semibold text-gray-700">{{ lbl }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-200">
+            {% for node in arvore %}
+                {% with node=node, nivel=0 %}
+                    {% include 'dre_row.html' %}
+                {% endwith %}
+            {% endfor %}
+        </tbody>
+        <tfoot class="bg-gray-100">
+            <tr>
+                <th class="px-6 py-2 text-left font-bold sticky left-0 bg-gray-100">Total</th>
+                {% for total in totais_footer %}
+                    <th class="px-6 py-2 text-right font-bold">{{ total|format_currency }}</th>
+                {% endfor %}
+            </tr>
+        </tfoot>
+    </table>
+</div>
+<script>
+    document.addEventListener('DOMContentLoaded', function(){
+        const periodo = document.getElementById('periodo');
+        const mesContainer = document.getElementById('mes-container');
+        periodo.addEventListener('change', function(){
+            mesContainer.classList.toggle('hidden', this.value !== 'mensal');
+        });
+    });
+</script>
+{% endblock %}
