@@ -8,7 +8,7 @@ from io import BytesIO, StringIO
 import openpyxl
 from sqlalchemy import func
 
-from . import router, templates
+from . import router, templates, handle_exceptions
 from ..domain import LancamentoCreate
 from ..services import (
     list_lancamentos,
@@ -31,12 +31,14 @@ from ..services.seed import seed_data
 
 
 @router.get('/')
+@handle_exceptions
 async def index(request: Request):
     """Página principal do sistema - apenas menu de navegação"""
     return templates.TemplateResponse('index.html', {'request': request})
 
 
 @router.get('/init-db')
+@handle_exceptions
 async def init_db():
     """Initialize/reset the database with seed data"""
     try:
@@ -50,6 +52,7 @@ async def init_db():
 
 
 @router.get('/recreate-db')
+@handle_exceptions
 async def recreate_db():
     """Recreate the database from scratch"""
     try:
@@ -65,6 +68,7 @@ async def recreate_db():
 
 @router.get('/saldos')
 @router.post('/saldos')
+@handle_exceptions
 async def saldos(request: Request):
     lancamentos = list_lancamentos()
     query = [lan for lan in lancamentos if lan.ind_status == 'A']
@@ -114,6 +118,7 @@ async def saldos(request: Request):
 
 
 @router.post('/saldos/add', name='add_lancamento')
+@handle_exceptions
 async def add_lancamento_route(request: Request):
     form = await request.form()
     data = LancamentoCreate(
@@ -128,6 +133,7 @@ async def add_lancamento_route(request: Request):
 
 
 @router.post('/saldos/import')
+@handle_exceptions
 async def import_lancamentos(file: UploadFile = File(...)):
     """Import multiple Lancamento records from a CSV or XLSX file."""
     filename = file.filename or ''
@@ -191,6 +197,7 @@ async def import_lancamentos(file: UploadFile = File(...)):
     return RedirectResponse('/saldos', status_code=303)
 
 @router.get('/saldos/template-xlsx')
+@handle_exceptions
 async def download_lancamento_template():
     """Return an XLSX template for bulk Lancamento import."""
     wb = openpyxl.Workbook()
@@ -218,6 +225,7 @@ async def download_lancamento_template():
 
 
 @router.post('/saldos/edit/{seq_lancamento}', name='update_lancamento')
+@handle_exceptions
 async def edit_lancamento_route(request: Request, seq_lancamento: int):
     form = await request.form()
     data = LancamentoCreate(
@@ -232,24 +240,28 @@ async def edit_lancamento_route(request: Request, seq_lancamento: int):
 
 
 @router.post('/saldos/delete/{seq_lancamento}', name='delete_lancamento')
+@handle_exceptions
 async def delete_lancamento_route(request: Request, seq_lancamento: int):
     delete_lancamento(seq_lancamento)
     return RedirectResponse(request.url_for('saldos'), status_code=303)
 
 
 @router.get('/conferencia')
+@handle_exceptions
 async def conferencia(request: Request):
     registros = Conferencia.query.order_by(Conferencia.dat_conferencia.desc()).all()
     return templates.TemplateResponse('conferencia.html', {'request': request, 'registros': registros})
 
 
 @router.get('/projecoes')
+@handle_exceptions
 async def projecoes_menu(request: Request):
     """Menu principal das projeções."""
     return templates.TemplateResponse('projecoes_menu.html', {'request': request})
 
 
 @router.get('/projecoes/cenarios')
+@handle_exceptions
 async def projecoes_cenarios(request: Request):
     cenarios = Cenario.query.order_by(Cenario.nom_cenario).all()
     qualificadores_receita = Qualificador.query.filter(
@@ -275,12 +287,14 @@ async def projecoes_cenarios(request: Request):
 
 
 @router.get('/projecoes/modelos')
+@handle_exceptions
 async def projecoes_modelos(request: Request):
     """Tela de projeções automáticas."""
     return templates.TemplateResponse('projecoes_modelos.html', {'request': request})
 
 
 @router.get('/projecoes/get/{id}')
+@handle_exceptions
 async def get_cenario(id: int):
     cenario = Cenario.query.get_or_404(id)
     ajustes = CenarioAjusteMensal.query.filter_by(seq_cenario=id).all()
@@ -302,6 +316,7 @@ async def get_cenario(id: int):
 
 
 @router.get('/projecoes/template-xlsx')
+@handle_exceptions
 async def download_cenario_template():
     """Return an XLSX template with all qualificadores listed."""
     wb = openpyxl.Workbook()
@@ -346,6 +361,7 @@ async def download_cenario_template():
 
 
 @router.post('/projecoes/import-xlsx')
+@handle_exceptions
 async def import_cenario_xlsx(file: UploadFile = File(...)):
     """Parse an uploaded XLSX file and return adjustments mapping."""
     content = await file.read()
@@ -400,6 +416,7 @@ async def import_cenario_xlsx(file: UploadFile = File(...)):
 
 
 @router.post('/projecoes/add')
+@handle_exceptions
 async def add_cenario(request: Request):
     form = await request.form()
     nom_cenario = form.get('nom_cenario')
@@ -436,6 +453,7 @@ async def add_cenario(request: Request):
 
 @router.get('/projecoes/edit/{id}')
 @router.post('/projecoes/edit/{id}')
+@handle_exceptions
 async def edit_cenario(request: Request, id: int):
     cenario = Cenario.query.get_or_404(id)
     if request.method == 'POST':
@@ -483,6 +501,7 @@ async def edit_cenario(request: Request, id: int):
 
 
 @router.post('/projecoes/delete/{id}')
+@handle_exceptions
 async def delete_cenario(request: Request, id: int):
     cenario = Cenario.query.get_or_404(id)
     cenario.ind_status = 'I'
@@ -491,6 +510,7 @@ async def delete_cenario(request: Request, id: int):
 
 
 @router.get('/extrato-bancario')
+@handle_exceptions
 async def extrato_bancario(request: Request):
     lancamentos = db.session.query(
         Lancamento.dat_lancamento.label('data'),
@@ -526,6 +546,7 @@ async def extrato_bancario(request: Request):
 
 
 @router.get('/qualificadores')
+@handle_exceptions
 async def qualificadores(request: Request):
     qualificadores_raiz = Qualificador.query.filter_by(
         ind_status='A', cod_qualificador_pai=None
@@ -542,6 +563,7 @@ async def qualificadores(request: Request):
 
 
 @router.post('/qualificadores/add')
+@handle_exceptions
 async def add_qualificador(request: Request):
     form = await request.form()
     num_qualif = form.get('num_qualificador')
@@ -562,6 +584,7 @@ async def add_qualificador(request: Request):
 
 
 @router.post('/qualificadores/edit/{seq_qualificador}')
+@handle_exceptions
 async def edit_qualificador(request: Request, seq_qualificador: int):
     form = await request.form()
     qualificador = Qualificador.query.get_or_404(seq_qualificador)
@@ -577,6 +600,7 @@ async def edit_qualificador(request: Request, seq_qualificador: int):
 
 
 @router.post('/qualificadores/delete/{seq_qualificador}')
+@handle_exceptions
 async def delete_qualificador(request: Request, seq_qualificador: int):
     qualificador = Qualificador.query.get_or_404(seq_qualificador)
     qualificador.ind_status = 'I'
@@ -585,6 +609,7 @@ async def delete_qualificador(request: Request, seq_qualificador: int):
 
 
 @router.get('/debug')
+@handle_exceptions
 async def debug():
     output = []
     tipos = TipoLancamento.query.all()

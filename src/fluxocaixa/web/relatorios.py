@@ -4,7 +4,7 @@ from datetime import date
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, extract, or_
-from . import router, templates
+from . import router, templates, handle_exceptions
 from ..models import (
     db,
     TipoLancamento,
@@ -51,12 +51,14 @@ MONTH_NAME_PT = {
 
 
 @router.get("/relatorios")
+@handle_exceptions
 async def relatorios(request: Request):
     return templates.TemplateResponse("relatorios.html", {"request": request})
 
 
 @router.get("/relatorios/resumo")
 @router.post("/relatorios/resumo")
+@handle_exceptions
 async def relatorio_resumo(request: Request):
     lancamento_years = (
         db.session.query(extract("year", Lancamento.dat_lancamento)).distinct().all()
@@ -244,6 +246,7 @@ async def relatorio_resumo(request: Request):
 
 @router.get("/relatorios/indicadores")
 @router.post("/relatorios/indicadores")
+@handle_exceptions
 async def relatorio_indicadores(request: Request):
     lancamento_years = (
         db.session.query(extract("year", Lancamento.dat_lancamento)).distinct().all()
@@ -404,6 +407,7 @@ async def relatorio_indicadores(request: Request):
 
 @router.get("/relatorios/analise-comparativa")
 @router.post("/relatorios/analise-comparativa")
+@handle_exceptions
 async def relatorio_analise_comparativa(request: Request):
     form = await request.form() if request.method == "POST" else {}
     tipo_analise = form.get("tipo_analise", "receitas")
@@ -517,6 +521,7 @@ async def relatorio_analise_comparativa(request: Request):
 
 @router.get("/relatorios/dfc")
 @router.post("/relatorios/dfc")
+@handle_exceptions
 async def relatorio_dfc(request: Request):
     """Tela de Análise de Fluxo (DFC) com dados reais ou projetados."""
 
@@ -700,6 +705,7 @@ async def relatorio_dfc(request: Request):
 
 
 @router.get("/relatorios/dfc/eventos")
+@handle_exceptions
 async def dfc_eventos(request: Request):
     """Retorna os eventos (lançamentos) para um qualificador e coluna."""
 

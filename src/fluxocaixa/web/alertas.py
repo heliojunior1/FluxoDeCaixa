@@ -1,7 +1,7 @@
 from fastapi import Request
 from fastapi.responses import RedirectResponse
 
-from . import router, templates
+from . import router, templates, handle_exceptions
 from ..domain import AlertaCreate, AlertaUpdate
 from ..services import (
     list_alertas,
@@ -12,16 +12,19 @@ from ..services import (
 from ..repositories import AlertaRepository
 
 @router.get('/alertas')
+@handle_exceptions
 async def alertas(request: Request):
     regras, _ = list_alertas()
     return templates.TemplateResponse('alertas.html', {'request': request, 'regras': regras})
 
 @router.get('/alertas/novo')
+@handle_exceptions
 async def novo_alerta(request: Request):
     _, qualificadores = list_alertas()
     return templates.TemplateResponse('alertas_novo.html', {'request': request, 'qualificadores': qualificadores})
 
 @router.post('/alertas/novo')
+@handle_exceptions
 async def criar_alerta(request: Request):
     form = await request.form()
     data = AlertaCreate(
@@ -39,6 +42,7 @@ async def criar_alerta(request: Request):
 
 
 @router.get('/alertas/edit/{seq_alerta}')
+@handle_exceptions
 async def edit_alerta(request: Request, seq_alerta: int):
     repo = AlertaRepository()
     alerta = repo.get(seq_alerta)
@@ -50,6 +54,7 @@ async def edit_alerta(request: Request, seq_alerta: int):
 
 
 @router.post('/alertas/edit/{seq_alerta}', name='update_alerta')
+@handle_exceptions
 async def update_alerta_route(request: Request, seq_alerta: int):
     form = await request.form()
     data = AlertaUpdate(
@@ -67,6 +72,7 @@ async def update_alerta_route(request: Request, seq_alerta: int):
 
 
 @router.post('/alertas/delete/{seq_alerta}', name='delete_alerta')
+@handle_exceptions
 async def delete_alerta_route(request: Request, seq_alerta: int):
     delete_alerta(seq_alerta)
     return RedirectResponse(request.url_for('alertas'), status_code=303)

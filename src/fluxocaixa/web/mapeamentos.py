@@ -1,7 +1,7 @@
 from fastapi import Request
 from fastapi.responses import RedirectResponse
 
-from . import router, templates
+from . import router, templates, handle_exceptions
 from ..domain import MapeamentoCreate
 from ..services import (
     list_mapeamentos,
@@ -13,6 +13,7 @@ from ..repositories import MapeamentoRepository
 
 
 @router.get('/mapeamentos')
+@handle_exceptions
 async def mapeamentos(request: Request):
     status_filter = request.query_params.get('status', 'A')
     tipo_filter = request.query_params.get('tipo', '')
@@ -37,6 +38,7 @@ async def mapeamentos(request: Request):
 
 
 @router.post('/mapeamentos/add')
+@handle_exceptions
 async def add_mapeamento(request: Request):
     form = await request.form()
     data = MapeamentoCreate(
@@ -49,6 +51,7 @@ async def add_mapeamento(request: Request):
 
 
 @router.post('/mapeamentos/edit/{seq_mapeamento}')
+@handle_exceptions
 async def edit_mapeamento(request: Request, seq_mapeamento: int):
     form = await request.form()
     data = MapeamentoCreate(
@@ -61,12 +64,14 @@ async def edit_mapeamento(request: Request, seq_mapeamento: int):
 
 
 @router.post('/mapeamentos/delete/{seq_mapeamento}', name='delete_mapeamento')
+@handle_exceptions
 async def delete_mapeamento_route(request: Request, seq_mapeamento: int):
     delete_mapeamento(seq_mapeamento)
     return RedirectResponse(request.url_for('mapeamentos'), status_code=303)
 
 
 @router.get('/mapeamentos/get/{seq_mapeamento}')
+@handle_exceptions
 async def get_mapeamento(seq_mapeamento: int):
     repo = MapeamentoRepository()
     mapeamento = repo.get(seq_mapeamento)

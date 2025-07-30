@@ -2,12 +2,13 @@ from datetime import date
 from fastapi import Request
 from fastapi.responses import RedirectResponse
 
-from . import router, templates
+from . import router, templates, handle_exceptions
 from ..domain import PagamentoCreate
 from ..services import list_pagamentos, create_pagamento
 
 
 @router.get('/pagamentos')
+@handle_exceptions
 async def pagamentos(request: Request):
     pagamentos, orgaos = list_pagamentos()
     return templates.TemplateResponse(
@@ -17,6 +18,7 @@ async def pagamentos(request: Request):
 
 
 @router.post('/pagamentos/add')
+@handle_exceptions
 async def add_pagamento(request: Request):
     form = await request.form()
     data = PagamentoCreate(
