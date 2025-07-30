@@ -11,15 +11,17 @@ Veja abaixo algumas das principais telas do sistema em funcionamento.
 
 ![Tela Principal](docs/images/home.png)
 
-**Lançamentos e Relatórios**
+**Relatórios**
 
 ![Fluxo de Caixa](docs/images/fluxo_caixa.png)
+
+![Analise de Fluxo (DFC)](docs/images/analise_fluxo.png)
 
 ![Indicadores](docs/images/indicadores.png)
 
 ![Análise Comparativa](docs/images/analise_comparativa.png)
 
-**Saldos**
+**Saldos/Lançamentos**
 
 ![Saldos](docs/images/saldos.png)
 
