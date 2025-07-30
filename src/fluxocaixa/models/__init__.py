@@ -8,6 +8,7 @@ from .pagamento import Pagamento
 from .conferencia import Conferencia
 from .mapeamento import Mapeamento
 from .cenario import Cenario, CenarioAjusteMensal
+from .alerta import Alerta
 
 __all__ = [
     'db',
@@ -23,4 +24,5 @@ __all__ = [
     'Mapeamento',
     'Cenario',
     'CenarioAjusteMensal',
+    'Alerta',
 ]

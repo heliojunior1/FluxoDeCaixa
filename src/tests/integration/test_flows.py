@@ -53,3 +53,21 @@ def test_relatorio_resumo_page(client: TestClient):
     resp = client.get('/relatorios/resumo')
     assert resp.status_code == 200
     assert 'Resumo do Fluxo de Caixa' in resp.text
+
+def test_criar_alerta_flow(client: TestClient):
+    from fluxocaixa.models import db, Alerta
+
+    initial = db.session.query(Alerta).count()
+    resp = client.post(
+        '/alertas/novo',
+        data={
+            'nom_alerta': 'Teste',
+            'metric': 'saldo',
+            'logic': 'menor',
+            'valor': '1000',
+            'notif_system': 'S',
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    assert db.session.query(Alerta).count() == initial + 1
