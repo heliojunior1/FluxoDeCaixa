@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <div class="flex items-center">
+        <a href="{{ url_for('relatorios') }}" class="text-gray-500 hover:text-gray-700">
+            <i data-lucide="arrow-left-circle" class="w-8 h-8"></i>
+        </a>
+        <h2 class="text-2xl font-bold text-gray-800 ml-4">Demonstração do Resultado</h2>
+    </div>
+</div>
+
+<div class="bg-white p-6 rounded-lg shadow-md" id="dre-modal" style="display:none;">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead>
+            <tr>
+                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Documento</th>
+                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origem</th>
+                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Natureza</th>
+                <th class="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
+            </tr>
+        </thead>
+        <tbody id="dre-eventos-body" class="bg-white divide-y divide-gray-200"></tbody>
+    </table>
+</div>
+
+<script>
+async function carregarEventos(qualificadorId, start, end) {
+    const resp = await fetch(`/relatorios/dre/eventos?qualificador_id=${qualificadorId}&start=${start}&end=${end}`);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    const tbody = document.getElementById('dre-eventos-body');
+    tbody.innerHTML = '';
+    data.events.forEach(ev => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td class="px-3 py-2 whitespace-nowrap text-sm text-gray-700">${ev.date}</td>` +
+                       `<td class="px-3 py-2 whitespace-nowrap text-sm text-gray-700">${ev.document ?? ''}</td>` +
+                       `<td class="px-3 py-2 whitespace-nowrap text-sm text-gray-700">${ev.source ?? ''}</td>` +
+                       `<td class="px-3 py-2 whitespace-nowrap text-sm text-gray-700">${ev.nature}</td>` +
+                       `<td class="px-3 py-2 whitespace-nowrap text-sm text-right">${ev.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>`;
+        tbody.appendChild(tr);
+    });
+    document.getElementById('dre-modal').style.display = 'block';
+}
+</script>
+{% endblock %}
