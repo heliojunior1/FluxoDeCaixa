@@ -13,6 +13,7 @@ from ..models import (
     Orgao,
     Cenario,
     CenarioAjusteMensal,
+    Qualificador,
 )
 
 
