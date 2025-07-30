@@ -27,6 +27,14 @@
             {% endfor %}
         </select>
     </div>
+    <div id="period-select">
+        <label class="block text-sm font-medium text-gray-700">Período</label>
+        <select name="period" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            <option value="dia">Dia</option>
+            <option value="mes">Mês</option>
+            <option value="ano">Ano</option>
+        </select>
+    </div>
     <div>
         <label class="block text-sm font-medium text-gray-700">Lógica</label>
         <select name="logic" id="logic" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
@@ -58,17 +66,20 @@
     document.addEventListener('DOMContentLoaded', function(){
         const metric = document.getElementById('metric');
         const qualifierDiv = document.getElementById('qualificador-select');
+        const periodDiv = document.getElementById('period-select');
         const emailChk = document.getElementById('chk-email');
         const emailInput = document.getElementById('email-input');
-        function toggleQualifier(){
-            const show = metric.value === 'qualificador' || metric.value === 'comparativo';
-            qualifierDiv.classList.toggle('hidden', !show);
+        function toggleFields(){
+            const needsQualifier = metric.value === 'qualificador' || metric.value === 'comparativo';
+            qualifierDiv.classList.toggle('hidden', !needsQualifier);
+            const needsPeriod = metric.value !== 'comparativo';
+            periodDiv.classList.toggle('hidden', !needsPeriod);
         }
-        metric.addEventListener('change', toggleQualifier);
+        metric.addEventListener('change', toggleFields);
         emailChk.addEventListener('change', () => {
             emailInput.classList.toggle('hidden', !emailChk.checked);
         });
-        toggleQualifier();
+        toggleFields();
     });
 </script>
 {% endblock %}

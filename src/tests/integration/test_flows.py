@@ -65,6 +65,7 @@ def test_criar_alerta_flow(client: TestClient):
             'metric': 'saldo',
             'logic': 'menor',
             'valor': '1000',
+            'period': 'dia',
             'notif_system': 'S',
         },
         follow_redirects=False,
@@ -86,6 +87,7 @@ def test_criar_alerta_comparativo_flow(client: TestClient):
             'seq_qualificador': qual.seq_qualificador,
             'logic': 'maior',
             'valor': '15',
+            # period not required for comparativo
             'notif_system': 'S',
         },
         follow_redirects=False,
@@ -94,3 +96,4 @@ def test_criar_alerta_comparativo_flow(client: TestClient):
     alerta = Alerta.query.order_by(Alerta.seq_alerta.desc()).first()
     assert alerta.metric == 'comparativo'
     assert alerta.seq_qualificador == qual.seq_qualificador
+    assert alerta.period is None

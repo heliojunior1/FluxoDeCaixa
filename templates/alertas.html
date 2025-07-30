@@ -13,6 +13,7 @@
     <thead class="bg-gray-100">
         <tr>
             <th class="border px-2 py-1">Nome do Alerta</th>
+            <th class="border px-2 py-1">Período</th>
             <th class="border px-2 py-1 text-center">Estado</th>
         </tr>
     </thead>
@@ -20,6 +21,7 @@
     {% for r in regras %}
         <tr>
             <td class="border px-2 py-1">{{ r.nom_alerta }}</td>
+            <td class="border px-2 py-1">{{ r.period or '-' }}</td>
             <td class="border px-2 py-1 text-center">
                 {% if r.ind_status == 'A' %}
                 <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Ativo</span>

@@ -23,6 +23,7 @@ async def criar_alerta(request: Request):
         seq_qualificador=form.get('seq_qualificador') or None,
         logic=form.get('logic'),
         valor=form.get('valor') or None,
+        period=form.get('period') or None,
         emails=form.get('emails'),
         notif_system='S' if form.get('notif_system') else 'N',
         notif_email='S' if form.get('notif_email') else 'N',
