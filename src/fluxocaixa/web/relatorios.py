@@ -436,13 +436,16 @@ async def relatorio_dfc(request: Request):
     periodo = form.get('periodo', 'mes')
     data_sel = form.get('mes_ano')
 
+    lancamento_years = db.session.query(extract('year', Lancamento.dat_lancamento)).distinct().all()
+    anos_disponiveis = sorted({y[0] for y in lancamento_years}, reverse=True)
+
     hoje = date.today()
     if periodo == 'mes':
         default = f"{hoje.year}-{hoje.month:02d}"
         data_sel = data_sel or default
         ano_selecionado, mes_selecionado = [int(x) for x in data_sel.split('-')]
     else:
-        default = str(hoje.year)
+        default = str(anos_disponiveis[0] if anos_disponiveis else hoje.year)
         data_sel = data_sel or default
         ano_selecionado = int(data_sel)
         mes_selecionado = None
@@ -546,6 +549,7 @@ async def relatorio_dfc(request: Request):
             'cenarios_disponiveis': cenarios_disponiveis,
             'meses_selecionados': [str(m) for m in meses_selecionados],
             'meses_nomes': {i: MONTH_NAME_PT[i] for i in range(1, 13)},
+            'anos_disponiveis': anos_disponiveis,
         },
     )
 
@@ -559,10 +563,13 @@ async def dfc_eventos(request: Request):
     col = int(request.query_params.get('col'))
     mes_ano = request.query_params.get('mes_ano')
 
+    qual = Qualificador.query.get(seq)
+    ids = [seq] + [f.seq_qualificador for f in qual.get_todos_filhos()] if qual else [seq]
+
     if periodo == 'mes':
         ano, mes = [int(x) for x in mes_ano.split('-')]
         query = (
-            Lancamento.query.filter_by(seq_qualificador=seq, ind_status='A')
+            Lancamento.query.filter(Lancamento.seq_qualificador.in_(ids), Lancamento.ind_status == 'A')
             .filter(extract('year', Lancamento.dat_lancamento) == ano)
             .filter(extract('month', Lancamento.dat_lancamento) == mes)
             .filter(extract('day', Lancamento.dat_lancamento) == col)
@@ -570,7 +577,7 @@ async def dfc_eventos(request: Request):
     else:
         ano = int(mes_ano)
         query = (
-            Lancamento.query.filter_by(seq_qualificador=seq, ind_status='A')
+            Lancamento.query.filter(Lancamento.seq_qualificador.in_(ids), Lancamento.ind_status == 'A')
             .filter(extract('year', Lancamento.dat_lancamento) == ano)
             .filter(extract('month', Lancamento.dat_lancamento) == col)
         )
@@ -580,10 +587,10 @@ async def dfc_eventos(request: Request):
     eventos = [
         {
             'data': r.dat_lancamento.strftime('%d/%m/%Y'),
-            'doc': str(r.seq_lancamento),
-            'fonte': r.cod_origem_lancamento,
-            'natureza': r.tipo.dsc_tipo_lancamento,
+            'descricao': f"{r.qualificador.num_qualificador} - {r.qualificador.dsc_qualificador}",
             'valor': float(r.val_lancamento),
+            'tipo': r.tipo.dsc_tipo_lancamento,
+            'origem': r.origem.dsc_origem_lancamento,
         }
         for r in registros
     ]

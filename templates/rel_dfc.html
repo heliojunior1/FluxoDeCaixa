@@ -4,7 +4,12 @@
     .dfc-table th,
     .dfc-table td {
         border-bottom: 1px solid #e5e7eb;
+        border-right: 1px solid #e5e7eb;
         padding: 0.5rem;
+    }
+    .dfc-table th:last-child,
+    .dfc-table td:last-child {
+        border-right: none;
     }
     .dfc-table tbody tr:nth-child(even) {
         background-color: #f9fafb;
@@ -131,6 +136,7 @@ const headers = {{ headers | tojson | safe }};
 const totals = {{ totals | tojson | safe }};
 const periodo = '{{ periodo }}';
 const dataSelecionada = '{{ mes_ano }}';
+const availableYears = {{ anos_disponiveis | tojson | safe }};
 
 function formatCurrency(value, showZero = true) {
     if (value === 0 && !showZero) return '';
@@ -146,12 +152,12 @@ function updateDfcDateFilter() {
     if (document.getElementById('dfc-periodo-filter').value === 'mes') {
         container.innerHTML = `<div><label class="text-sm font-medium">Mês</label><input name="mes_ano" type="month" value="${dataSelecionada}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm"></div>`;
     } else {
-        container.innerHTML = `<div><label class="text-sm font-medium">Ano</label><input name="mes_ano" type="number" value="${dataSelecionada}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm"></div>`;
+        container.innerHTML = `<div><label class="text-sm font-medium">Ano</label><select name="mes_ano" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">${availableYears.map(y => `<option value="${y}" ${y == dataSelecionada ? 'selected' : ''}>${y}</option>`).join('')}</select></div>`;
     }
 }
 
 function updatePeriodFilters() {
-    const show = document.getElementById('dfc-periodo-filter').value === 'mes';
+    const show = document.getElementById('dfc-periodo-filter').value === 'ano';
     const estrategiaWrapper = document.getElementById('estrategia-wrapper');
     const cenarioContainer = document.getElementById('cenario-container');
     const mesesContainer = document.getElementById('meses-container');
@@ -274,17 +280,17 @@ function openEventosModal(qualifierId, qualifierName, col) {
             const modal = document.getElementById('modal-eventos');
             let rows = '';
             data.eventos.forEach(ev => {
-                rows += `<tr class="border-b"><td class="p-2">${ev.data}</td><td class="p-2">${ev.doc}</td><td class="p-2">${ev.fonte}</td><td class="p-2">${ev.natureza}</td><td class="p-2 text-right font-mono">${formatCurrency(ev.valor)}</td></tr>`;
+                rows += `<tr class="border-b"><td class="p-2">${ev.data}</td><td class="p-2">${ev.descricao}</td><td class="p-2 text-right font-mono">${formatCurrency(ev.valor)}</td><td class="p-2">${ev.tipo}</td><td class="p-2">${ev.origem}</td></tr>`;
             });
             modal.innerHTML = `
             <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
                 <div class="p-4 border-b flex justify-between items-center">
-                    <h2 class="text-xl font-bold">Eventos: ${qualifierName}</h2>
+                    <h2 class="text-xl font-bold">Lançamentos: ${qualifierName}</h2>
                     <button class="btn-close-modal text-gray-500 hover:text-gray-800"><i data-lucide="x" class="h-6 w-6"></i></button>
                 </div>
                 <div class="p-4 flex-grow overflow-y-auto">
                     <table class="w-full text-left text-sm">
-                        <thead class="bg-gray-100"><tr><th class="p-2">Data</th><th class="p-2">Documento</th><th class="p-2">Fonte</th><th class="p-2">Natureza</th><th class="p-2 text-right">Valor</th></tr></thead>
+                        <thead class="bg-gray-100"><tr><th class="p-2">Data</th><th class="p-2">Descrição</th><th class="p-2 text-right">Valor (R$)</th><th class="p-2">Tipo</th><th class="p-2">Origem</th></tr></thead>
                         <tbody>${rows}</tbody>
                     </table>
                 </div>
