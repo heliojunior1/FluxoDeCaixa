@@ -15,6 +15,15 @@
             <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Resumo</p>
         </div>
     </a>
+    <a href="{{ url_for('relatorio_dfc') }}" class="nav-card">
+        <div class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full" style="background-color: #E7F1FA;">
+                <i data-lucide="clipboard-check" style="color: var(--sefaz-primary-blue);"></i>
+            </div>
+            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Análise de Fluxo (DFC)</p>
+            <p class="text-xs text-gray-500 mt-1">Receitas e despesas por período</p>
+        </div>
+    </a>
     <a href="{{ url_for('relatorio_indicadores') }}" class="nav-card">
         <div class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
             <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full" style="background-color: #E7F1FA;">
@@ -30,15 +39,6 @@
             </div>
             <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Análise Comparativa</p>
             <p class="text-xs text-gray-500 mt-1">Compara ingressos entre diferentes períodos</p>
-        </div>
-    </a>
-    <a href="{{ url_for('relatorio_dfc') }}" class="nav-card">
-        <div class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full" style="background-color: #E7F1FA;">
-                <i data-lucide="clipboard-check" style="color: var(--sefaz-primary-blue);"></i>
-            </div>
-            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Análise de Fluxo (DFC)</p>
-            <p class="text-xs text-gray-500 mt-1">Receitas e despesas por período</p>
         </div>
     </a>
 </div>
