@@ -35,6 +35,10 @@ Veja abaixo algumas das principais telas do sistema em funcionamento.
 
 ![Mapeamento](docs/images/mapeamento.png)
 
+**Alertas**
+
+![Alertas](docs/images/alertas.png)
+
 
 
 ## 🌐 Página do Projeto e Comunicação
@@ -145,6 +149,7 @@ O projeto usa SQLite como banco de dados padrão. Na primeira execução:
 - **Projeções**: Gestão de cenários e projeções financeiras
 - **Relatórios**: Diversos relatórios financeiros e análises
 - **Mapeamentos**: Configuração de mapeamentos de qualificadores
+- **Alerta**: Criação de alertas para os qualificadores, saldo e projecao vs realizado
 
 ## 📁 Estrutura do Projeto
 
