@@ -3,7 +3,6 @@ from sqlalchemy import Column, Integer, String, Date, Numeric, ForeignKey
 from sqlalchemy.orm import relationship
 
 from .base import Base
-from .orgao import Orgao
 
 class Pagamento(Base):
     __tablename__ = 'flc_pagamento'

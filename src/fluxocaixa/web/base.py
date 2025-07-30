@@ -9,16 +9,21 @@ import openpyxl
 from sqlalchemy import func
 
 from . import router, templates
+from ..domain import LancamentoCreate
+from ..services import (
+    list_lancamentos,
+    create_lancamento,
+    update_lancamento,
+    delete_lancamento,
+)
 from ..models import (
     db,
     TipoLancamento,
     OrigemLancamento,
     Qualificador,
     Lancamento,
-    Orgao,
     Pagamento,
     Conferencia,
-    Mapeamento,
     Cenario,
     CenarioAjusteMensal,
 )
@@ -61,7 +66,8 @@ async def recreate_db():
 @router.get('/saldos')
 @router.post('/saldos')
 async def saldos(request: Request):
-    query = Lancamento.query.filter_by(ind_status='A').join(Qualificador)
+    lancamentos = list_lancamentos()
+    query = [lan for lan in lancamentos if lan.ind_status == 'A']
 
     if request.method == 'POST':
         form = await request.form()
@@ -72,15 +78,22 @@ async def saldos(request: Request):
         qualificador_folha = form.get('qualificador_folha')
 
         if start_date and end_date:
-            query = query.filter(Lancamento.dat_lancamento.between(start_date, end_date))
+            sd = date.fromisoformat(start_date)
+            ed = date.fromisoformat(end_date)
+            query = [lan for lan in query if sd <= lan.dat_lancamento <= ed]
         if descricao:
-            query = query.filter(Qualificador.dsc_qualificador.ilike(f'%{descricao}%'))
+            query = [
+                lan
+                for lan in query
+                if descricao.lower() in lan.qualificador.dsc_qualificador.lower()
+            ]
         if tipo:
-            query = query.filter(Lancamento.cod_tipo_lancamento == tipo)
+            query = [lan for lan in query if str(lan.cod_tipo_lancamento) == str(tipo)]
         if qualificador_folha:
-            query = query.filter(Lancamento.seq_qualificador == qualificador_folha)
+            query = [lan for lan in query if str(lan.seq_qualificador) == str(qualificador_folha)]
 
-    lancamentos = query.order_by(Lancamento.dat_lancamento.desc()).all()
+    # After filtering keep descending order by date
+    lancamentos = sorted(query, key=lambda item: item.dat_lancamento, reverse=True)
     tipos = TipoLancamento.query.all()
     origens = OrigemLancamento.query.all()
     # Buscar apenas qualificadores folha (que não possuem filhos ativos)
@@ -100,25 +113,17 @@ async def saldos(request: Request):
     )
 
 
-@router.post('/saldos/add')
-async def add_lancamento(request: Request):
+@router.post('/saldos/add', name='add_lancamento')
+async def add_lancamento_route(request: Request):
     form = await request.form()
-    dat = form.get('dat_lancamento')
-    qualificador = form.get('seq_qualificador')
-    valor = form.get('val_lancamento')
-    tipo = form.get('cod_tipo_lancamento')
-    origem = form.get('cod_origem_lancamento')
-    lanc = Lancamento(
-        dat_lancamento=date.fromisoformat(dat),
-        seq_qualificador=qualificador,
-        val_lancamento=valor,
-        cod_tipo_lancamento=tipo,
-        cod_origem_lancamento=origem,
-        ind_origem='M',
-        cod_pessoa_inclusao=1,
+    data = LancamentoCreate(
+        dat_lancamento=date.fromisoformat(form.get('dat_lancamento')),
+        seq_qualificador=int(form.get('seq_qualificador')),
+        val_lancamento=form.get('val_lancamento'),
+        cod_tipo_lancamento=int(form.get('cod_tipo_lancamento')),
+        cod_origem_lancamento=int(form.get('cod_origem_lancamento')),
     )
-    db.session.add(lanc)
-    db.session.commit()
+    create_lancamento(data)
     return RedirectResponse(request.url_for('saldos'), status_code=303)
 
 
@@ -212,28 +217,23 @@ async def download_lancamento_template():
     )
 
 
-@router.post('/saldos/edit/{seq_lancamento}')
-async def edit_lancamento(request: Request, seq_lancamento: int):
-    lanc = Lancamento.query.get_or_404(seq_lancamento)
+@router.post('/saldos/edit/{seq_lancamento}', name='update_lancamento')
+async def edit_lancamento_route(request: Request, seq_lancamento: int):
     form = await request.form()
-    lanc.dat_lancamento = date.fromisoformat(form['dat_lancamento'])
-    lanc.seq_qualificador = form['seq_qualificador']
-    lanc.val_lancamento = form['val_lancamento']
-    lanc.cod_tipo_lancamento = form['cod_tipo_lancamento']
-    lanc.cod_origem_lancamento = form['cod_origem_lancamento']
-    lanc.dat_alteracao = date.today()
-    lanc.cod_pessoa_alteracao = 1
-    db.session.commit()
+    data = LancamentoCreate(
+        dat_lancamento=date.fromisoformat(form['dat_lancamento']),
+        seq_qualificador=int(form['seq_qualificador']),
+        val_lancamento=form['val_lancamento'],
+        cod_tipo_lancamento=int(form['cod_tipo_lancamento']),
+        cod_origem_lancamento=int(form['cod_origem_lancamento']),
+    )
+    update_lancamento(seq_lancamento, data)
     return RedirectResponse(request.url_for('saldos'), status_code=303)
 
 
-@router.post('/saldos/delete/{seq_lancamento}')
-async def delete_lancamento(request: Request, seq_lancamento: int):
-    lanc = Lancamento.query.get_or_404(seq_lancamento)
-    lanc.ind_status = 'I'
-    lanc.dat_alteracao = date.today()
-    lanc.cod_pessoa_alteracao = 1
-    db.session.commit()
+@router.post('/saldos/delete/{seq_lancamento}', name='delete_lancamento')
+async def delete_lancamento_route(request: Request, seq_lancamento: int):
+    delete_lancamento(seq_lancamento)
     return RedirectResponse(request.url_for('saldos'), status_code=303)
 
 
@@ -503,9 +503,19 @@ async def extrato_bancario(request: Request):
         (-Pagamento.val_pagamento).label('valor'),
     ).all()
     movimentos = [
-        {'data': l.data, 'descricao': l.descricao, 'valor': float(l.valor)} for l in lancamentos
+        {
+            'data': lanc.data,
+            'descricao': lanc.descricao,
+            'valor': float(lanc.valor),
+        }
+        for lanc in lancamentos
     ] + [
-        {'data': p.data, 'descricao': p.descricao, 'valor': float(p.valor)} for p in pagamentos
+        {
+            'data': pag.data,
+            'descricao': pag.descricao,
+            'valor': float(pag.valor),
+        }
+        for pag in pagamentos
     ]
     movimentos.sort(key=lambda x: x['data'])
     saldo = 0

@@ -10,9 +10,6 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 
 from .base import Base
-from .tipo_lancamento import TipoLancamento
-from .origem_lancamento import OrigemLancamento
-from .qualificador import Qualificador
 
 class Lancamento(Base):
     __tablename__ = 'flc_lancamento'

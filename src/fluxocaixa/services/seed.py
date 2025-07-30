@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import date
 from sqlalchemy import func
 import calendar
 from ..models import (
@@ -21,8 +21,9 @@ def seed_data(session=None):
     # Clear existing data to ensure a clean slate for new values
     try:
         session.query(Mapeamento).delete()
-    except:
-        pass  # Table might not exist yet
+    except Exception:
+        # Table might not exist yet
+        pass
     session.query(Pagamento).delete()
     session.query(Lancamento).delete()
     session.query(Qualificador).delete()

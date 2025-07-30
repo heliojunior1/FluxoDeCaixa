@@ -11,7 +11,6 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship, backref
 
 from .base import Base
-from .qualificador import Qualificador
 
 class Cenario(Base):
     __tablename__ = 'flc_cenario'

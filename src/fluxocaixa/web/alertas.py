@@ -1,79 +1,73 @@
-from datetime import date
 from fastapi import Request
 from fastapi.responses import RedirectResponse
 
 from . import router, templates
-from ..models import db, Alerta, Qualificador
+from ..domain import AlertaCreate, AlertaUpdate
+from ..services import (
+    list_alertas,
+    create_alerta,
+    update_alerta,
+    delete_alerta,
+)
+from ..repositories import AlertaRepository
 
 @router.get('/alertas')
 async def alertas(request: Request):
-    regras = Alerta.query.order_by(Alerta.nom_alerta).all()
+    regras, _ = list_alertas()
     return templates.TemplateResponse('alertas.html', {'request': request, 'regras': regras})
 
 @router.get('/alertas/novo')
 async def novo_alerta(request: Request):
-    qualificadores = Qualificador.query.filter_by(ind_status='A').order_by(Qualificador.dsc_qualificador).all()
+    _, qualificadores = list_alertas()
     return templates.TemplateResponse('alertas_novo.html', {'request': request, 'qualificadores': qualificadores})
 
 @router.post('/alertas/novo')
 async def criar_alerta(request: Request):
     form = await request.form()
-    alerta = Alerta(
+    data = AlertaCreate(
         nom_alerta=form.get('nom_alerta'),
         metric=form.get('metric'),
         seq_qualificador=form.get('seq_qualificador') or None,
         logic=form.get('logic'),
         valor=form.get('valor') or None,
         period=form.get('period') or None,
-        emails=form.get('emails'),
         notif_system='S' if form.get('notif_system') else 'N',
         notif_email='S' if form.get('notif_email') else 'N',
-        cod_pessoa_inclusao=1,
     )
-    db.session.add(alerta)
-    db.session.commit()
+    create_alerta(data)
     return RedirectResponse(request.url_for('alertas'), status_code=303)
 
 
 @router.get('/alertas/edit/{seq_alerta}')
 async def edit_alerta(request: Request, seq_alerta: int):
-    alerta = Alerta.query.get_or_404(seq_alerta)
-    qualificadores = (
-        Qualificador.query.filter_by(ind_status='A')
-        .order_by(Qualificador.dsc_qualificador)
-        .all()
-    )
+    repo = AlertaRepository()
+    alerta = repo.get(seq_alerta)
+    _, qualificadores = list_alertas(repo)
     return templates.TemplateResponse(
         'alertas_edit.html',
         {'request': request, 'alerta': alerta, 'qualificadores': qualificadores},
     )
 
 
-@router.post('/alertas/edit/{seq_alerta}')
-async def update_alerta(request: Request, seq_alerta: int):
-    alerta = Alerta.query.get_or_404(seq_alerta)
+@router.post('/alertas/edit/{seq_alerta}', name='update_alerta')
+async def update_alerta_route(request: Request, seq_alerta: int):
     form = await request.form()
-    alerta.nom_alerta = form.get('nom_alerta')
-    alerta.metric = form.get('metric')
-    alerta.seq_qualificador = form.get('seq_qualificador') or None
-    alerta.logic = form.get('logic')
-    alerta.valor = form.get('valor') or None
-    alerta.period = form.get('period') or None
-    alerta.emails = form.get('emails')
-    alerta.notif_system = 'S' if form.get('notif_system') else 'N'
-    alerta.notif_email = 'S' if form.get('notif_email') else 'N'
-    alerta.dat_alteracao = date.today()
-    alerta.cod_pessoa_alteracao = 1
-    db.session.commit()
+    data = AlertaUpdate(
+        nom_alerta=form.get('nom_alerta'),
+        metric=form.get('metric'),
+        seq_qualificador=form.get('seq_qualificador') or None,
+        logic=form.get('logic'),
+        valor=form.get('valor') or None,
+        period=form.get('period') or None,
+        notif_system='S' if form.get('notif_system') else 'N',
+        notif_email='S' if form.get('notif_email') else 'N',
+    )
+    update_alerta(seq_alerta, data)
     return RedirectResponse(request.url_for('alertas'), status_code=303)
 
 
-@router.post('/alertas/delete/{seq_alerta}')
-async def delete_alerta(request: Request, seq_alerta: int):
-    alerta = Alerta.query.get_or_404(seq_alerta)
-    alerta.ind_status = 'I'
-    alerta.dat_alteracao = date.today()
-    alerta.cod_pessoa_alteracao = 1
-    db.session.commit()
+@router.post('/alertas/delete/{seq_alerta}', name='delete_alerta')
+async def delete_alerta_route(request: Request, seq_alerta: int):
+    delete_alerta(seq_alerta)
     return RedirectResponse(request.url_for('alertas'), status_code=303)
 

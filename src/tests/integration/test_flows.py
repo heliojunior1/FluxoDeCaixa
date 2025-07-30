@@ -106,9 +106,7 @@ def test_editar_e_desativar_alerta_flow(client: TestClient):
 
 
 def test_criar_alerta_comparativo_flow(client: TestClient):
-    from fluxocaixa.models import db, Alerta, Qualificador
-
-    initial = db.session.query(Alerta).count()
+    from fluxocaixa.models import Alerta, Qualificador
     qual = Qualificador.query.first()
     resp = client.post(
         '/alertas/novo',

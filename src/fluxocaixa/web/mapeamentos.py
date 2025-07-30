@@ -2,23 +2,28 @@ from fastapi import Request
 from fastapi.responses import RedirectResponse
 
 from . import router, templates
-from ..models import db, Mapeamento, Qualificador
+from ..domain import MapeamentoCreate
+from ..services import (
+    list_mapeamentos,
+    create_mapeamento,
+    update_mapeamento,
+    delete_mapeamento,
+)
+from ..repositories import MapeamentoRepository
 
 
 @router.get('/mapeamentos')
 async def mapeamentos(request: Request):
     status_filter = request.query_params.get('status', 'A')
     tipo_filter = request.query_params.get('tipo', '')
-    query = Mapeamento.query.join(Qualificador)
+    mapeamentos, qualificadores = list_mapeamentos()
     if status_filter:
-        query = query.filter(Mapeamento.ind_status == status_filter)
+        mapeamentos = [m for m in mapeamentos if m.ind_status == status_filter]
     if tipo_filter:
         if tipo_filter == 'receita':
-            query = query.filter(Qualificador.num_qualificador.startswith('1'))
+            mapeamentos = [m for m in mapeamentos if m.qualificador.num_qualificador.startswith('1')]
         elif tipo_filter == 'despesa':
-            query = query.filter(Qualificador.num_qualificador.startswith('2'))
-    mapeamentos = query.order_by(Mapeamento.dat_inclusao.desc()).all()
-    qualificadores = Qualificador.query.filter_by(ind_status='A').order_by(Qualificador.num_qualificador).all()
+            mapeamentos = [m for m in mapeamentos if m.qualificador.num_qualificador.startswith('2')]
     return templates.TemplateResponse(
         'mapeamentos.html',
         {
@@ -34,42 +39,37 @@ async def mapeamentos(request: Request):
 @router.post('/mapeamentos/add')
 async def add_mapeamento(request: Request):
     form = await request.form()
-    seq_qualificador = form.get('seq_qualificador')
-    desc = form.get('dsc_mapeamento')
-    condicao = form.get('txt_condicao')
-    mapeamento = Mapeamento(
-        seq_qualificador=seq_qualificador,
-        dsc_mapeamento=desc,
-        txt_condicao=condicao,
-        ind_status='A',
+    data = MapeamentoCreate(
+        seq_qualificador=int(form.get('seq_qualificador')),
+        dsc_mapeamento=form.get('dsc_mapeamento'),
+        txt_condicao=form.get('txt_condicao'),
     )
-    db.session.add(mapeamento)
-    db.session.commit()
+    create_mapeamento(data)
     return RedirectResponse(request.url_for('mapeamentos'), status_code=303)
 
 
 @router.post('/mapeamentos/edit/{seq_mapeamento}')
 async def edit_mapeamento(request: Request, seq_mapeamento: int):
     form = await request.form()
-    mapeamento = Mapeamento.query.get_or_404(seq_mapeamento)
-    mapeamento.seq_qualificador = form.get('seq_qualificador')
-    mapeamento.dsc_mapeamento = form.get('dsc_mapeamento')
-    mapeamento.txt_condicao = form.get('txt_condicao')
-    db.session.commit()
+    data = MapeamentoCreate(
+        seq_qualificador=int(form.get('seq_qualificador')),
+        dsc_mapeamento=form.get('dsc_mapeamento'),
+        txt_condicao=form.get('txt_condicao'),
+    )
+    update_mapeamento(seq_mapeamento, data)
     return RedirectResponse(request.url_for('mapeamentos'), status_code=303)
 
 
-@router.post('/mapeamentos/delete/{seq_mapeamento}')
-async def delete_mapeamento(request: Request, seq_mapeamento: int):
-    mapeamento = Mapeamento.query.get_or_404(seq_mapeamento)
-    mapeamento.ind_status = 'I'
-    db.session.commit()
+@router.post('/mapeamentos/delete/{seq_mapeamento}', name='delete_mapeamento')
+async def delete_mapeamento_route(request: Request, seq_mapeamento: int):
+    delete_mapeamento(seq_mapeamento)
     return RedirectResponse(request.url_for('mapeamentos'), status_code=303)
 
 
 @router.get('/mapeamentos/get/{seq_mapeamento}')
 async def get_mapeamento(seq_mapeamento: int):
-    mapeamento = Mapeamento.query.get_or_404(seq_mapeamento)
+    repo = MapeamentoRepository()
+    mapeamento = repo.get(seq_mapeamento)
     return {
         'seq_mapeamento': mapeamento.seq_mapeamento,
         'seq_qualificador': mapeamento.seq_qualificador,

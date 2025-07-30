@@ -3,7 +3,19 @@ from datetime import date
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
+from sqlalchemy import func, extract, or_
 from . import router, templates
+from ..models import (
+    db,
+    TipoLancamento,
+    OrigemLancamento,
+    Pagamento,
+    Lancamento,
+    Orgao,
+    Cenario,
+    CenarioAjusteMensal,
+    Qualificador,
+)
 
 # Abreviações em português para dias da semana e meses
 DAY_ABBR_PT = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
@@ -36,18 +48,6 @@ MONTH_NAME_PT = {
     11: "Novembro",
     12: "Dezembro",
 }
-from sqlalchemy import func, extract, or_
-from ..models import (
-    db,
-    TipoLancamento,
-    OrigemLancamento,
-    Pagamento,
-    Lancamento,
-    Orgao,
-    Cenario,
-    CenarioAjusteMensal,
-    Qualificador,
-)
 
 
 @router.get("/relatorios")
