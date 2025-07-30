@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center justify-between mb-6">
+    <div class="flex items-center">
+        <a href="{{ url_for('relatorios') }}" class="text-gray-500 hover:text-gray-700">
+            <i data-lucide="arrow-left-circle" class="w-8 h-8"></i>
+        </a>
+        <h2 class="text-2xl font-bold text-gray-800 ml-4">Demonstração do Resultado</h2>
+    </div>
+</div>
+<div class="bg-white p-6 rounded-lg shadow-md mb-6">
+    <form method="POST" class="grid grid-cols-1 md:grid-cols-5 gap-4" id="dre-form">
+        <div>
+            <label for="periodo" class="block text-sm font-medium text-gray-700 mb-1">Período</label>
+            <select name="periodo" id="periodo" class="w-full p-2 border border-gray-300 rounded-md">
+                <option value="mensal" {% if periodo == 'mensal' %}selected{% endif %}>Mensal</option>
+                <option value="diario" {% if periodo == 'diario' %}selected{% endif %}>Diário</option>
+            </select>
+        </div>
+        <div>
+            <label for="mes_ano" class="block text-sm font-medium text-gray-700 mb-1">Mês/Ano</label>
+            <input type="month" id="mes_ano" name="mes_ano" value="{{ mes_ano }}" class="w-full p-2 border border-gray-300 rounded-md">
+        </div>
+        <div>
+            <label for="estrategia" class="block text-sm font-medium text-gray-700 mb-1">Estratégia</label>
+            <select name="estrategia" id="estrategia" class="w-full p-2 border border-gray-300 rounded-md">
+                <option value="realizado" {% if estrategia == 'realizado' %}selected{% endif %}>Realizado</option>
+                <option value="projetado" {% if estrategia == 'projetado' %}selected{% endif %}>Projetado</option>
+            </select>
+        </div>
+        <div id="cenario-container" class="{% if estrategia != 'projetado' %}hidden{% endif %}">
+            <label for="cenario_id" class="block text-sm font-medium text-gray-700 mb-1">Cenário de Projeção</label>
+            <select name="cenario_id" id="cenario_id" class="w-full p-2 border border-gray-300 rounded-md">
+                <option value="">Selecione</option>
+                {% for c in cenarios %}
+                <option value="{{ c.seq_cenario }}" {% if c.seq_cenario == cenario_id %}selected{% endif %}>{{ c.nom_cenario }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="meses_analise" class="block text-sm font-medium text-gray-700 mb-1">Meses para Análise</label>
+            <input type="number" id="meses_analise" name="meses_analise" min="1" max="12" value="{{ meses_analise }}" class="w-full p-2 border border-gray-300 rounded-md">
+        </div>
+        <div class="flex items-end">
+            <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                Filtrar
+            </button>
+        </div>
+    </form>
+</div>
+<div class="bg-white p-6 rounded-lg shadow-md overflow-x-auto">
+    <table class="min-w-full text-sm" id="dre-table">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="p-2 text-left">Qualificador</th>
+                {% for p in periodos %}
+                <th class="p-2 text-right">{{ p.label }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in dre_data %}
+            <tr data-id="{{ row.id }}" {% if row.parent %}data-parent="{{ row.parent }}" class="hidden"{% endif %}>
+                <td class="p-2" style="padding-left: {{ row.nivel*1.25 }}rem;">
+                    {% if row.has_children %}
+                    <button type="button" class="toggle-btn mr-1" data-id="{{ row.id }}">
+                        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                    </button>
+                    {% else %}
+                    <span class="inline-block w-4"></span>
+                    {% endif %}
+                    {{ row.descricao }}
+                </td>
+                {% for val,p in row.values %}
+                <td class="p-2 text-right value-cell" data-valor="{{ val }}" data-qual="{{ row.id }}" data-start="{{ p.start }}" data-end="{{ p.end }}">{{ val|format_currency if val else '' }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal -->
+<div id="event-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
+    <div class="bg-white p-6 rounded-md w-full max-w-xl">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold">Detalhes do Evento</h3>
+            <button id="close-modal" class="text-gray-500 hover:text-gray-800">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+        <div class="overflow-x-auto h-64">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="p-2 text-left">Data</th>
+                        <th class="p-2 text-right">Valor</th>
+                        <th class="p-2 text-left">Origem</th>
+                    </tr>
+                </thead>
+                <tbody id="event-body"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+ document.addEventListener('DOMContentLoaded', function(){
+    const periodoSelect = document.getElementById('periodo');
+    const mesAnoInput = document.getElementById('mes_ano');
+    const estrategiaSelect = document.getElementById('estrategia');
+    const cenarioContainer = document.getElementById('cenario-container');
+    periodoSelect.addEventListener('change', function(){
+        if(this.value === 'diario') mesAnoInput.type = 'date';
+        else mesAnoInput.type = 'month';
+    });
+    estrategiaSelect.addEventListener('change', function(){
+        if(this.value === 'projetado') cenarioContainer.classList.remove('hidden');
+        else cenarioContainer.classList.add('hidden');
+    });
+
+    // expand/collapse
+    document.querySelectorAll('.toggle-btn').forEach(btn=>{
+        btn.addEventListener('click', function(){
+            const id = this.dataset.id;
+            this.classList.toggle('expanded');
+            document.querySelectorAll(`tr[data-parent="${id}"]`).forEach(row=>{
+                row.classList.toggle('hidden');
+            });
+            const icon = this.querySelector('i');
+            if(icon) icon.classList.toggle('rotate-90');
+        });
+    });
+
+    // modal
+    const modal = document.getElementById('event-modal');
+    const closeModal = document.getElementById('close-modal');
+    closeModal.addEventListener('click', ()=>modal.classList.add('hidden'));
+    window.addEventListener('click', e=>{ if(e.target===modal) modal.classList.add('hidden');});
+
+    document.querySelectorAll('.value-cell').forEach(cell=>{
+        const value = parseFloat(cell.dataset.valor);
+        if(value && value !== 0){
+            cell.classList.add('text-blue-600','cursor-pointer');
+            cell.addEventListener('click', ()=>{
+                fetch(`/relatorios/dre/eventos?qualificador_id=${cell.dataset.qual}&start=${cell.dataset.start}&end=${cell.dataset.end}`)
+                .then(r=>r.json())
+                .then(data=>{
+                    const body = document.getElementById('event-body');
+                    body.innerHTML='';
+                    data.forEach(ev=>{
+                        const row = `<tr><td class="p-2">${ev.data}</td><td class="p-2 text-right">${parseFloat(ev.valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</td><td class="p-2">${ev.origem}</td></tr>`;
+                        body.innerHTML += row;
+                    });
+                    modal.classList.remove('hidden');
+                });
+            });
+        }
+    });
+ });
+</script>
+{% endblock %}
