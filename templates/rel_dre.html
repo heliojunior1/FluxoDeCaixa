@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center mb-6">
+    <a href="{{ url_for('relatorios') }}" class="text-gray-500 hover:text-gray-700">
+        <i data-lucide="arrow-left-circle" class="w-8 h-8"></i>
+    </a>
+    <h2 class="text-2xl font-bold text-gray-800 ml-4">Análise de Fluxo (DRE)</h2>
+</div>
+<div class="bg-white p-6 rounded-lg shadow-md border">
+    <div class="bg-gray-50 p-4 rounded-lg border mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+            <div>
+                <label class="text-sm font-medium">Período</label>
+                <select id="dre-periodo-filter" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    <option value="mes">Mês</option>
+                    <option value="ano">Ano</option>
+                </select>
+            </div>
+            <div id="dre-date-filter-container"></div>
+            <div>
+                <label class="text-sm font-medium">Estratégia</label>
+                <select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    <option>Estratégia Realizada</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-sm font-medium">Cenário de Projeção</label>
+                <select class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    <option>Nenhum</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-sm font-medium">Meses para Análise</label>
+                <input type="number" value="1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
+            </div>
+        </div>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left min-w-[1200px] text-sm dre-table">
+            <thead id="dre-table-head" class="bg-gray-100 text-gray-600"></thead>
+            <tbody id="dre-table-body"></tbody>
+            <tfoot class="bg-gray-100 font-bold">
+                <tr id="dre-table-footer"></tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+<div id="modal-eventos" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4"></div>
+{% endblock %}
+{% block scripts %}
+<script>
+const dreDataMes = [
+    { id: '0', name: 'SALDO INICIAL', level: 0, values: [0, 0, 0, 0, 0], isHeader: true },
+    { id: '1', name: 'RECEITA LIQUIDA', level: 0, values: [0, 12374165.51, 0, 0, 771382.09], children: [
+        { id: '1.1', name: 'IMPOSTOS', level: 1, values: [0, 12374165.51, 0, 0, 771382.09], children: [
+            { id: '1.1.1', name: 'FPE', level: 2, values: [0, 539864.67, 0, 0, 0] },
+            { id: '1.1.2', name: 'IPI', level: 2, values: [0, 8416635.57, 0, 0, 0] },
+            { id: '1.1.3', name: 'LEI KANDIR', level: 2, values: [0, 3164674.97, 0, 0, 771382.09] }
+        ]},
+        { id: '1.2', name: 'DEMAIS RECEITAS', level: 1, values: [0, 0, 0, 0, 0] }
+    ]},
+    { id: '2', name: 'DESPESAS', level: 0, values: [0, -34207.03, 0, 0, 0], children: [
+        { id: '2.1', name: 'PESSOAL', level: 1, values: [0, 0, 0, 0, 0] },
+        { id: '2.2', name: 'CUSTEIO - COTA FINANCEIRA', level: 1, values: [0, -34207.03, 0, 0, 0] }
+    ]}
+];
+const dreDataAno = [
+    { id: '0', name: 'SALDO INICIAL', level: 0, values: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], isHeader: true },
+    { id: '1', name: 'RECEITA LIQUIDA', level: 0, values: [12374165, 15000000, 14500000, 16000000, 15500000, 14000000, 13000000, 16500000, 17000000, 16800000, 18000000, 20000000], children: [
+        { id: '1.1', name: 'IMPOSTOS', level: 1, values: [12374165, 15000000, 14500000, 16000000, 15500000, 14000000, 13000000, 16500000, 17000000, 16800000, 18000000, 20000000], children: [
+            { id: '1.1.1', name: 'FPE', level: 2, values: [539864, 600000, 550000, 580000, 620000, 570000, 530000, 650000, 680000, 660000, 700000, 750000] },
+            { id: '1.1.2', name: 'IPI', level: 2, values: [8416635, 9000000, 8500000, 9200000, 8800000, 8300000, 8000000, 9500000, 9800000, 9600000, 10000000, 11000000] },
+            { id: '1.1.3', name: 'LEI KANDIR', level: 2, values: [3164674, 4400000, 4000000, 4500000, 4200000, 3800000, 3500000, 4800000, 5000000, 5200000, 5500000, 6000000] }
+        ]},
+        { id: '1.2', name: 'DEMAIS RECEITAS', level: 1, values: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] }
+    ]},
+    { id: '2', name: 'DESPESAS', level: 0, values: [-34207, -40000, -38000, -42000, -39000, -35000, -32000, -45000, -48000, -46000, -50000, -55000], children: [
+        { id: '2.1', name: 'PESSOAL', level: 1, values: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] },
+        { id: '2.2', name: 'CUSTEIO - COTA FINANCEIRA', level: 1, values: [-34207, -40000, -38000, -42000, -39000, -35000, -32000, -45000, -48000, -46000, -50000, -55000] }
+    ]}
+];
+const eventosData = {
+    'LEI KANDIR': [ { data: '03/01/2025', doc: '2025C0000369', fonte: '500', natureza: 'Receita', valor: 1592499.48 }, { data: '03/01/2025', doc: '2025C0000311', fonte: '502', natureza: 'Receita', valor: 1572175.49 } ],
+    'FPE': [ { data: '03/01/2025', doc: '2025C0000388', fonte: '100', natureza: 'Receita', valor: 539864.67 } ],
+    'IPI': [ { data: '03/01/2025', doc: '2025C0000412', fonte: '100', natureza: 'Receita', valor: 8416635.57 } ],
+    'CUSTEIO - COTA FINANCEIRA': [ { data: '03/01/2025', doc: '2025P000159', fonte: '601', natureza: 'Despesa', valor: 34207.03 } ]
+};
+function formatCurrency(value, showZero = true) {
+    if (value === 0 && !showZero) return '';
+    const isNegative = value < 0;
+    const formatted = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Math.abs(value));
+    const finalValue = isNegative ? `-${formatted}` : formatted;
+    return isNegative ? `<span class="text-red-600">${finalValue}</span>` : finalValue;
+}
+function updateDreDateFilter() {
+    const periodo = document.getElementById('dre-periodo-filter').value;
+    const container = document.getElementById('dre-date-filter-container');
+    if (!container) return;
+    if (periodo === 'mes') {
+        container.innerHTML = '<div><label class="text-sm font-medium">Mês</label><input type="month" value="2025-01" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm"></div>';
+    } else {
+        container.innerHTML = '<div><label class="text-sm font-medium">Ano</label><input type="number" value="2025" placeholder="YYYY" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm"></div>';
+    }
+}
+function renderDRE() {
+    const periodo = document.getElementById('dre-periodo-filter').value;
+    const tableHead = document.getElementById('dre-table-head');
+    const tableBody = document.getElementById('dre-table-body');
+    const tableFooter = document.getElementById('dre-table-footer');
+    const headers = periodo === 'mes'
+        ? ['Nome', '01/SÁB', '02/DOM', '03/SEG', '04/TER', '05/QUA']
+        : ['Nome', 'JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+    const data = periodo === 'mes' ? dreDataMes : dreDataAno;
+    const numColumns = headers.length - 1;
+    const totals = Array(numColumns).fill(0);
+    tableHead.innerHTML = '<tr>' + headers.map(h => `<th class="p-2 ${h === 'Nome' ? 'w-2/5' : 'text-right'}">${h}</th>`).join('') + '</tr>';
+    let bodyHtml = '';
+    function renderRow(item, visible=true) {
+        const hasChildren = item.children && item.children.length > 0;
+        const rowClass = hasChildren ? 'collapsible font-semibold' : '';
+        const visibility = visible ? '' : 'style="display:none;"';
+        const indentation = `padding-left: ${item.level * 20 + 10}px;`;
+        bodyHtml += `<tr class="${rowClass}" data-id="${item.id}" ${item.parentId ? `data-parent="${item.parentId}"` : ''} ${visibility}>`;
+        bodyHtml += `<td class="p-2" style="${indentation}">`;
+        if (hasChildren) {
+            bodyHtml += '<i data-lucide="chevron-right" class="icon-toggle inline-block h-4 w-4 mr-1"></i>';
+        } else {
+            bodyHtml += '<span class="inline-block w-4 mr-1"></span>';
+        }
+        bodyHtml += `${item.name}</td>`;
+        item.values.forEach((value, idx) => {
+            if (item.level > 0) totals[idx] += value;
+            const cls = value !== 0 ? 'clickable-value' : '';
+            bodyHtml += `<td class="p-2 text-right font-mono ${cls}" data-qualifier="${item.name.trim()}">${formatCurrency(value, false)}</td>`;
+        });
+        bodyHtml += '</tr>';
+        if (hasChildren) {
+            item.children.forEach(child => { child.parentId = item.id; renderRow(child, false); });
+        }
+    }
+    data.forEach(item => renderRow(item));
+    tableBody.innerHTML = bodyHtml;
+    let footerHtml = '<td class="p-2">Saldo do dia</td>';
+    totals.forEach(t => { footerHtml += `<td class="p-2 text-right font-mono">${formatCurrency(t)}</td>`; });
+    tableFooter.innerHTML = footerHtml;
+    lucide.createIcons();
+    tableBody.querySelectorAll('.collapsible').forEach(row => {
+        row.firstElementChild.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const id = row.dataset.id;
+            const icon = row.querySelector('.icon-toggle');
+            icon.classList.toggle('expanded');
+            tableBody.querySelectorAll(`tr[data-parent="${id}"]`).forEach(ch => {
+                if (ch.style.display === 'none') { ch.style.display = 'table-row'; }
+                else { ch.style.display = 'none'; ch.querySelectorAll('.icon-toggle').forEach(i=>i.classList.remove('expanded')); tableBody.querySelectorAll(`tr[data-parent="${ch.dataset.id}"]`).forEach(gc=>gc.style.display='none'); }
+            });
+        });
+    });
+    tableBody.querySelectorAll('.clickable-value').forEach(cell => {
+        cell.addEventListener('click', () => {
+            const qualifierName = cell.dataset.qualifier;
+            openModal('eventos', { qualifierName });
+        });
+    });
+}
+function openModal(modalId, data) {
+    const modalContainer = document.getElementById(`modal-${modalId}`);
+    modalContainer.innerHTML = `<div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">\
+        <div class="p-4 border-b flex justify-between items-center">\
+            <h2 id="modal-eventos-title" class="text-xl font-bold"></h2>\
+            <button class="btn-close-modal text-gray-500 hover:text-gray-800"><i data-lucide="x" class="h-6 w-6"></i></button>\
+        </div>\
+        <div class="p-4 flex-grow overflow-y-auto">\
+            <input type="text" placeholder="Digitar para filtrar..." class="block w-full rounded-md border-gray-300 shadow-sm text-sm mb-4">\
+            <table class="w-full text-left text-sm">\
+                <thead class="bg-gray-100"><tr><th class="p-2">Data</th><th class="p-2">Documento</th><th class="p-2">Fonte</th><th class="p-2">Natureza</th><th class="p-2 text-right">Valor</th></tr></thead>\
+                <tbody id="modal-eventos-table-body"></tbody>\
+            </table>\
+        </div>\
+        <div class="p-4 border-t flex justify-between items-center bg-gray-50">\
+            <div id="modal-eventos-total" class="font-bold"></div>\
+            <div><button class="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">Exportar</button>\
+            <button class="btn-close-modal px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 ml-2">Fechar</button></div>\
+        </div></div>`;
+    modalContainer.style.display = 'flex';
+    document.getElementById('modal-eventos-title').textContent = `Visualizar Eventos: ${data.qualifierName}`;
+    const eventos = eventosData[data.qualifierName] || [];
+    const tableBody = document.getElementById('modal-eventos-table-body');
+    tableBody.innerHTML = eventos.map(e => `<tr class="border-b"><td class="p-2">${e.data}</td><td class="p-2">${e.doc}</td><td class="p-2">${e.fonte}</td><td class="p-2">${e.natureza}</td><td class="p-2 text-right font-mono">${formatCurrency(e.valor)}</td></tr>`).join('');
+    const total = eventos.reduce((s,e)=>s+e.valor,0);
+    document.getElementById('modal-eventos-total').textContent = `Total: ${formatCurrency(total)}`;
+    modalContainer.querySelectorAll('.btn-close-modal').forEach(btn => btn.addEventListener('click', () => { modalContainer.style.display='none'; }));
+    lucide.createIcons();
+}
+document.addEventListener('DOMContentLoaded', function () {
+    document.getElementById('dre-periodo-filter').addEventListener('change', () => { updateDreDateFilter(); renderDRE(); });
+    updateDreDateFilter();
+    renderDRE();
+});
+</script>
+{% endblock %}

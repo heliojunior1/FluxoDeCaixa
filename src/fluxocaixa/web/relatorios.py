@@ -405,3 +405,9 @@ async def relatorio_analise_comparativa(request: Request):
             'meses_nomes': meses_nomes,
         },
     )
+
+
+@router.get('/relatorios/dre')
+async def relatorio_dre(request: Request):
+    """Tela de Análise de Fluxo (DRE)"""
+    return templates.TemplateResponse('rel_dre.html', {'request': request})
