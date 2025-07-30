@@ -427,10 +427,10 @@ async def relatorio_analise_comparativa(request: Request):
     )
 
 
-@router.get('/relatorios/dre')
-@router.post('/relatorios/dre')
-async def relatorio_dre(request: Request):
-    """Tela de Análise de Fluxo (DRE) com dados reais do banco."""
+@router.get('/relatorios/dfc')
+@router.post('/relatorios/dfc')
+async def relatorio_dfc(request: Request):
+    """Tela de Análise de Fluxo (DFC) com dados reais do banco."""
 
     form = await request.form() if request.method == 'POST' else {}
     periodo = form.get('periodo', 'mes')
@@ -503,12 +503,13 @@ async def relatorio_dre(request: Request):
         return {
             'id': q.seq_qualificador,
             'name': q.dsc_qualificador,
+            'number': q.num_qualificador,
             'level': q.nivel,
             'values': vals,
             'children': children,
         }
 
-    dre_data = [build_node(r) for r in qualificadores_root]
+    dfc_data = [build_node(r) for r in qualificadores_root]
 
     totals = [0] * len(col_range)
 
@@ -520,7 +521,7 @@ async def relatorio_dre(request: Request):
             for ch in node['children']:
                 sum_leaf(ch)
 
-    for root in dre_data:
+    for root in dfc_data:
         sum_leaf(root)
 
     if periodo == 'mes':
@@ -532,13 +533,13 @@ async def relatorio_dre(request: Request):
         headers = ['Nome'] + [MONTH_ABBR_PT[m] for m in col_range]
 
     return templates.TemplateResponse(
-        'rel_dre.html',
+        'rel_dfc.html',
         {
             'request': request,
             'periodo': periodo,
             'mes_ano': data_sel,
             'headers': headers,
-            'dre_data': dre_data,
+            'dre_data': dfc_data,
             'totals': totals,
             'estrategia_selecionada': estrategia,
             'cenario_selecionado_id': cenario_selecionado_id,
@@ -549,8 +550,8 @@ async def relatorio_dre(request: Request):
     )
 
 
-@router.get('/relatorios/dre/eventos')
-async def dre_eventos(request: Request):
+@router.get('/relatorios/dfc/eventos')
+async def dfc_eventos(request: Request):
     """Retorna os eventos (lançamentos) para um qualificador e coluna."""
 
     seq = int(request.query_params.get('seq'))
