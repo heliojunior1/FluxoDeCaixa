@@ -408,6 +408,122 @@ async def relatorio_analise_comparativa(request: Request):
 
 
 @router.get('/relatorios/dre')
+@router.post('/relatorios/dre')
 async def relatorio_dre(request: Request):
-    """Tela de Análise de Fluxo (DRE)"""
-    return templates.TemplateResponse('rel_dre.html', {'request': request})
+    """Tela de Análise de Fluxo (DRE) com dados reais do banco."""
+
+    form = await request.form() if request.method == 'POST' else {}
+    periodo = form.get('periodo', 'mes')
+    data_sel = form.get('mes_ano')
+
+    hoje = date.today()
+    if periodo == 'mes':
+        default = f"{hoje.year}-{hoje.month:02d}"
+        data_sel = data_sel or default
+        ano_selecionado, mes_selecionado = [int(x) for x in data_sel.split('-')]
+    else:
+        default = str(hoje.year)
+        data_sel = data_sel or default
+        ano_selecionado = int(data_sel)
+        mes_selecionado = None
+
+    estrategia = form.get('estrategia', 'realizado')
+    cenario_id = form.get('cenario_id')
+    cenario_selecionado_id = int(cenario_id) if cenario_id else None
+
+    meses_selecionados_str = form.getlist('meses') if hasattr(form, 'getlist') else []
+    meses_selecionados = (
+        [int(m) for m in meses_selecionados_str]
+        if meses_selecionados_str
+        else list(range(1, 13))
+    )
+
+    cenarios_disponiveis = Cenario.query.filter_by(ind_status='A').all()
+
+    if periodo == 'mes':
+        col_range = range(1, calendar.monthrange(ano_selecionado, mes_selecionado)[1] + 1)
+        extractor = extract('day', Lancamento.dat_lancamento)
+    else:
+        col_range = range(1, 13)
+        extractor = extract('month', Lancamento.dat_lancamento)
+
+    query = (
+        db.session.query(
+            Lancamento.seq_qualificador,
+            extractor.label('col'),
+            func.sum(Lancamento.val_lancamento).label('total'),
+        )
+        .filter(
+            extract('year', Lancamento.dat_lancamento) == ano_selecionado,
+            Lancamento.ind_status == 'A',
+        )
+    )
+    if periodo == 'mes':
+        query = query.filter(extract('month', Lancamento.dat_lancamento) == mes_selecionado)
+    else:
+        query = query.filter(extract('month', Lancamento.dat_lancamento).in_(meses_selecionados))
+
+    results = query.group_by('seq_qualificador', 'col').all()
+
+    valores = {}
+    for seq, col, total in results:
+        valores.setdefault(seq, {})[int(col)] = float(total or 0)
+
+    qualificadores_root = (
+        Qualificador.query.filter_by(cod_qualificador_pai=None, ind_status='A')
+        .order_by(Qualificador.num_qualificador)
+        .all()
+    )
+
+    def build_node(q: Qualificador):
+        vals = [valores.get(q.seq_qualificador, {}).get(c, 0) for c in col_range]
+        children = [build_node(f) for f in q.filhos if f.ind_status == 'A']
+        for child in children:
+            vals = [v + cv for v, cv in zip(vals, child['values'])]
+        return {
+            'id': q.seq_qualificador,
+            'name': q.dsc_qualificador,
+            'level': q.nivel,
+            'values': vals,
+            'children': children,
+        }
+
+    dre_data = [build_node(r) for r in qualificadores_root]
+
+    totals = [0] * len(col_range)
+
+    def sum_leaf(node):
+        if not node['children']:
+            for i, v in enumerate(node['values']):
+                totals[i] += v
+        else:
+            for ch in node['children']:
+                sum_leaf(ch)
+
+    for root in dre_data:
+        sum_leaf(root)
+
+    if periodo == 'mes':
+        headers = ['Nome'] + [
+            f"{d:02d}/{calendar.day_abbr[date(ano_selecionado, mes_selecionado, d).weekday()].upper()}"
+            for d in col_range
+        ]
+    else:
+        headers = ['Nome'] + [calendar.month_abbr[m].upper() for m in col_range]
+
+    return templates.TemplateResponse(
+        'rel_dre.html',
+        {
+            'request': request,
+            'periodo': periodo,
+            'mes_ano': data_sel,
+            'headers': headers,
+            'dre_data': dre_data,
+            'totals': totals,
+            'estrategia_selecionada': estrategia,
+            'cenario_selecionado_id': cenario_selecionado_id,
+            'cenarios_disponiveis': cenarios_disponiveis,
+            'meses_selecionados': [str(m) for m in meses_selecionados],
+            'meses_nomes': {i: calendar.month_name[i].capitalize() for i in range(1, 13)},
+        },
+    )
