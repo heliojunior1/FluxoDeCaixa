@@ -137,6 +137,7 @@ const totals = {{ totals | tojson | safe }};
 const periodo = '{{ periodo }}';
 const dataSelecionada = '{{ mes_ano }}';
 const availableYears = {{ anos_disponiveis | tojson | safe }};
+const mesesProjetados = {{ meses_projetados | tojson | safe }};
 
 function formatCurrency(value, showZero = true) {
     if (value === 0 && !showZero) return '';
@@ -179,7 +180,12 @@ function renderDFC() {
     const tableHead = document.getElementById('dfc-table-head');
     const tableBody = document.getElementById('dfc-table-body');
     const tableFooter = document.getElementById('dfc-table-footer');
-    tableHead.innerHTML = `<tr>${headers.map(h => `<th class="p-2 ${h === 'Nome' ? 'w-2/5' : 'text-right'}">${h}</th>`).join('')}</tr>`;
+    tableHead.innerHTML = `<tr>${headers.map((h, idx) => {
+        if(idx === 0) return `<th class="p-2 w-2/5">${h}</th>`;
+        const proj = mesesProjetados.includes(idx);
+        const icon = proj ? '<i data-lucide="activity" class="inline h-3 w-3 text-blue-600 ml-1"></i>' : '';
+        return `<th class="p-2 text-right">${h}${icon}</th>`;
+    }).join('')}</tr>`;
     let bodyHtml = '';
     function renderRow(item, visible=true) {
         const hasChildren = item.children && item.children.length > 0;
@@ -196,7 +202,9 @@ function renderDFC() {
         bodyHtml += `<span class="number-badge">${item.number}</span>${item.name}</td>`;
         item.values.forEach((value, idx) => {
             const cls = value !== 0 ? 'clickable-value' : '';
-            bodyHtml += `<td class="p-2 text-right font-mono ${cls}" data-col="${idx + 1}" data-qualifier-id="${item.id}" data-qualifier-name="${item.name}">${formatCurrency(value, false)}</td>`;
+            const isProj = item.proj[idx];
+            const icon = isProj ? '<i data-lucide="activity" class="inline h-3 w-3 text-blue-600 ml-1"></i>' : '';
+            bodyHtml += `<td class="p-2 text-right font-mono ${cls}" data-col="${idx + 1}" data-qualifier-id="${item.id}" data-qualifier-name="${item.name}" data-proj="${isProj ? 1 : 0}">${formatCurrency(value, false)}${icon}</td>`;
         });
         bodyHtml += '</tr>';
         if (hasChildren) {
@@ -273,7 +281,9 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 function openEventosModal(qualifierId, qualifierName, col) {
-    const params = new URLSearchParams({ seq: qualifierId, periodo: periodo, col: col, mes_ano: dataSelecionada });
+    const estrategia = document.getElementById('estrategia')?.value || 'realizado';
+    const cenario = document.getElementById('cenario_id')?.value || '';
+    const params = new URLSearchParams({ seq: qualifierId, periodo: periodo, col: col, mes_ano: dataSelecionada, estrategia: estrategia, cenario_id: cenario });
     fetch(`/relatorios/dfc/eventos?${params.toString()}`)
         .then(r => r.json())
         .then(data => {
