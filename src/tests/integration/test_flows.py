@@ -71,3 +71,26 @@ def test_criar_alerta_flow(client: TestClient):
     )
     assert resp.status_code == 303
     assert db.session.query(Alerta).count() == initial + 1
+
+
+def test_criar_alerta_comparativo_flow(client: TestClient):
+    from fluxocaixa.models import db, Alerta, Qualificador
+
+    initial = db.session.query(Alerta).count()
+    qual = Qualificador.query.first()
+    resp = client.post(
+        '/alertas/novo',
+        data={
+            'nom_alerta': 'Comparativo Teste',
+            'metric': 'comparativo',
+            'seq_qualificador': qual.seq_qualificador,
+            'logic': 'maior',
+            'valor': '15',
+            'notif_system': 'S',
+        },
+        follow_redirects=False,
+    )
+    assert resp.status_code == 303
+    alerta = Alerta.query.order_by(Alerta.seq_alerta.desc()).first()
+    assert alerta.metric == 'comparativo'
+    assert alerta.seq_qualificador == qual.seq_qualificador

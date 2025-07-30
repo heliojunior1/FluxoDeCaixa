@@ -16,6 +16,7 @@
         <select name="metric" id="metric" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
             <option value="saldo">Saldo Final da Conta</option>
             <option value="qualificador">Valor de um Qualificador</option>
+            <option value="comparativo">Comparativo Realizado vs Projetado</option>
         </select>
     </div>
     <div id="qualificador-select" class="hidden">
@@ -60,7 +61,8 @@
         const emailChk = document.getElementById('chk-email');
         const emailInput = document.getElementById('email-input');
         function toggleQualifier(){
-            qualifierDiv.classList.toggle('hidden', metric.value !== 'qualificador');
+            const show = metric.value === 'qualificador' || metric.value === 'comparativo';
+            qualifierDiv.classList.toggle('hidden', !show);
         }
         metric.addEventListener('change', toggleQualifier);
         emailChk.addEventListener('change', () => {
