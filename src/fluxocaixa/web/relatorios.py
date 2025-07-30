@@ -405,3 +405,133 @@ async def relatorio_analise_comparativa(request: Request):
             'meses_nomes': meses_nomes,
         },
     )
+
+@router.get('/relatorios/dre')
+@router.post('/relatorios/dre')
+async def relatorio_dre(request: Request):
+    lancamento_years = db.session.query(extract('year', Lancamento.dat_lancamento)).distinct().all()
+    pagamento_years = db.session.query(extract('year', Pagamento.dat_pagamento)).distinct().all()
+    anos_disponiveis = sorted({y[0] for y in lancamento_years + pagamento_years}, reverse=True)
+
+    form = await request.form() if request.method == 'POST' else {}
+    periodo = form.get('periodo', 'mensal')
+    mes_ano = form.get('mes_ano')
+    estrategia = form.get('estrategia', 'realizado')
+    cenario_id = form.get('cenario_id')
+    meses_analise = int(form.get('meses_analise', 6))
+    if not mes_ano:
+        today = date.today()
+        mes_ano = f"{today.year}-{today.month:02d}"
+
+    cenarios = Cenario.query.filter_by(ind_status='A').all()
+    cenario_id_int = int(cenario_id) if cenario_id else None
+
+    year, month = map(int, mes_ano.split('-'))
+    start_date = date(year, month, 1)
+
+    def add_months(dt, months):
+        y = dt.year + (dt.month - 1 + months) // 12
+        m = (dt.month - 1 + months) % 12 + 1
+        return date(y, m, 1)
+
+    periodos = []
+    current = start_date
+    for i in range(meses_analise):
+        label = f"{calendar.month_name[current.month][:3]}/{current.year}"
+        end_day = calendar.monthrange(current.year, current.month)[1]
+        periodos.append({
+            'label': label,
+            'start': current.isoformat(),
+            'end': date(current.year, current.month, end_day).isoformat(),
+        })
+        current = add_months(current, 1)
+
+    valores = {}
+    for idx, p in enumerate(periodos):
+        res = (
+            db.session.query(
+                Lancamento.seq_qualificador,
+                func.sum(Lancamento.val_lancamento)
+            )
+            .filter(
+                Lancamento.dat_lancamento.between(p['start'], p['end']),
+                Lancamento.ind_status == 'A'
+            )
+            .group_by(Lancamento.seq_qualificador)
+            .all()
+        )
+        for seq, total in res:
+            valores[(seq, idx)] = float(total or 0)
+
+    qualificadores = Qualificador.query.filter_by(ind_status='A').order_by(Qualificador.num_qualificador).all()
+    qual_map = {q.seq_qualificador: q for q in qualificadores}
+    roots = [q for q in qualificadores if q.cod_qualificador_pai is None]
+
+    def calc_totais(q):
+        totals = [valores.get((q.seq_qualificador, i), 0) for i in range(len(periodos))]
+        for filho in q.filhos:
+            if filho.ind_status == 'A':
+                child_totals = calc_totais(filho)
+                totals = [a + b for a, b in zip(totals, child_totals)]
+        q._totals = totals
+        return totals
+
+    for r in roots:
+        calc_totais(r)
+
+    dre_data = []
+
+    def build_rows(q, nivel=0, parent=None):
+        row = {
+            'id': q.seq_qualificador,
+            'descricao': q.dsc_qualificador,
+            'nivel': nivel,
+            'parent': parent,
+            'has_children': any(f.ind_status == 'A' for f in q.filhos),
+            'values': list(zip(q._totals, periodos))
+        }
+        dre_data.append(row)
+        for f in q.filhos:
+            if f.ind_status == 'A':
+                build_rows(f, nivel + 1, q.seq_qualificador)
+
+    for r in roots:
+        build_rows(r)
+
+    return templates.TemplateResponse(
+        'rel_dre.html',
+        {
+            'request': request,
+            'periodos': periodos,
+            'dre_data': dre_data,
+            'periodo': periodo,
+            'mes_ano': mes_ano,
+            'estrategia': estrategia,
+            'cenario_id': cenario_id_int,
+            'cenarios': cenarios,
+            'meses_analise': meses_analise,
+            'anos_disponiveis': anos_disponiveis,
+        },
+    )
+
+
+@router.get('/relatorios/dre/eventos')
+async def relatorio_dre_eventos(qualificador_id: int, start: str, end: str):
+    start_date = date.fromisoformat(start)
+    end_date = date.fromisoformat(end)
+    registros = (
+        Lancamento.query
+        .filter(
+            Lancamento.seq_qualificador == qualificador_id,
+            Lancamento.dat_lancamento.between(start_date, end_date),
+            Lancamento.ind_status == 'A'
+        ).all()
+    )
+    result = []
+    for r in registros:
+        result.append({
+            'data': r.dat_lancamento.isoformat(),
+            'valor': float(r.val_lancamento),
+            'origem': r.origem.dsc_origem_lancamento if r.origem else '',
+        })
+    return result
