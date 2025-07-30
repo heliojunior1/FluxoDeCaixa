@@ -13,6 +13,7 @@ from ..models import (
     Orgao,
     Cenario,
     CenarioAjusteMensal,
+    Qualificador,
 )
 
 
@@ -405,3 +406,45 @@ async def relatorio_analise_comparativa(request: Request):
             'meses_nomes': meses_nomes,
         },
     )
+
+
+@router.get('/relatorios/dre/eventos')
+async def relatorio_dre_eventos(qualificador_id: int, start: str, end: str):
+    """Retorna eventos de um qualificador e seus descendentes para o período."""
+    qual = Qualificador.query.get_or_404(qualificador_id)
+
+    filhos = [f.seq_qualificador for f in qual.get_todos_filhos()]
+    qual_ids = [qual.seq_qualificador] + filhos
+
+    start_date = date.fromisoformat(start)
+    end_date = date.fromisoformat(end)
+
+    lancamentos = (
+        Lancamento.query
+        .join(OrigemLancamento)
+        .join(TipoLancamento)
+        .filter(
+            Lancamento.seq_qualificador.in_(qual_ids),
+            Lancamento.dat_lancamento.between(start_date, end_date),
+            Lancamento.ind_status == 'A',
+        )
+        .order_by(Lancamento.dat_lancamento)
+        .all()
+    )
+
+    eventos = []
+    for lanc in lancamentos:
+        natureza = (
+            'entrada'
+            if lanc.tipo and lanc.tipo.dsc_tipo_lancamento == 'Entrada'
+            else 'despesa'
+        )
+        eventos.append({
+            'date': lanc.dat_lancamento.isoformat(),
+            'document': None,
+            'source': lanc.origem.dsc_origem_lancamento if lanc.origem else None,
+            'nature': natureza,
+            'value': float(lanc.val_lancamento),
+        })
+
+    return {'events': eventos}
