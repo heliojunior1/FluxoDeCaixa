@@ -36,6 +36,8 @@ async def init_db():
     """Initialize/reset the database with seed data"""
     try:
         db.create_all()
+        from ..models.alerta import ensure_alerta_schema
+        ensure_alerta_schema()
         seed_data()
         return "Database initialized successfully!"
     except Exception as e:
@@ -48,6 +50,8 @@ async def recreate_db():
     try:
         db.drop_all()
         db.create_all()
+        from ..models.alerta import ensure_alerta_schema
+        ensure_alerta_schema()
         seed_data()
         return "Database recreated successfully!"
     except Exception as e:

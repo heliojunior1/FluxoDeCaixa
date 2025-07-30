@@ -4,6 +4,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import Config
 from .models import db
+from .models.alerta import ensure_alerta_schema
 from .services.seed import seed_data
 from .utils.formatters import format_currency
 from .web import router, templates
@@ -17,6 +18,7 @@ def create_app(config_class: type[Config] = Config) -> FastAPI:
 
     # Ensure database tables exist and populate basic data
     db.create_all()
+    ensure_alerta_schema()
     seed_data()
 
     # Register Jinja2 filters

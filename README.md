@@ -291,15 +291,18 @@ set PYTHONPATH=src                  # CMD Windows
 
 ### Erro de Banco de Dados
 
-Se houver problemas com o banco de dados:
+Se houver problemas com o banco de dados (por exemplo, erro "no such column"):
 
-1. **Deletar e recriar**:
+1. **Recriar automaticamente**:
+   Acesse [http://localhost:8000/recreate-db](http://localhost:8000/recreate-db).
+   Isso apagará o arquivo `instance/fluxo.db` e criará todas as tabelas novamente.
+
+2. **Opção manual**:
 ```bash
 rm instance/fluxo.db  # Linux/Mac
 del instance\fluxo.db # Windows
 ```
-
-2. **Acessar**: http://localhost:8000/init-db para recriar
+Depois, acesse [http://localhost:8000/init-db](http://localhost:8000/init-db) para gerar o banco e inserir dados de exemplo.
 
 ### Porta já em Uso
 
