@@ -3,6 +3,24 @@ from datetime import date
 
 from fastapi import Request
 from . import router, templates
+
+# Abreviações em português para dias da semana e meses
+DAY_ABBR_PT = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM']
+MONTH_ABBR_PT = ['', 'JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ']
+MONTH_NAME_PT = {
+    1: 'Janeiro',
+    2: 'Fevereiro',
+    3: 'Março',
+    4: 'Abril',
+    5: 'Maio',
+    6: 'Junho',
+    7: 'Julho',
+    8: 'Agosto',
+    9: 'Setembro',
+    10: 'Outubro',
+    11: 'Novembro',
+    12: 'Dezembro',
+}
 from sqlalchemy import func, extract, or_
 from ..models import (
     db,
@@ -506,11 +524,11 @@ async def relatorio_dre(request: Request):
 
     if periodo == 'mes':
         headers = ['Nome'] + [
-            f"{d:02d}/{calendar.day_abbr[date(ano_selecionado, mes_selecionado, d).weekday()].upper()}"
+            f"{d:02d}/{DAY_ABBR_PT[date(ano_selecionado, mes_selecionado, d).weekday()]}"
             for d in col_range
         ]
     else:
-        headers = ['Nome'] + [calendar.month_abbr[m].upper() for m in col_range]
+        headers = ['Nome'] + [MONTH_ABBR_PT[m] for m in col_range]
 
     return templates.TemplateResponse(
         'rel_dre.html',
@@ -525,6 +543,6 @@ async def relatorio_dre(request: Request):
             'cenario_selecionado_id': cenario_selecionado_id,
             'cenarios_disponiveis': cenarios_disponiveis,
             'meses_selecionados': [str(m) for m in meses_selecionados],
-            'meses_nomes': {i: calendar.month_name[i].capitalize() for i in range(1, 13)},
+            'meses_nomes': {i: MONTH_NAME_PT[i] for i in range(1, 13)},
         },
     )
