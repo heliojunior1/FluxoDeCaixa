@@ -7,6 +7,14 @@
         border-right: 1px solid #e5e7eb;
         padding: 0.5rem;
     }
+    /* Evita quebra de linha na célula de nome dos qualificados */
+    .dfc-table td.node-level-0,
+    .dfc-table td.node-level-1,
+    .dfc-table td.node-level-2,
+    .dfc-table td.node-level-3 {
+        white-space: nowrap;
+    }
+    
     .dfc-table th:last-child,
     .dfc-table td:last-child {
         border-right: none;
