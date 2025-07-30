@@ -758,6 +758,7 @@ async def dfc_eventos(request: Request):
                     .scalar()
                     or 0
                 )
+                base = float(base)
                 ajuste = (
                     CenarioAjusteMensal.query.filter_by(
                         seq_cenario=int(cenario_id),
@@ -770,10 +771,11 @@ async def dfc_eventos(request: Request):
                 )
                 valor = base
                 if ajuste:
+                    ajuste_val = float(ajuste.val_ajuste)
                     if ajuste.cod_tipo_ajuste == "P":
-                        valor = base * (1 + float(ajuste.val_ajuste) / 100)
+                        valor = base * (1 + ajuste_val / 100)
                     elif ajuste.cod_tipo_ajuste == "V":
-                        valor = base + float(ajuste.val_ajuste)
+                        valor = base + ajuste_val
                 if valor != 0:
                     qobj = Qualificador.query.get(qid)
                     eventos.append(
