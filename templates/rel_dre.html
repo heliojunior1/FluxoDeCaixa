@@ -158,9 +158,9 @@ function renderDRE() {
             bodyHtml += '<span class="inline-block w-4 mr-1"></span>';
         }
         bodyHtml += `${item.name}</td>`;
-        item.values.forEach((value) => {
+        item.values.forEach((value, idx) => {
             const cls = value !== 0 ? 'clickable-value' : '';
-            bodyHtml += `<td class="p-2 text-right font-mono ${cls}">${formatCurrency(value, false)}</td>`;
+            bodyHtml += `<td class="p-2 text-right font-mono ${cls}" data-col="${idx + 1}" data-qualifier-id="${item.id}" data-qualifier-name="${item.name}">${formatCurrency(value, false)}</td>`;
         });
         bodyHtml += '</tr>';
         if (hasChildren) {
@@ -189,6 +189,14 @@ function renderDRE() {
                     tableBody.querySelectorAll(`tr[data-parent="${ch.dataset.id}"]`).forEach(gc => gc.style.display = 'none');
                 }
             });
+        });
+    });
+    tableBody.querySelectorAll('.clickable-value').forEach(cell => {
+        cell.addEventListener('click', () => {
+            const qualifierId = cell.dataset.qualifierId;
+            const qualifierName = cell.dataset.qualifierName;
+            const col = cell.dataset.col;
+            openEventosModal(qualifierId, qualifierName, col);
         });
     });
 }
@@ -222,5 +230,38 @@ document.addEventListener('DOMContentLoaded', function () {
     mesCheckboxes.forEach(cb=>{cb.addEventListener('change',checkAllSelected);});
     checkAllSelected();
 });
+
+function openEventosModal(qualifierId, qualifierName, col) {
+    const params = new URLSearchParams({ seq: qualifierId, periodo: periodo, col: col, mes_ano: dataSelecionada });
+    fetch(`/relatorios/dre/eventos?${params.toString()}`)
+        .then(r => r.json())
+        .then(data => {
+            const modal = document.getElementById('modal-eventos');
+            let rows = '';
+            data.eventos.forEach(ev => {
+                rows += `<tr class="border-b"><td class="p-2">${ev.data}</td><td class="p-2">${ev.doc}</td><td class="p-2">${ev.fonte}</td><td class="p-2">${ev.natureza}</td><td class="p-2 text-right font-mono">${formatCurrency(ev.valor)}</td></tr>`;
+            });
+            modal.innerHTML = `
+            <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+                <div class="p-4 border-b flex justify-between items-center">
+                    <h2 class="text-xl font-bold">Eventos: ${qualifierName}</h2>
+                    <button class="btn-close-modal text-gray-500 hover:text-gray-800"><i data-lucide="x" class="h-6 w-6"></i></button>
+                </div>
+                <div class="p-4 flex-grow overflow-y-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-gray-100"><tr><th class="p-2">Data</th><th class="p-2">Documento</th><th class="p-2">Fonte</th><th class="p-2">Natureza</th><th class="p-2 text-right">Valor</th></tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+                <div class="p-4 border-t flex justify-between items-center bg-gray-50">
+                    <div class="font-bold">Total: ${formatCurrency(data.total)}</div>
+                    <button class="btn-close-modal px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Fechar</button>
+                </div>
+            </div>`;
+            modal.classList.remove('hidden');
+            modal.querySelectorAll('.btn-close-modal').forEach(btn => btn.addEventListener('click', () => modal.classList.add('hidden')));
+            lucide.createIcons();
+        });
+}
 </script>
 {% endblock %}

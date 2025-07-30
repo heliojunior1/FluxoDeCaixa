@@ -2,6 +2,7 @@ import calendar
 from datetime import date
 
 from fastapi import Request
+from fastapi.responses import JSONResponse
 from . import router, templates
 
 # Abreviações em português para dias da semana e meses
@@ -546,3 +547,45 @@ async def relatorio_dre(request: Request):
             'meses_nomes': {i: MONTH_NAME_PT[i] for i in range(1, 13)},
         },
     )
+
+
+@router.get('/relatorios/dre/eventos')
+async def dre_eventos(request: Request):
+    """Retorna os eventos (lançamentos) para um qualificador e coluna."""
+
+    seq = int(request.query_params.get('seq'))
+    periodo = request.query_params.get('periodo', 'mes')
+    col = int(request.query_params.get('col'))
+    mes_ano = request.query_params.get('mes_ano')
+
+    if periodo == 'mes':
+        ano, mes = [int(x) for x in mes_ano.split('-')]
+        query = (
+            Lancamento.query.filter_by(seq_qualificador=seq, ind_status='A')
+            .filter(extract('year', Lancamento.dat_lancamento) == ano)
+            .filter(extract('month', Lancamento.dat_lancamento) == mes)
+            .filter(extract('day', Lancamento.dat_lancamento) == col)
+        )
+    else:
+        ano = int(mes_ano)
+        query = (
+            Lancamento.query.filter_by(seq_qualificador=seq, ind_status='A')
+            .filter(extract('year', Lancamento.dat_lancamento) == ano)
+            .filter(extract('month', Lancamento.dat_lancamento) == col)
+        )
+
+    registros = query.order_by(Lancamento.dat_lancamento).all()
+
+    eventos = [
+        {
+            'data': r.dat_lancamento.strftime('%d/%m/%Y'),
+            'doc': str(r.seq_lancamento),
+            'fonte': r.cod_origem_lancamento,
+            'natureza': r.tipo.dsc_tipo_lancamento,
+            'valor': float(r.val_lancamento),
+        }
+        for r in registros
+    ]
+
+    total = sum(e['valor'] for e in eventos)
+    return JSONResponse({'eventos': eventos, 'total': total})
