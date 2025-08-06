@@ -256,7 +256,7 @@ async def relatorio_previsao_realizado_data(request: Request):
             for m in range(1, 13)
         )
         real_year = sum(
-            (
+            float(
                 db.session.query(func.sum(Lancamento.val_lancamento))
                 .filter(
                     Lancamento.seq_qualificador == q_id,
