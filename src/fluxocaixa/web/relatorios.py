@@ -16,6 +16,7 @@ from ..models import (
     CenarioAjusteMensal,
     Qualificador,
 )
+from ..utils import format_currency
 
 # Abreviações em português para dias da semana e meses
 DAY_ABBR_PT = ["SEG", "TER", "QUA", "QUI", "SEX", "SÁB", "DOM"]
@@ -54,6 +55,238 @@ MONTH_NAME_PT = {
 @handle_exceptions
 async def relatorios(request: Request):
     return templates.TemplateResponse("relatorios.html", {"request": request})
+
+
+@router.get("/relatorios/previsao-realizado", name="relatorio_previsao_realizado")
+@handle_exceptions
+async def relatorio_previsao_realizado(request: Request):
+    lancamento_years = db.session.query(extract("year", Lancamento.dat_lancamento)).distinct().all()
+    anos_disponiveis = sorted({y[0] for y in lancamento_years}, reverse=True)
+    ano_default = anos_disponiveis[0] if anos_disponiveis else date.today().year
+    cenarios = Cenario.query.filter_by(ind_status="A").all()
+    meses = [(i, MONTH_NAME_PT[i]) for i in range(1, 13)]
+    qualificadores = [
+        q for q in Qualificador.query.filter_by(ind_status="A").all() if q.is_folha()
+    ]
+    return templates.TemplateResponse(
+        "rel_previsao_realizado.html",
+        {
+            "request": request,
+            "anos_disponiveis": anos_disponiveis,
+            "ano_default": ano_default,
+            "cenarios": cenarios,
+            "meses": meses,
+            "qualificadores": qualificadores,
+        },
+    )
+
+
+@router.get(
+    "/relatorios/previsao-realizado/data",
+    name="relatorio_previsao_realizado_data",
+)
+@handle_exceptions
+async def relatorio_previsao_realizado_data(request: Request):
+    params = request.query_params
+    ano = int(params.get("ano", date.today().year))
+    cenario_id = int(params.get("cenario")) if params.get("cenario") else None
+    meses = [int(m) for m in params.get("meses", "").split(",") if m]
+    qualificadores_ids = [
+        int(q) for q in params.get("qualificadores", "").split(",") if q
+    ]
+    if not meses:
+        meses = list(range(1, 13))
+
+    tipo_entrada = TipoLancamento.query.filter_by(
+        dsc_tipo_lancamento="Entrada"
+    ).first()
+    tipo_saida = TipoLancamento.query.filter_by(
+        dsc_tipo_lancamento="Saída"
+    ).first()
+    cod_entrada = tipo_entrada.cod_tipo_lancamento if tipo_entrada else None
+    cod_saida = tipo_saida.cod_tipo_lancamento if tipo_saida else None
+
+    qual_tipo_map = {}
+
+    def base_val(q_id, mes, ano_base):
+        cod_tipo = qual_tipo_map.get(q_id, cod_entrada)
+        val = (
+            db.session.query(func.sum(Lancamento.val_lancamento))
+            .filter(
+                Lancamento.seq_qualificador == q_id,
+                extract("year", Lancamento.dat_lancamento) == ano_base,
+                extract("month", Lancamento.dat_lancamento) == mes,
+                Lancamento.cod_tipo_lancamento == cod_tipo,
+                Lancamento.ind_status == "A",
+            )
+            .scalar()
+        )
+        return float(val or 0)
+
+    def get_cenario_ids_for_year(year):
+        if not cenario_id:
+            return None, None
+        c = Cenario.query.get(cenario_id)
+        if not c:
+            return None, None
+        cenarios_year = (
+            Cenario.query
+            .filter(
+                Cenario.nom_cenario == c.nom_cenario,
+                extract("year", Cenario.dat_criacao) == year,
+            )
+            .order_by(Cenario.dat_criacao)
+            .all()
+        )
+        if not cenarios_year:
+            return None, None
+        return cenarios_year[0].seq_cenario, cenarios_year[-1].seq_cenario
+
+    def previsao_val_for_year(cenario_ref_id, q_id, mes, ano_ref):
+        base = base_val(q_id, mes, ano_ref - 1)
+        ajuste = None
+        if cenario_ref_id:
+            ajuste = CenarioAjusteMensal.query.filter_by(
+                seq_cenario=cenario_ref_id,
+                seq_qualificador=q_id,
+                ano=ano_ref,
+                mes=mes,
+            ).first()
+        if ajuste:
+            if ajuste.cod_tipo_ajuste == "P":
+                return base * (1 + float(ajuste.val_ajuste) / 100)
+            else:
+                return base + float(ajuste.val_ajuste)
+        return base
+
+    cenario_ini_id, cenario_fin_id = get_cenario_ids_for_year(ano)
+
+    tabela = []
+    total_prev_ini = total_prev_fin = total_real = 0
+
+    qs = Qualificador.query.filter(
+        Qualificador.seq_qualificador.in_(qualificadores_ids)
+    ).all()
+    qual_tipo_map = {
+        q.seq_qualificador: (cod_saida if q.tipo_fluxo == "despesa" else cod_entrada)
+        for q in qs
+    }
+    for q in qs:
+        prev_ini = sum(
+            previsao_val_for_year(cenario_ini_id, q.seq_qualificador, m, ano)
+            for m in meses
+        )
+        prev_fin = sum(
+            previsao_val_for_year(cenario_fin_id, q.seq_qualificador, m, ano)
+            for m in meses
+        )
+        real = (
+            db.session.query(func.sum(Lancamento.val_lancamento))
+            .filter(
+                Lancamento.seq_qualificador == q.seq_qualificador,
+                extract("year", Lancamento.dat_lancamento) == ano,
+                extract("month", Lancamento.dat_lancamento).in_(meses),
+                Lancamento.cod_tipo_lancamento == qual_tipo_map[q.seq_qualificador],
+                Lancamento.ind_status == "A",
+            )
+            .scalar()
+        )
+        real = float(real or 0)
+        tabela.append(
+            {
+                "descricao": q.dsc_qualificador,
+                "previsao_inicial": format_currency(prev_ini),
+                "previsao_final": format_currency(prev_fin),
+                "realizado": format_currency(real),
+            }
+        )
+        total_prev_ini += prev_ini
+        total_prev_fin += prev_fin
+        total_real += real
+
+    if len(tabela) > 1:
+        tabela.append(
+            {
+                "descricao": "Total",
+                "previsao_inicial": format_currency(total_prev_ini),
+                "previsao_final": format_currency(total_prev_fin),
+                "realizado": format_currency(total_real),
+            }
+        )
+
+    labels = [MONTH_ABBR_PT[m] for m in meses]
+    previsao_series = []
+    realizado_series = []
+    for m in meses:
+        prev_total = sum(
+            previsao_val_for_year(cenario_fin_id, q_id, m, ano)
+            for q_id in qualificadores_ids
+        )
+        real_total = sum(
+            (
+                db.session.query(func.sum(Lancamento.val_lancamento))
+                .filter(
+                    Lancamento.seq_qualificador == q_id,
+                    extract("year", Lancamento.dat_lancamento) == ano,
+                    extract("month", Lancamento.dat_lancamento) == m,
+                    Lancamento.cod_tipo_lancamento == qual_tipo_map[q_id],
+                    Lancamento.ind_status == "A",
+                )
+                .scalar()
+                or 0
+            )
+            for q_id in qualificadores_ids
+        )
+        previsao_series.append(round(prev_total / 1_000_000_000, 3))
+        realizado_series.append(round(real_total / 1_000_000_000, 3))
+
+    anos_range = [ano - 2, ano - 1, ano]
+    diff_final = []
+    diff_inicial = []
+    for a in anos_range:
+        c_ini_id, c_fin_id = get_cenario_ids_for_year(a)
+        inicial_sum = sum(
+            previsao_val_for_year(c_ini_id, q_id, m, a)
+            for q_id in qualificadores_ids
+            for m in range(1, 13)
+        )
+        final_sum = sum(
+            previsao_val_for_year(c_fin_id, q_id, m, a)
+            for q_id in qualificadores_ids
+            for m in range(1, 13)
+        )
+        real_year = sum(
+            float(
+                db.session.query(func.sum(Lancamento.val_lancamento))
+                .filter(
+                    Lancamento.seq_qualificador == q_id,
+                    extract("year", Lancamento.dat_lancamento) == a,
+                    Lancamento.cod_tipo_lancamento == qual_tipo_map[q_id],
+                    Lancamento.ind_status == "A",
+                )
+                .scalar()
+                or 0
+            )
+            for q_id in qualificadores_ids
+        )
+        diff_final.append(round((real_year - final_sum) / 1_000_000_000, 3))
+        diff_inicial.append(round((real_year - inicial_sum) / 1_000_000_000, 3))
+
+    return JSONResponse(
+        {
+            "tabela": tabela,
+            "evolucao": {
+                "labels": labels,
+                "previsao": previsao_series,
+                "realizado": realizado_series,
+            },
+            "diferenca": {
+                "labels": anos_range,
+                "final": diff_final,
+                "inicial": diff_inicial,
+            },
+        }
+    )
 
 
 @router.get("/relatorios/resumo")

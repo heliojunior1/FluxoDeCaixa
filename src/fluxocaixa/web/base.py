@@ -427,6 +427,7 @@ async def add_cenario(request: Request):
         nom_cenario=nom_cenario,
         dsc_cenario=dsc_cenario,
         ind_status='A',
+        cod_pessoa_inclusao=1,
     )
     db.session.add(novo_cenario)
     db.session.flush()
@@ -461,6 +462,8 @@ async def edit_cenario(request: Request, id: int):
         cenario.nom_cenario = form['nom_cenario']
         cenario.dsc_cenario = form.get('dsc_cenario')
         ano = int(form.get('ano'))
+        cenario.dat_alteracao = date.today()
+        cenario.cod_pessoa_alteracao = 1
         CenarioAjusteMensal.query.filter_by(seq_cenario=id, ano=ano).delete()
         for key, value in form.items():
             if key.startswith('val_ajuste_') and value:
@@ -505,6 +508,8 @@ async def edit_cenario(request: Request, id: int):
 async def delete_cenario(request: Request, id: int):
     cenario = Cenario.query.get_or_404(id)
     cenario.ind_status = 'I'
+    cenario.dat_alteracao = date.today()
+    cenario.cod_pessoa_alteracao = 1
     db.session.commit()
     return RedirectResponse(request.url_for('projecoes_cenarios'), status_code=303)
 
