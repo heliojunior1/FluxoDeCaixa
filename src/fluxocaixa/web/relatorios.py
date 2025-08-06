@@ -106,9 +106,17 @@ async def relatorio_previsao_realizado_data(request: Request):
     cod_entrada = tipo_entrada.cod_tipo_lancamento if tipo_entrada else None
     cod_saida = tipo_saida.cod_tipo_lancamento if tipo_saida else None
 
+    # Caches to avoid repeating costly database queries
+    base_cache = {}
+    ajuste_cache = {}
+    real_cache = {}
+
     qual_tipo_map = {}
 
     def base_val(q_id, mes, ano_base):
+        key = (q_id, mes, ano_base)
+        if key in base_cache:
+            return base_cache[key]
         cod_tipo = qual_tipo_map.get(q_id, cod_entrada)
         val = (
             db.session.query(func.sum(Lancamento.val_lancamento))
@@ -121,7 +129,9 @@ async def relatorio_previsao_realizado_data(request: Request):
             )
             .scalar()
         )
-        return float(val or 0)
+        val = float(val or 0)
+        base_cache[key] = val
+        return val
 
     def get_cenario_ids_for_year(year):
         if not cenario_id:
@@ -144,20 +154,45 @@ async def relatorio_previsao_realizado_data(request: Request):
 
     def previsao_val_for_year(cenario_ref_id, q_id, mes, ano_ref):
         base = base_val(q_id, mes, ano_ref - 1)
-        ajuste = None
         if cenario_ref_id:
-            ajuste = CenarioAjusteMensal.query.filter_by(
-                seq_cenario=cenario_ref_id,
-                seq_qualificador=q_id,
-                ano=ano_ref,
-                mes=mes,
-            ).first()
-        if ajuste:
-            if ajuste.cod_tipo_ajuste == "P":
-                return base * (1 + float(ajuste.val_ajuste) / 100)
-            else:
-                return base + float(ajuste.val_ajuste)
+            key = (cenario_ref_id, q_id, mes, ano_ref)
+            ajuste = ajuste_cache.get(key)
+            if ajuste is None:
+                ajuste = CenarioAjusteMensal.query.filter_by(
+                    seq_cenario=cenario_ref_id,
+                    seq_qualificador=q_id,
+                    ano=ano_ref,
+                    mes=mes,
+                ).first()
+                ajuste_cache[key] = ajuste
+            if ajuste:
+                if ajuste.cod_tipo_ajuste == "P":
+                    return base * (1 + float(ajuste.val_ajuste) / 100)
+                else:
+                    return base + float(ajuste.val_ajuste)
         return base
+
+    def real_val(q_id, ano_ref, meses_ref):
+        key = (q_id, ano_ref, tuple(sorted(meses_ref)))
+        if key in real_cache:
+            return real_cache[key]
+        query = db.session.query(func.sum(Lancamento.val_lancamento)).filter(
+            Lancamento.seq_qualificador == q_id,
+            extract("year", Lancamento.dat_lancamento) == ano_ref,
+            Lancamento.cod_tipo_lancamento == qual_tipo_map[q_id],
+            Lancamento.ind_status == "A",
+        )
+        if len(meses_ref) == 1:
+            query = query.filter(
+                extract("month", Lancamento.dat_lancamento) == meses_ref[0]
+            )
+        else:
+            query = query.filter(
+                extract("month", Lancamento.dat_lancamento).in_(meses_ref)
+            )
+        val = float(query.scalar() or 0)
+        real_cache[key] = val
+        return val
 
     cenario_ini_id, cenario_fin_id = get_cenario_ids_for_year(ano)
 
@@ -180,18 +215,7 @@ async def relatorio_previsao_realizado_data(request: Request):
             previsao_val_for_year(cenario_fin_id, q.seq_qualificador, m, ano)
             for m in meses
         )
-        real = (
-            db.session.query(func.sum(Lancamento.val_lancamento))
-            .filter(
-                Lancamento.seq_qualificador == q.seq_qualificador,
-                extract("year", Lancamento.dat_lancamento) == ano,
-                extract("month", Lancamento.dat_lancamento).in_(meses),
-                Lancamento.cod_tipo_lancamento == qual_tipo_map[q.seq_qualificador],
-                Lancamento.ind_status == "A",
-            )
-            .scalar()
-        )
-        real = float(real or 0)
+        real = real_val(q.seq_qualificador, ano, meses)
         tabela.append(
             {
                 "descricao": q.dsc_qualificador,
@@ -223,19 +247,7 @@ async def relatorio_previsao_realizado_data(request: Request):
             for q_id in qualificadores_ids
         )
         real_total = sum(
-            float(
-                db.session.query(func.sum(Lancamento.val_lancamento))
-                .filter(
-                    Lancamento.seq_qualificador == q_id,
-                    extract("year", Lancamento.dat_lancamento) == ano,
-                    extract("month", Lancamento.dat_lancamento) == m,
-                    Lancamento.cod_tipo_lancamento == qual_tipo_map[q_id],
-                    Lancamento.ind_status == "A",
-                )
-                .scalar()
-                or 0
-            )
-            for q_id in qualificadores_ids
+            real_val(q_id, ano, [m]) for q_id in qualificadores_ids
         )
         previsao_series.append(round(prev_total / 1_000_000_000, 3))
         realizado_series.append(round(real_total / 1_000_000_000, 3))
@@ -256,18 +268,7 @@ async def relatorio_previsao_realizado_data(request: Request):
             for m in range(1, 13)
         )
         real_year = sum(
-            float(
-                db.session.query(func.sum(Lancamento.val_lancamento))
-                .filter(
-                    Lancamento.seq_qualificador == q_id,
-                    extract("year", Lancamento.dat_lancamento) == a,
-                    Lancamento.cod_tipo_lancamento == qual_tipo_map[q_id],
-                    Lancamento.ind_status == "A",
-                )
-                .scalar()
-                or 0
-            )
-            for q_id in qualificadores_ids
+            real_val(q_id, a, list(range(1, 13))) for q_id in qualificadores_ids
         )
         diff_final.append(round((real_year - final_sum) / 1_000_000_000, 3))
         diff_inicial.append(round((real_year - inicial_sum) / 1_000_000_000, 3))
