@@ -64,8 +64,8 @@
 
 <div class="mt-6">
     <h3 class="text-lg font-semibold text-gray-800 mb-4">Resultados Consolidados</h3>
-    <div class="overflow-x-auto max-h-96 overflow-y-auto">
-        <table class="w-full text-left">
+    <div class="overflow-x-auto">
+        <table class="w-full text-left table-fixed-layout">
             <thead class="bg-gray-100">
                 <tr>
                     <th class="p-3">Descrição</th>
@@ -74,7 +74,8 @@
                     <th class="p-3 text-right">Realizado</th>
                 </tr>
             </thead>
-            <tbody id="result-table-body"></tbody>
+            <tbody id="result-table-body" class="max-h-96 overflow-y-auto"></tbody>
+            <tfoot id="result-table-total" class="bg-gray-100 font-bold"></tfoot>
         </table>
     </div>
 </div>
@@ -112,6 +113,18 @@
 }
 .multiselect-dropdown label { display: block; padding: 0.5rem 0.75rem; cursor: pointer; }
 .multiselect-dropdown label:hover { background-color: #f3f4f6; }
+
+.table-fixed-layout thead,
+.table-fixed-layout tfoot,
+.table-fixed-layout tbody tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+}
+.table-fixed-layout tbody {
+    display: block;
+    overflow-y: auto;
+}
 </style>
 
 <script>
@@ -145,15 +158,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderTable(data) {
         const tbody = document.getElementById('result-table-body');
+        const tfoot = document.getElementById('result-table-total');
         tbody.innerHTML = '';
+        tfoot.innerHTML = '';
         data.forEach(row => {
             const tr = document.createElement('tr');
-            tr.className = row.descricao === 'Total' ? 'border-b bg-gray-100 font-bold' : 'border-b';
             tr.innerHTML = `<td class="p-3 font-semibold text-gray-700">${row.descricao}</td>` +
                            `<td class="p-3 text-right font-mono">${row.previsao_inicial}</td>` +
                            `<td class="p-3 text-right font-mono">${row.previsao_final}</td>` +
                            `<td class="p-3 text-right font-mono font-bold">${row.realizado}</td>`;
-            tbody.appendChild(tr);
+            if (row.descricao === 'Total') {
+                tr.classList.add('border-t');
+                tfoot.appendChild(tr);
+            } else {
+                tr.classList.add('border-b');
+                tbody.appendChild(tr);
+            }
         });
     }
     function renderEvolucaoChart(labels, previsao, realizado) {
