@@ -120,12 +120,31 @@ async def relatorio_previsao_realizado_data(request: Request):
             val = abs(val)
         return val
 
-    def previsao_val_for_year(q_id, mes, ano_ref):
+    def get_cenario_ids_for_year(year):
+        if not cenario_id:
+            return None, None
+        c = Cenario.query.get(cenario_id)
+        if not c:
+            return None, None
+        cenarios_year = (
+            Cenario.query
+            .filter(
+                Cenario.nom_cenario == c.nom_cenario,
+                extract("year", Cenario.dat_criacao) == year,
+            )
+            .order_by(Cenario.dat_criacao)
+            .all()
+        )
+        if not cenarios_year:
+            return None, None
+        return cenarios_year[0].seq_cenario, cenarios_year[-1].seq_cenario
+
+    def previsao_val_for_year(cenario_ref_id, q_id, mes, ano_ref):
         base = base_val(q_id, mes, ano_ref - 1)
         ajuste = None
-        if cenario_id:
+        if cenario_ref_id:
             ajuste = CenarioAjusteMensal.query.filter_by(
-                seq_cenario=cenario_id,
+                seq_cenario=cenario_ref_id,
                 seq_qualificador=q_id,
                 ano=ano_ref,
                 mes=mes,
@@ -137,6 +156,8 @@ async def relatorio_previsao_realizado_data(request: Request):
                 return base + float(ajuste.val_ajuste)
         return base
 
+    cenario_ini_id, cenario_fin_id = get_cenario_ids_for_year(ano)
+
     tabela = []
     total_prev_ini = total_prev_fin = total_real = 0
 
@@ -144,8 +165,14 @@ async def relatorio_previsao_realizado_data(request: Request):
         Qualificador.seq_qualificador.in_(qualificadores_ids)
     ).all()
     for q in qs:
-        prev_ini = sum(base_val(q.seq_qualificador, m, ano - 1) for m in meses)
-        prev_fin = sum(previsao_val_for_year(q.seq_qualificador, m, ano) for m in meses)
+        prev_ini = sum(
+            previsao_val_for_year(cenario_ini_id, q.seq_qualificador, m, ano)
+            for m in meses
+        )
+        prev_fin = sum(
+            previsao_val_for_year(cenario_fin_id, q.seq_qualificador, m, ano)
+            for m in meses
+        )
         real = (
             db.session.query(func.sum(Lancamento.val_lancamento))
             .filter(
@@ -187,7 +214,8 @@ async def relatorio_previsao_realizado_data(request: Request):
     realizado_series = []
     for m in meses:
         prev_total = sum(
-            previsao_val_for_year(q_id, m, ano) for q_id in qualificadores_ids
+            previsao_val_for_year(cenario_fin_id, q_id, m, ano)
+            for q_id in qualificadores_ids
         )
         real_total = (
             db.session.query(func.sum(Lancamento.val_lancamento))
@@ -210,11 +238,14 @@ async def relatorio_previsao_realizado_data(request: Request):
     diff_final = []
     diff_inicial = []
     for a in anos_range:
-        base_sum = sum(
-            base_val(q_id, m, a - 1) for q_id in qualificadores_ids for m in range(1, 13)
+        c_ini_id, c_fin_id = get_cenario_ids_for_year(a)
+        inicial_sum = sum(
+            previsao_val_for_year(c_ini_id, q_id, m, a)
+            for q_id in qualificadores_ids
+            for m in range(1, 13)
         )
         final_sum = sum(
-            previsao_val_for_year(q_id, m, a)
+            previsao_val_for_year(c_fin_id, q_id, m, a)
             for q_id in qualificadores_ids
             for m in range(1, 13)
         )
@@ -232,7 +263,7 @@ async def relatorio_previsao_realizado_data(request: Request):
         if tipo == "despesa":
             real_year = abs(real_year)
         diff_final.append(round((real_year - final_sum) / 1_000_000_000, 3))
-        diff_inicial.append(round((real_year - base_sum) / 1_000_000_000, 3))
+        diff_inicial.append(round((real_year - inicial_sum) / 1_000_000_000, 3))
 
     return JSONResponse(
         {

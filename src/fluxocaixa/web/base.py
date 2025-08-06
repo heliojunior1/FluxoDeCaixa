@@ -44,9 +44,7 @@ async def init_db():
     try:
         db.create_all()
         from ..models.alerta import ensure_alerta_schema
-        from ..models.cenario import ensure_cenario_schema
         ensure_alerta_schema()
-        ensure_cenario_schema()
         seed_data()
         return "Database initialized successfully!"
     except Exception as e:
@@ -61,9 +59,7 @@ async def recreate_db():
         db.drop_all()
         db.create_all()
         from ..models.alerta import ensure_alerta_schema
-        from ..models.cenario import ensure_cenario_schema
         ensure_alerta_schema()
-        ensure_cenario_schema()
         seed_data()
         return "Database recreated successfully!"
     except Exception as e:

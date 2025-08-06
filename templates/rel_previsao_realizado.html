@@ -156,7 +156,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.innerHTML = '';
         data.forEach(row => {
             const tr = document.createElement('tr');
-            tr.className = 'border-b';
+            tr.className = row.descricao === 'Total' ? 'border-b bg-gray-100 font-bold' : 'border-b';
             tr.innerHTML = `<td class="p-3 font-semibold text-gray-700">${row.descricao}</td>` +
                            `<td class="p-3 text-right font-mono">${row.previsao_inicial}</td>` +
                            `<td class="p-3 text-right font-mono">${row.previsao_final}</td>` +
