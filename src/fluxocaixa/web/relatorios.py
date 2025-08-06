@@ -97,12 +97,19 @@ async def relatorio_previsao_realizado_data(request: Request):
     if not meses:
         meses = list(range(1, 13))
 
-    tipo_obj = TipoLancamento.query.filter_by(
+    tipo_entrada = TipoLancamento.query.filter_by(
         dsc_tipo_lancamento="Entrada"
     ).first()
-    cod_tipo = tipo_obj.cod_tipo_lancamento if tipo_obj else None
+    tipo_saida = TipoLancamento.query.filter_by(
+        dsc_tipo_lancamento="Saída"
+    ).first()
+    cod_entrada = tipo_entrada.cod_tipo_lancamento if tipo_entrada else None
+    cod_saida = tipo_saida.cod_tipo_lancamento if tipo_saida else None
+
+    qual_tipo_map = {}
 
     def base_val(q_id, mes, ano_base):
+        cod_tipo = qual_tipo_map.get(q_id, cod_entrada)
         val = (
             db.session.query(func.sum(Lancamento.val_lancamento))
             .filter(
@@ -160,6 +167,10 @@ async def relatorio_previsao_realizado_data(request: Request):
     qs = Qualificador.query.filter(
         Qualificador.seq_qualificador.in_(qualificadores_ids)
     ).all()
+    qual_tipo_map = {
+        q.seq_qualificador: (cod_saida if q.tipo_fluxo == "despesa" else cod_entrada)
+        for q in qs
+    }
     for q in qs:
         prev_ini = sum(
             previsao_val_for_year(cenario_ini_id, q.seq_qualificador, m, ano)
@@ -175,7 +186,7 @@ async def relatorio_previsao_realizado_data(request: Request):
                 Lancamento.seq_qualificador == q.seq_qualificador,
                 extract("year", Lancamento.dat_lancamento) == ano,
                 extract("month", Lancamento.dat_lancamento).in_(meses),
-                Lancamento.cod_tipo_lancamento == cod_tipo,
+                Lancamento.cod_tipo_lancamento == qual_tipo_map[q.seq_qualificador],
                 Lancamento.ind_status == "A",
             )
             .scalar()
@@ -211,18 +222,21 @@ async def relatorio_previsao_realizado_data(request: Request):
             previsao_val_for_year(cenario_fin_id, q_id, m, ano)
             for q_id in qualificadores_ids
         )
-        real_total = (
-            db.session.query(func.sum(Lancamento.val_lancamento))
-            .filter(
-                Lancamento.seq_qualificador.in_(qualificadores_ids),
-                extract("year", Lancamento.dat_lancamento) == ano,
-                extract("month", Lancamento.dat_lancamento) == m,
-                Lancamento.cod_tipo_lancamento == cod_tipo,
-                Lancamento.ind_status == "A",
+        real_total = sum(
+            (
+                db.session.query(func.sum(Lancamento.val_lancamento))
+                .filter(
+                    Lancamento.seq_qualificador == q_id,
+                    extract("year", Lancamento.dat_lancamento) == ano,
+                    extract("month", Lancamento.dat_lancamento) == m,
+                    Lancamento.cod_tipo_lancamento == qual_tipo_map[q_id],
+                    Lancamento.ind_status == "A",
+                )
+                .scalar()
+                or 0
             )
-            .scalar()
+            for q_id in qualificadores_ids
         )
-        real_total = float(real_total or 0)
         previsao_series.append(round(prev_total / 1_000_000_000, 3))
         realizado_series.append(round(real_total / 1_000_000_000, 3))
 
@@ -241,17 +255,20 @@ async def relatorio_previsao_realizado_data(request: Request):
             for q_id in qualificadores_ids
             for m in range(1, 13)
         )
-        real_year = (
-            db.session.query(func.sum(Lancamento.val_lancamento))
-            .filter(
-                Lancamento.seq_qualificador.in_(qualificadores_ids),
-                extract("year", Lancamento.dat_lancamento) == a,
-                Lancamento.cod_tipo_lancamento == cod_tipo,
-                Lancamento.ind_status == "A",
+        real_year = sum(
+            (
+                db.session.query(func.sum(Lancamento.val_lancamento))
+                .filter(
+                    Lancamento.seq_qualificador == q_id,
+                    extract("year", Lancamento.dat_lancamento) == a,
+                    Lancamento.cod_tipo_lancamento == qual_tipo_map[q_id],
+                    Lancamento.ind_status == "A",
+                )
+                .scalar()
+                or 0
             )
-            .scalar()
+            for q_id in qualificadores_ids
         )
-        real_year = float(real_year or 0)
         diff_final.append(round((real_year - final_sum) / 1_000_000_000, 3))
         diff_inicial.append(round((real_year - inicial_sum) / 1_000_000_000, 3))
 
