@@ -8,7 +8,7 @@
 </div>
 
 <div class="bg-white p-6 rounded-lg shadow-md border">
-    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
         <div>
             <label class="text-sm font-medium">Ano</label>
             <select id="filter-ano" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
@@ -33,13 +33,6 @@
                     {% endfor %}
                 </div>
             </div>
-        </div>
-        <div>
-            <label class="text-sm font-medium">Tipo</label>
-            <select id="filter-tipo" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
-                <option value="receita">Receita</option>
-                <option value="despesa">Despesa</option>
-            </select>
         </div>
         <div>
             <label class="text-sm font-medium">Cenário</label>
@@ -71,7 +64,7 @@
 
 <div class="mt-6">
     <h3 class="text-lg font-semibold text-gray-800 mb-4">Resultados Consolidados</h3>
-    <div class="overflow-x-auto">
+    <div class="overflow-x-auto max-h-96 overflow-y-auto">
         <table class="w-full text-left">
             <thead class="bg-gray-100">
                 <tr>
@@ -145,7 +138,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupDropdown('qualificador-dropdown-btn', 'qualificador-dropdown', '.qualificador-checkbox', 'qualificador-selected-text');
 
     document.getElementById('filter-ano').addEventListener('change', fetchData);
-    document.getElementById('filter-tipo').addEventListener('change', fetchData);
     document.getElementById('filter-cenario').addEventListener('change', fetchData);
 
     let evolucaoChart = null;
@@ -190,11 +182,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     async function fetchData() {
         const ano = document.getElementById('filter-ano').value;
-        const tipo = document.getElementById('filter-tipo').value;
         const cenario = document.getElementById('filter-cenario').value;
         const meses = getSelected('.mes-checkbox').join(',');
         const qualificadores = getSelected('.qualificador-checkbox').join(',');
-        const params = new URLSearchParams({ano, tipo, cenario, meses, qualificadores});
+        const params = new URLSearchParams({ano, cenario, meses, qualificadores});
         const response = await fetch(`{{ url_for('relatorio_previsao_realizado_data') }}?${params.toString()}`);
         const json = await response.json();
         renderTable(json.tabela);

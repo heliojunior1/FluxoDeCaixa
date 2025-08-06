@@ -89,7 +89,6 @@ async def relatorio_previsao_realizado(request: Request):
 async def relatorio_previsao_realizado_data(request: Request):
     params = request.query_params
     ano = int(params.get("ano", date.today().year))
-    tipo = params.get("tipo", "receita")
     cenario_id = int(params.get("cenario")) if params.get("cenario") else None
     meses = [int(m) for m in params.get("meses", "").split(",") if m]
     qualificadores_ids = [
@@ -99,7 +98,7 @@ async def relatorio_previsao_realizado_data(request: Request):
         meses = list(range(1, 13))
 
     tipo_obj = TipoLancamento.query.filter_by(
-        dsc_tipo_lancamento="Entrada" if tipo == "receita" else "Saída"
+        dsc_tipo_lancamento="Entrada"
     ).first()
     cod_tipo = tipo_obj.cod_tipo_lancamento if tipo_obj else None
 
@@ -115,10 +114,7 @@ async def relatorio_previsao_realizado_data(request: Request):
             )
             .scalar()
         )
-        val = float(val or 0)
-        if tipo == "despesa":
-            val = abs(val)
-        return val
+        return float(val or 0)
 
     def get_cenario_ids_for_year(year):
         if not cenario_id:
@@ -185,8 +181,6 @@ async def relatorio_previsao_realizado_data(request: Request):
             .scalar()
         )
         real = float(real or 0)
-        if tipo == "despesa":
-            real = abs(real)
         tabela.append(
             {
                 "descricao": q.dsc_qualificador,
@@ -229,8 +223,6 @@ async def relatorio_previsao_realizado_data(request: Request):
             .scalar()
         )
         real_total = float(real_total or 0)
-        if tipo == "despesa":
-            real_total = abs(real_total)
         previsao_series.append(round(prev_total / 1_000_000_000, 3))
         realizado_series.append(round(real_total / 1_000_000_000, 3))
 
@@ -260,8 +252,6 @@ async def relatorio_previsao_realizado_data(request: Request):
             .scalar()
         )
         real_year = float(real_year or 0)
-        if tipo == "despesa":
-            real_year = abs(real_year)
         diff_final.append(round((real_year - final_sum) / 1_000_000_000, 3))
         diff_inicial.append(round((real_year - inicial_sum) / 1_000_000_000, 3))
 
