@@ -7,10 +7,12 @@ from sqlalchemy import (
     Numeric,
     ForeignKey,
     UniqueConstraint,
+    inspect,
+    text,
 )
 from sqlalchemy.orm import relationship, backref
 
-from .base import Base
+from .base import Base, engine
 
 class Cenario(Base):
     __tablename__ = 'flc_cenario'
@@ -48,3 +50,18 @@ class CenarioAjusteMensal(Base):
         'Cenario', backref=backref('ajustes_mensais', cascade="all, delete-orphan")
     )
     qualificador = relationship('Qualificador')
+
+
+def ensure_cenario_schema():
+    inspector = inspect(engine)
+    if 'flc_cenario' not in inspector.get_table_names():
+        return
+    columns = {c['name'] for c in inspector.get_columns('flc_cenario')}
+    with engine.connect() as conn:
+        if 'cod_pessoa_inclusao' not in columns:
+            conn.execute(text('ALTER TABLE flc_cenario ADD COLUMN cod_pessoa_inclusao INTEGER'))
+        if 'dat_alteracao' not in columns:
+            conn.execute(text('ALTER TABLE flc_cenario ADD COLUMN dat_alteracao DATE'))
+        if 'cod_pessoa_alteracao' not in columns:
+            conn.execute(text('ALTER TABLE flc_cenario ADD COLUMN cod_pessoa_alteracao INTEGER'))
+        conn.commit()
