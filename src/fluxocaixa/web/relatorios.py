@@ -223,7 +223,7 @@ async def relatorio_previsao_realizado_data(request: Request):
             for q_id in qualificadores_ids
         )
         real_total = sum(
-            (
+            float(
                 db.session.query(func.sum(Lancamento.val_lancamento))
                 .filter(
                     Lancamento.seq_qualificador == q_id,
