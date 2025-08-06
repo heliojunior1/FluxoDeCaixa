@@ -8,7 +8,7 @@
 </div>
 
 <div class="bg-white p-6 rounded-lg shadow-md border">
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
         <div>
             <label class="text-sm font-medium">Ano</label>
             <select id="filter-ano" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
@@ -58,6 +58,12 @@
                     {% endfor %}
                 </div>
             </div>
+        </div>
+        <div class="flex items-end">
+            <button type="button" id="btn-aplicar" class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-colors">
+                <i data-lucide="filter" class="w-4 h-4 inline mr-1"></i>
+                Aplicar
+            </button>
         </div>
     </div>
 </div>
@@ -144,14 +150,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const dropdown = document.getElementById(dropdownId);
         btn.addEventListener('click', e => { e.stopPropagation(); dropdown.classList.toggle('hidden');});
         document.addEventListener('click', e => { if(!dropdown.contains(e.target) && !btn.contains(e.target)) dropdown.classList.add('hidden'); });
-        document.querySelectorAll(checkboxSelector).forEach(cb => cb.addEventListener('change', () => { updateMultiselectText(checkboxSelector, textElemId); fetchData(); }));
+        document.querySelectorAll(checkboxSelector).forEach(cb => cb.addEventListener('change', () => { updateMultiselectText(checkboxSelector, textElemId); }));
         updateMultiselectText(checkboxSelector, textElemId);
     }
     setupDropdown('mes-dropdown-btn', 'mes-dropdown', '.mes-checkbox', 'mes-selected-text');
     setupDropdown('qualificador-dropdown-btn', 'qualificador-dropdown', '.qualificador-checkbox', 'qualificador-selected-text');
 
-    document.getElementById('filter-ano').addEventListener('change', fetchData);
-    document.getElementById('filter-cenario').addEventListener('change', fetchData);
+    // Remover listeners automáticos dos filtros
+    // document.getElementById('filter-ano').addEventListener('change', fetchData);
+    // document.getElementById('filter-cenario').addEventListener('change', fetchData);
+
+    // Adicionar listener ao botão aplicar
+    document.getElementById('btn-aplicar').addEventListener('click', fetchData);
 
     let evolucaoChart = null;
     let diffChart = null;
@@ -201,17 +211,36 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     async function fetchData() {
-        const ano = document.getElementById('filter-ano').value;
-        const cenario = document.getElementById('filter-cenario').value;
-        const meses = getSelected('.mes-checkbox').join(',');
-        const qualificadores = getSelected('.qualificador-checkbox').join(',');
-        const params = new URLSearchParams({ano, cenario, meses, qualificadores});
-        const response = await fetch(`{{ url_for('relatorio_previsao_realizado_data') }}?${params.toString()}`);
-        const json = await response.json();
-        renderTable(json.tabela);
-        renderEvolucaoChart(json.evolucao.labels, json.evolucao.previsao, json.evolucao.realizado);
-        renderDiffChart(json.diferenca.labels, json.diferenca.final, json.diferenca.inicial);
+        // Mostrar indicador de carregamento
+        const btnAplicar = document.getElementById('btn-aplicar');
+        const originalText = btnAplicar.innerHTML;
+        btnAplicar.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 inline mr-1 animate-spin"></i> Carregando...';
+        btnAplicar.disabled = true;
+
+        try {
+            const ano = document.getElementById('filter-ano').value;
+            const cenario = document.getElementById('filter-cenario').value;
+            const meses = getSelected('.mes-checkbox').join(',');
+            const qualificadores = getSelected('.qualificador-checkbox').join(',');
+            const params = new URLSearchParams({ano, cenario, meses, qualificadores});
+            const response = await fetch(`{{ url_for('relatorio_previsao_realizado_data') }}?${params.toString()}`);
+            const json = await response.json();
+            renderTable(json.tabela);
+            renderEvolucaoChart(json.evolucao.labels, json.evolucao.previsao, json.evolucao.realizado);
+            renderDiffChart(json.diferenca.labels, json.diferenca.final, json.diferenca.inicial);
+        } catch (error) {
+            console.error('Erro ao carregar dados:', error);
+            alert('Erro ao carregar dados. Tente novamente.');
+        } finally {
+            // Restaurar botão
+            btnAplicar.innerHTML = originalText;
+            btnAplicar.disabled = false;
+            // Re-inicializar ícones do Lucide
+            lucide.createIcons();
+        }
     }
+    
+    // Carregar dados iniciais
     fetchData();
 });
 </script>
