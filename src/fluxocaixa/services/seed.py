@@ -528,7 +528,11 @@ def seed_data(session=None):
 
     # Cenário de exemplo com ajustes mensais
     if not Cenario.query.first():
-        cenario_base = Cenario(nom_cenario='Base', dsc_cenario='Cenário inicial')
+        cenario_base = Cenario(
+            nom_cenario='Base',
+            dsc_cenario='Cenário inicial',
+            cod_pessoa_inclusao=1,
+        )
         session.add(cenario_base)
         session.flush()
         icms_qual = encontrar_qualificador('ICMS')

@@ -20,6 +20,9 @@ class Cenario(Base):
     dat_criacao = Column(Date, default=date.today, nullable=False)
     ind_status = Column(String(1), default='A', nullable=False)
     dat_inclusao = Column(Date, default=date.today, nullable=False)
+    cod_pessoa_inclusao = Column(Integer, nullable=False)
+    dat_alteracao = Column(Date)
+    cod_pessoa_alteracao = Column(Integer)
 
 class CenarioAjusteMensal(Base):
     __tablename__ = 'flc_cenario_ajuste_mensal'
