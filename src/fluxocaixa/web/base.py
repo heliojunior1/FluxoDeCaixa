@@ -27,6 +27,7 @@ from ..models import (
     Cenario,
     CenarioAjusteMensal,
 )
+from ..models import ContaBancaria
 from ..services.seed import seed_data
 
 
@@ -113,6 +114,7 @@ async def saldos(request: Request):
             'origens': origens,
             'qualificadores': qualificadores,
             'qualificadores_folha': qualificadores_folha,
+            'contas': ContaBancaria.query.filter_by(ind_status='A').all(),
         },
     )
 
@@ -127,6 +129,7 @@ async def add_lancamento_route(request: Request):
         val_lancamento=form.get('val_lancamento'),
         cod_tipo_lancamento=int(form.get('cod_tipo_lancamento')),
         cod_origem_lancamento=int(form.get('cod_origem_lancamento')),
+    seq_conta=int(form.get('seq_conta')) if form.get('seq_conta') else None,
     )
     create_lancamento(data)
     return RedirectResponse(request.url_for('saldos'), status_code=303)
@@ -155,6 +158,28 @@ async def import_lancamentos(file: UploadFile = File(...)):
         return RedirectResponse('/saldos', status_code=303)
 
     default_origem = OrigemLancamento.query.first()
+
+    def get_or_create_conta(banco, agencia, conta):
+        if not (banco and agencia and conta):
+            return None
+        banco = str(banco).strip()
+        agencia = str(agencia).strip()
+        conta = str(conta).strip()
+        c = (
+            ContaBancaria.query.filter_by(
+                cod_banco=banco, num_agencia=agencia, num_conta=conta
+            ).first()
+        )
+        if not c:
+            c = ContaBancaria(
+                cod_banco=banco,
+                num_agencia=agencia,
+                num_conta=conta,
+                dsc_conta=f"{banco}-{agencia}/{conta}",
+            )
+            db.session.add(c)
+            db.session.flush()
+        return c
     for item in rows:
         dat = item.get('Data') or item.get('dat_lancamento')
         desc = item.get('Descrição') or item.get('descricao')
@@ -183,6 +208,12 @@ async def import_lancamentos(file: UploadFile = File(...)):
 
         origem = OrigemLancamento.query.filter(func.lower(OrigemLancamento.dsc_origem_lancamento) == str(desc).lower()).first() or default_origem
 
+        # Detect optional bank fields
+        banco = item.get('Banco') or item.get('banco') or item.get('BANCO')
+        agencia = item.get('Agencia') or item.get('agencia') or item.get('AGENCIA')
+        conta = item.get('Conta') or item.get('conta') or item.get('CONTA')
+        conta_obj = get_or_create_conta(banco, agencia, conta)
+
         lanc = Lancamento(
             dat_lancamento=dat,
             seq_qualificador=qual.seq_qualificador,
@@ -191,6 +222,7 @@ async def import_lancamentos(file: UploadFile = File(...)):
             cod_origem_lancamento=origem.cod_origem_lancamento,
             ind_origem='A',
             cod_pessoa_inclusao=1,
+            seq_conta=(conta_obj.seq_conta if conta_obj else None),
         )
         db.session.add(lanc)
     db.session.commit()
@@ -234,6 +266,7 @@ async def edit_lancamento_route(request: Request, seq_lancamento: int):
         val_lancamento=form['val_lancamento'],
         cod_tipo_lancamento=int(form['cod_tipo_lancamento']),
         cod_origem_lancamento=int(form['cod_origem_lancamento']),
+    seq_conta=int(form.get('seq_conta')) if form.get('seq_conta') else None,
     )
     update_lancamento(seq_lancamento, data)
     return RedirectResponse(request.url_for('saldos'), status_code=303)

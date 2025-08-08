@@ -10,6 +10,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 
 from .base import Base
+from .conta_bancaria import ContaBancaria
 
 class Lancamento(Base):
     __tablename__ = 'flc_lancamento'
@@ -26,6 +27,10 @@ class Lancamento(Base):
     cod_pessoa_alteracao = Column(Integer)
     ind_status = Column(String(1), default='A', nullable=False)
 
+    # Conta bancária vinculada (opcional)
+    seq_conta = Column(Integer, ForeignKey('flc_conta_bancaria.seq_conta'), nullable=True)
+
     tipo = relationship('TipoLancamento')
     origem = relationship('OrigemLancamento')
     qualificador = relationship('Qualificador')
+    conta = relationship('ContaBancaria')

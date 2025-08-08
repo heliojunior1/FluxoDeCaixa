@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="flex items-center mb-6">
+  <a href="{{ url_for('relatorios') }}" class="text-gray-500 hover:text-gray-700">
+    <i data-lucide="arrow-left-circle" class="w-8 h-8"></i>
+  </a>
+  <h2 class="text-xl font-semibold text-gray-700 ml-4">Relatório de Saldos Diários por Conta</h2>
+</div>
+
+<form method="POST" class="bg-white p-4 rounded-lg shadow-sm mb-4 flex items-end gap-4">
+  <div>
+    <label class="block text-sm text-gray-600">Data de Referência</label>
+    <input type="date" name="data_ref" value="{{ (data_ref or '').strftime('%Y-%m-%d') if data_ref else '' }}"
+           class="form-input rounded-md border-gray-300 shadow-sm">
+  </div>
+  <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Filtrar</button>
+</form>
+
+<div class="bg-white p-4 rounded-lg shadow-sm">
+  <table class="min-w-full">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="p-2 text-left">Banco/Agência/Conta</th>
+        <th class="p-2 text-right">Saldo Anterior</th>
+        <th class="p-2 text-right">Entradas do Dia</th>
+        <th class="p-2 text-right">Saídas do Dia</th>
+        <th class="p-2 text-right">Saldo Final</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr class="border-b">
+        <td class="p-2">
+          {{ r.conta.cod_banco }} / {{ r.conta.num_agencia }} / {{ r.conta.num_conta }}
+          {% if r.conta.dsc_conta %}<div class="text-xs text-gray-500">{{ r.conta.dsc_conta }}</div>{% endif %}
+        </td>
+        <td class="p-2 text-right">{{ r.saldo_anterior|format_currency }}</td>
+        <td class="p-2 text-right text-green-600">{{ r.entradas_dia|format_currency }}</td>
+        <td class="p-2 text-right text-red-600">{{ r.saidas_dia|format_currency }}</td>
+        <td class="p-2 text-right font-semibold">{{ r.saldo_final|format_currency }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot class="bg-gray-50 font-semibold">
+      <tr>
+        <td class="p-2 text-right">Totais</td>
+        <td class="p-2 text-right">{{ totais.saldo_anterior|format_currency }}</td>
+        <td class="p-2 text-right">{{ totais.entradas|format_currency }}</td>
+        <td class="p-2 text-right">{{ totais.saidas|format_currency }}</td>
+        <td class="p-2 text-right">{{ totais.saldo_final|format_currency }}</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+<div class="bg-white p-6 rounded-lg shadow-sm mt-6">
+  <h3 class="text-lg font-semibold text-gray-700 mb-4">Evolução do Saldo (últimos 30 dias)</h3>
+  <div class="h-80">
+    <canvas id="evolucaoSaldoChart"></canvas>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+  const labels = JSON.parse('{{ evolucao_labels | tojson | safe }}');
+  const data = JSON.parse('{{ evolucao_saldos | tojson | safe }}');
+    const canvas = document.getElementById('evolucaoSaldoChart');
+    if (!canvas || !labels || !data) return;
+    const ctx = canvas.getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Saldo Total',
+          data: data,
+          borderColor: 'rgb(59, 130, 246)',
+          backgroundColor: 'rgba(59, 130, 246, 0.1)',
+          fill: true,
+          tension: 0.35,
+          pointRadius: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { type: 'time', time: { unit: 'day' } },
+          y: { ticks: { callback: (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v) } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+  });
+</script>
+{% endblock %}

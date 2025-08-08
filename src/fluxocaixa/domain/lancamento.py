@@ -9,6 +9,7 @@ class LancamentoCreate(BaseModel):
     cod_tipo_lancamento: int
     cod_origem_lancamento: int
     dsc_lancamento: str | None = None
+    seq_conta: int | None = None
 
 class LancamentoOut(LancamentoCreate):
     seq_lancamento: int

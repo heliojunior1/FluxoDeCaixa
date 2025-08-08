@@ -14,6 +14,7 @@ from ..models import (
     Conferencia,
 )
 from ..models.base import db
+from ..models import ContaBancaria
 
 def seed_data(session=None):
     """Populate the database with some basic records for testing."""
@@ -708,4 +709,21 @@ def seed_data(session=None):
             session.add(conferencia)
 
     session.commit()
+
+    # Seed government bank accounts if none exist
+    if not ContaBancaria.query.first():
+        contas = [
+            # Banco do Brasil - Conta Única do Tesouro
+            ContaBancaria(cod_banco='001', num_agencia='0001', num_conta='123456-7', dsc_conta='Conta Única - Tesouro'),
+            # Caixa Econômica Federal - Arrecadação ICMS
+            ContaBancaria(cod_banco='104', num_agencia='4567', num_conta='00012345-0', dsc_conta='Conta Judicial'),
+            # Bradesco - Convênios e Transferências
+            ContaBancaria(cod_banco='237', num_agencia='1234', num_conta='98765-4', dsc_conta='Conta Salario'),
+            # Itaú - Fundo de Participação dos Estados (FPE)
+            ContaBancaria(cod_banco='341', num_agencia='3200', num_conta='556677-8', dsc_conta='Conta de FPE '),
+            # Santander - Operações Financeiras
+            ContaBancaria(cod_banco='033', num_agencia='9999', num_conta='112233-4', dsc_conta='Contas de Recursos Próprios Vinculados'),
+        ]
+        session.add_all(contas)
+        session.commit()
 

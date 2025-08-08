@@ -28,6 +28,7 @@ class LancamentoRepository:
             cod_origem_lancamento=data.cod_origem_lancamento,
             ind_origem='M',
             cod_pessoa_inclusao=1,
+            seq_conta=data.seq_conta,
         )
         self.session.add(lanc)
         self.session.commit()
@@ -43,6 +44,7 @@ class LancamentoRepository:
         lanc.val_lancamento = data.val_lancamento
         lanc.cod_tipo_lancamento = data.cod_tipo_lancamento
         lanc.cod_origem_lancamento = data.cod_origem_lancamento
+        lanc.seq_conta = data.seq_conta
         self.session.commit()
         return lanc
 

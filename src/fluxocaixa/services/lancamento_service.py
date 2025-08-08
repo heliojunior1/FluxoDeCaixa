@@ -18,6 +18,7 @@ def create_lancamento(data: LancamentoCreate, repo: LancamentoRepository | None 
         cod_tipo_lancamento=lanc.cod_tipo_lancamento,
         cod_origem_lancamento=lanc.cod_origem_lancamento,
         dsc_lancamento=None,
+    seq_conta=lanc.seq_conta,
     )
 
 
@@ -32,6 +33,7 @@ def update_lancamento(ident: int, data: LancamentoCreate, repo: LancamentoReposi
         cod_tipo_lancamento=lanc.cod_tipo_lancamento,
         cod_origem_lancamento=lanc.cod_origem_lancamento,
         dsc_lancamento=None,
+    seq_conta=lanc.seq_conta,
     )
 
 
