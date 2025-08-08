@@ -547,40 +547,7 @@ async def delete_cenario(request: Request, id: int):
     return RedirectResponse(request.url_for('projecoes_cenarios'), status_code=303)
 
 
-@router.get('/extrato-bancario')
-@handle_exceptions
-async def extrato_bancario(request: Request):
-    lancamentos = db.session.query(
-        Lancamento.dat_lancamento.label('data'),
-        Qualificador.dsc_qualificador.label('descricao'),
-        Lancamento.val_lancamento.label('valor'),
-    ).join(Qualificador).all()
-    pagamentos = db.session.query(
-        Pagamento.dat_pagamento.label('data'),
-        Pagamento.dsc_pagamento.label('descricao'),
-        (-Pagamento.val_pagamento).label('valor'),
-    ).all()
-    movimentos = [
-        {
-            'data': lanc.data,
-            'descricao': lanc.descricao,
-            'valor': float(lanc.valor),
-        }
-        for lanc in lancamentos
-    ] + [
-        {
-            'data': pag.data,
-            'descricao': pag.descricao,
-            'valor': float(pag.valor),
-        }
-        for pag in pagamentos
-    ]
-    movimentos.sort(key=lambda x: x['data'])
-    saldo = 0
-    for m in movimentos:
-        saldo += m['valor']
-        m['saldo'] = saldo
-    return templates.TemplateResponse('extrato.html', {'request': request, 'movimentos': movimentos})
+## extrato_bancario module removed (replaced by contas/saldos report)
 
 
 @router.get('/qualificadores')
