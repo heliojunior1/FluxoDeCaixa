@@ -13,7 +13,7 @@ from ..models import (
     Qualificador,
 )
 from ..utils import format_currency
-from ..web.relatorios import MONTH_ABBR_PT
+from ..utils.constants import MONTH_ABBR_PT
 
 
 async def relatorio_previsao_realizado_data(request: Request):

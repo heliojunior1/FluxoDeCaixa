@@ -15,21 +15,22 @@ from ..services import (
     create_lancamento,
     update_lancamento,
     delete_lancamento,
+    import_lancamentos_service,
+    list_tipos_lancamento,
+    list_origens_lancamento,
+    list_contas_bancarias,
+    list_active_qualificadores,
+    list_conferencias,
 )
 from ..models import (
     db,
-    TipoLancamento,
-    OrigemLancamento,
-    Qualificador,
     Lancamento,
     Pagamento,
     Conferencia,
-    Cenario,
-    CenarioAjusteMensal,
+    Qualificador,
+    TipoLancamento,
 )
-from ..models import ContaBancaria
 from ..services.seed import seed_data
-
 
 @router.get('/')
 @handle_exceptions
@@ -71,39 +72,44 @@ async def recreate_db():
 @router.post('/saldos')
 @handle_exceptions
 async def saldos(request: Request):
-    lancamentos = list_lancamentos()
-    query = [lan for lan in lancamentos if lan.ind_status == 'A']
+    start_date = None
+    end_date = None
+    descricao = None
+    tipo = None
+    qualificador_folha = None
 
     if request.method == 'POST':
         form = await request.form()
-        start_date = form.get('start_date')
-        end_date = form.get('end_date')
+        sd_str = form.get('start_date')
+        ed_str = form.get('end_date')
         descricao = form.get('descricao')
-        tipo = form.get('tipo')
-        qualificador_folha = form.get('qualificador_folha')
+        tipo_str = form.get('tipo')
+        qual_str = form.get('qualificador_folha')
 
-        if start_date and end_date:
-            sd = date.fromisoformat(start_date)
-            ed = date.fromisoformat(end_date)
-            query = [lan for lan in query if sd <= lan.dat_lancamento <= ed]
-        if descricao:
-            query = [
-                lan
-                for lan in query
-                if descricao.lower() in lan.qualificador.dsc_qualificador.lower()
-            ]
-        if tipo:
-            query = [lan for lan in query if str(lan.cod_tipo_lancamento) == str(tipo)]
-        if qualificador_folha:
-            query = [lan for lan in query if str(lan.seq_qualificador) == str(qualificador_folha)]
+        if sd_str and ed_str:
+            start_date = date.fromisoformat(sd_str)
+            end_date = date.fromisoformat(ed_str)
+        
+        if tipo_str:
+            tipo = int(tipo_str)
+        
+        if qual_str:
+            qualificador_folha = int(qual_str)
 
-    # After filtering keep descending order by date
-    lancamentos = sorted(query, key=lambda item: item.dat_lancamento, reverse=True)
-    tipos = TipoLancamento.query.all()
-    origens = OrigemLancamento.query.all()
+    lancamentos = list_lancamentos(
+        start_date=start_date,
+        end_date=end_date,
+        descricao=descricao,
+        tipo=tipo,
+        qualificador_folha=qualificador_folha
+    )
+
+    tipos = list_tipos_lancamento()
+    origens = list_origens_lancamento()
     # Buscar apenas qualificadores folha (que não possuem filhos ativos)
-    qualificadores = Qualificador.query.filter_by(ind_status='A').order_by(Qualificador.num_qualificador).all()
+    qualificadores = list_active_qualificadores()
     qualificadores_folha = [q for q in qualificadores if q.is_folha()]
+    contas = list_contas_bancarias()
 
     return templates.TemplateResponse(
         'saldos.html',
@@ -114,22 +120,23 @@ async def saldos(request: Request):
             'origens': origens,
             'qualificadores': qualificadores,
             'qualificadores_folha': qualificadores_folha,
-            'contas': ContaBancaria.query.filter_by(ind_status='A').all(),
+            'contas': contas,
         },
     )
 
 
+
 @router.post('/saldos/add', name='add_lancamento')
 @handle_exceptions
-async def add_lancamento_route(request: Request):
+async def add_lancamento(request: Request):
     form = await request.form()
     data = LancamentoCreate(
-        dat_lancamento=date.fromisoformat(form.get('dat_lancamento')),
-        seq_qualificador=int(form.get('seq_qualificador')),
-        val_lancamento=form.get('val_lancamento'),
-        cod_tipo_lancamento=int(form.get('cod_tipo_lancamento')),
-        cod_origem_lancamento=int(form.get('cod_origem_lancamento')),
-    seq_conta=int(form.get('seq_conta')) if form.get('seq_conta') else None,
+        dat_lancamento=date.fromisoformat(form['dat_lancamento']),
+        seq_qualificador=int(form['seq_qualificador']),
+        val_lancamento=form['val_lancamento'],
+        cod_tipo_lancamento=int(form['cod_tipo_lancamento']),
+        cod_origem_lancamento=int(form['cod_origem_lancamento']),
+        seq_conta=int(form.get('seq_conta')) if form.get('seq_conta') else None,
     )
     create_lancamento(data)
     return RedirectResponse(request.url_for('saldos'), status_code=303)
@@ -141,92 +148,11 @@ async def import_lancamentos(file: UploadFile = File(...)):
     """Import multiple Lancamento records from a CSV or XLSX file."""
     filename = file.filename or ''
     content = await file.read()
-    rows: list[dict] = []
-    if filename.lower().endswith('.csv'):
-        text = content.decode('utf-8-sig')
-        reader = csv.DictReader(StringIO(text))
-        for row in reader:
-            rows.append({k.strip(): v for k, v in row.items()})
-    elif filename.lower().endswith(('.xlsx', '.xls')):
-        wb = openpyxl.load_workbook(BytesIO(content), data_only=True)
-        ws = wb.active
-        headers = [str(c).strip() if c else '' for c in next(ws.iter_rows(values_only=True))]
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            data = {headers[i]: row[i] if i < len(row) else None for i in range(len(headers))}
-            rows.append(data)
-    else:
-        return RedirectResponse('/saldos', status_code=303)
-
-    default_origem = OrigemLancamento.query.first()
-
-    def get_or_create_conta(banco, agencia, conta):
-        if not (banco and agencia and conta):
-            return None
-        banco = str(banco).strip()
-        agencia = str(agencia).strip()
-        conta = str(conta).strip()
-        c = (
-            ContaBancaria.query.filter_by(
-                cod_banco=banco, num_agencia=agencia, num_conta=conta
-            ).first()
-        )
-        if not c:
-            c = ContaBancaria(
-                cod_banco=banco,
-                num_agencia=agencia,
-                num_conta=conta,
-                dsc_conta=f"{banco}-{agencia}/{conta}",
-            )
-            db.session.add(c)
-            db.session.flush()
-        return c
-    for item in rows:
-        dat = item.get('Data') or item.get('dat_lancamento')
-        desc = item.get('Descrição') or item.get('descricao')
-        valor = item.get('Valor (R$)') or item.get('val_lancamento')
-        tipo_raw = item.get('Tipo') or item.get('cod_tipo_lancamento')
-
-        if not (dat and desc and valor and tipo_raw):
-            continue
-
-        if isinstance(dat, datetime):
-            dat = dat.date()
-        elif isinstance(dat, str):
-            dat = date.fromisoformat(dat)
-
-        qual = Qualificador.query.filter(func.lower(Qualificador.dsc_qualificador) == str(desc).lower()).first()
-        if not qual:
-            continue
-
-        if isinstance(tipo_raw, str) and not tipo_raw.isdigit():
-            tipo_obj = TipoLancamento.query.filter(func.lower(TipoLancamento.dsc_tipo_lancamento) == tipo_raw.lower()).first()
-            if not tipo_obj:
-                continue
-            tipo = tipo_obj.cod_tipo_lancamento
-        else:
-            tipo = int(tipo_raw)
-
-        origem = OrigemLancamento.query.filter(func.lower(OrigemLancamento.dsc_origem_lancamento) == str(desc).lower()).first() or default_origem
-
-        # Detect optional bank fields
-        banco = item.get('Banco') or item.get('banco') or item.get('BANCO')
-        agencia = item.get('Agencia') or item.get('agencia') or item.get('AGENCIA')
-        conta = item.get('Conta') or item.get('conta') or item.get('CONTA')
-        conta_obj = get_or_create_conta(banco, agencia, conta)
-
-        lanc = Lancamento(
-            dat_lancamento=dat,
-            seq_qualificador=qual.seq_qualificador,
-            val_lancamento=float(valor),
-            cod_tipo_lancamento=tipo,
-            cod_origem_lancamento=origem.cod_origem_lancamento,
-            ind_origem='A',
-            cod_pessoa_inclusao=1,
-            seq_conta=(conta_obj.seq_conta if conta_obj else None),
-        )
-        db.session.add(lanc)
-    db.session.commit()
+    
+    import_lancamentos_service(content, filename)
+    
     return RedirectResponse('/saldos', status_code=303)
+
 
 @router.get('/saldos/template-xlsx')
 @handle_exceptions
@@ -282,335 +208,8 @@ async def delete_lancamento_route(request: Request, seq_lancamento: int):
 @router.get('/conferencia')
 @handle_exceptions
 async def conferencia(request: Request):
-    registros = Conferencia.query.order_by(Conferencia.dat_conferencia.desc()).all()
+    registros = list_conferencias()
     return templates.TemplateResponse('conferencia.html', {'request': request, 'registros': registros})
-
-
-@router.get('/projecoes')
-@handle_exceptions
-async def projecoes_menu(request: Request):
-    """Menu principal das projeções."""
-    return templates.TemplateResponse('projecoes_menu.html', {'request': request})
-
-
-@router.get('/projecoes/cenarios')
-@handle_exceptions
-async def projecoes_cenarios(request: Request):
-    cenarios = Cenario.query.order_by(Cenario.nom_cenario).all()
-    qualificadores_receita = Qualificador.query.filter(
-        Qualificador.num_qualificador.startswith('1'),
-        Qualificador.ind_status == 'A',
-    ).order_by(Qualificador.num_qualificador).all()
-    qualificadores_despesa = Qualificador.query.filter(
-        Qualificador.num_qualificador.startswith('2'),
-        Qualificador.ind_status == 'A',
-    ).order_by(Qualificador.num_qualificador).all()
-    meses_nomes = {i: calendar.month_name[i].capitalize() for i in range(1, 13)}
-    return templates.TemplateResponse(
-        'cenarios.html',
-        {
-            'request': request,
-            'cenarios': cenarios,
-            'qualificadores_receita': qualificadores_receita,
-            'qualificadores_despesa': qualificadores_despesa,
-            'meses_nomes': meses_nomes,
-            'current_year': date.today().year,
-        },
-    )
-
-
-@router.get('/projecoes/modelos')
-@handle_exceptions
-async def projecoes_modelos(request: Request):
-    """Tela de projeções automáticas."""
-    return templates.TemplateResponse('projecoes_modelos.html', {'request': request})
-
-
-@router.get('/projecoes/get/{id}')
-@handle_exceptions
-async def get_cenario(id: int):
-    cenario = Cenario.query.get_or_404(id)
-    ajustes = CenarioAjusteMensal.query.filter_by(seq_cenario=id).all()
-    ajustes_dict = {
-        f"{a.ano}_{a.mes}_{a.seq_qualificador}": {
-            'ano': a.ano,
-            'mes': a.mes,
-            'cod_tipo_ajuste': a.cod_tipo_ajuste,
-            'val_ajuste': float(a.val_ajuste),
-        }
-        for a in ajustes
-    }
-    return {
-        'seq_cenario': cenario.seq_cenario,
-        'nom_cenario': cenario.nom_cenario,
-        'dsc_cenario': cenario.dsc_cenario,
-        'ajustes': ajustes_dict,
-    }
-
-
-@router.get('/projecoes/template-xlsx')
-@handle_exceptions
-async def download_cenario_template():
-    """Return an XLSX template with all qualificadores listed."""
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.append(["Nome", "Periodo", "Valor", "Percentual"])
-    qualificadores = (
-        Qualificador.query.filter(
-            Qualificador.ind_status == 'A',
-            Qualificador.cod_qualificador_pai.isnot(None),
-        )
-        .order_by(Qualificador.dsc_qualificador)
-        .all()
-    )
-    for i, q in enumerate(qualificadores, start=1):
-        month = (i % 12) + 1
-        valor = None
-        percentual = None
-        if q.dsc_qualificador.upper() == "ICMS":
-            month = 1
-            valor = 1200
-        elif i % 2 == 0:
-            valor = i * 100.0
-        else:
-            percentual = (i % 5 + 1) * 1.0
-        ws.append([
-            q.dsc_qualificador,
-            f"{month:02d}/2025",
-            valor,
-            percentual,
-        ])
-    stream = BytesIO()
-    wb.save(stream)
-    stream.seek(0)
-    headers = {
-        'Content-Disposition': 'attachment; filename="cenario_template.xlsx"'
-    }
-    return StreamingResponse(
-        stream,
-        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        headers=headers,
-    )
-
-
-@router.post('/projecoes/import-xlsx')
-@handle_exceptions
-async def import_cenario_xlsx(file: UploadFile = File(...)):
-    """Parse an uploaded XLSX file and return adjustments mapping."""
-    content = await file.read()
-    wb = openpyxl.load_workbook(BytesIO(content), data_only=True)
-    ws = wb.active
-    ajustes_dict = {}
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        nome, periodo, valor, percentual = (list(row) + [None, None, None, None])[:4]
-        if not nome or not periodo:
-            continue
-        qual = Qualificador.query.filter(
-            func.lower(Qualificador.dsc_qualificador) == str(nome).lower()
-        ).first()
-        if not qual:
-            continue
-        # Parse period to year and month
-        ano = None
-        mes = None
-        if hasattr(periodo, 'year') and hasattr(periodo, 'month'):
-            ano = periodo.year
-            mes = periodo.month
-        else:
-            pstr = str(periodo)
-            if '/' in pstr:
-                part = pstr.split('/')
-                if len(part) == 2:
-                    mes = int(part[0])
-                    ano = int(part[1])
-            elif '-' in pstr:
-                part = pstr.split('-')
-                if len(part) >= 2:
-                    ano = int(part[0])
-                    mes = int(part[1])
-        if not ano or not mes:
-            continue
-        if percentual is not None:
-            cod = 'P'
-            val = float(percentual)
-        elif valor is not None:
-            cod = 'V'
-            val = float(valor)
-        else:
-            continue
-        key = f"{ano}_{mes}_{qual.seq_qualificador}"
-        ajustes_dict[key] = {
-            'ano': int(ano),
-            'mes': int(mes),
-            'cod_tipo_ajuste': cod,
-            'val_ajuste': val,
-        }
-    return {'ajustes': ajustes_dict}
-
-
-@router.post('/projecoes/add')
-@handle_exceptions
-async def add_cenario(request: Request):
-    form = await request.form()
-    nom_cenario = form.get('nom_cenario')
-    dsc_cenario = form.get('dsc_cenario')
-    ano = int(form.get('ano'))
-
-    novo_cenario = Cenario(
-        nom_cenario=nom_cenario,
-        dsc_cenario=dsc_cenario,
-        ind_status='A',
-        cod_pessoa_inclusao=1,
-    )
-    db.session.add(novo_cenario)
-    db.session.flush()
-    for key, value in form.items():
-        if key.startswith('val_ajuste_') and value:
-            parts = key.split('_')
-            mes = parts[2]
-            seq_q = parts[3]
-            seq_qualificador = int(seq_q)
-            val_ajuste = float(value)
-            cod_tipo_ajuste = form.get(f'cod_tipo_ajuste_{mes}_{seq_qualificador}', 'P')
-            novo_ajuste = CenarioAjusteMensal(
-                seq_cenario=novo_cenario.seq_cenario,
-                seq_qualificador=seq_qualificador,
-                ano=ano,
-                mes=int(mes),
-                cod_tipo_ajuste=cod_tipo_ajuste,
-                val_ajuste=val_ajuste,
-            )
-            db.session.add(novo_ajuste)
-    db.session.commit()
-    return RedirectResponse(request.url_for('projecoes_cenarios'), status_code=303)
-
-
-@router.get('/projecoes/edit/{id}')
-@router.post('/projecoes/edit/{id}')
-@handle_exceptions
-async def edit_cenario(request: Request, id: int):
-    cenario = Cenario.query.get_or_404(id)
-    if request.method == 'POST':
-        form = await request.form()
-        cenario.nom_cenario = form['nom_cenario']
-        cenario.dsc_cenario = form.get('dsc_cenario')
-        ano = int(form.get('ano'))
-        cenario.dat_alteracao = date.today()
-        cenario.cod_pessoa_alteracao = 1
-        CenarioAjusteMensal.query.filter_by(seq_cenario=id, ano=ano).delete()
-        for key, value in form.items():
-            if key.startswith('val_ajuste_') and value:
-                parts = key.split('_')
-                mes = parts[2]
-                seq_q = parts[3]
-                seq_qualificador = int(seq_q)
-                cod_tipo_ajuste = form.get(f'cod_tipo_ajuste_{mes}_{seq_qualificador}')
-                novo_ajuste = CenarioAjusteMensal(
-                    seq_cenario=cenario.seq_cenario,
-                    seq_qualificador=seq_qualificador,
-                    ano=ano,
-                    mes=int(mes),
-                    cod_tipo_ajuste=cod_tipo_ajuste,
-                    val_ajuste=float(value),
-                )
-                db.session.add(novo_ajuste)
-        db.session.commit()
-        return RedirectResponse(request.url_for('projecoes_cenarios'), status_code=303)
-    qualificadores = Qualificador.query.filter(Qualificador.ind_status == 'A').order_by(Qualificador.num_qualificador).all()
-    ajustes = {(a.ano, a.mes, a.seq_qualificador): a for a in cenario.ajustes_mensais}
-    receitas = [q for q in qualificadores if q.tipo_fluxo == 'receita' and q.cod_qualificador_pai is not None]
-    despesas = [q for q in qualificadores if q.tipo_fluxo == 'despesa' and q.cod_qualificador_pai is not None]
-    ano = list(ajustes.keys())[0][0] if ajustes else date.today().year
-    meses_nomes = {i: calendar.month_name[i].capitalize() for i in range(1, 13)}
-    return templates.TemplateResponse(
-        'cenario_edit.html',
-        {
-            'request': request,
-            'cenario': cenario,
-            'ajustes': ajustes,
-            'receitas': receitas,
-            'despesas': despesas,
-            'ano': ano,
-            'meses_nomes': meses_nomes,
-        },
-    )
-
-
-@router.post('/projecoes/delete/{id}')
-@handle_exceptions
-async def delete_cenario(request: Request, id: int):
-    cenario = Cenario.query.get_or_404(id)
-    cenario.ind_status = 'I'
-    cenario.dat_alteracao = date.today()
-    cenario.cod_pessoa_alteracao = 1
-    db.session.commit()
-    return RedirectResponse(request.url_for('projecoes_cenarios'), status_code=303)
-
-
-## extrato_bancario module removed (replaced by contas/saldos report)
-
-
-@router.get('/qualificadores')
-@handle_exceptions
-async def qualificadores(request: Request):
-    qualificadores_raiz = Qualificador.query.filter_by(
-        ind_status='A', cod_qualificador_pai=None
-    ).order_by(Qualificador.num_qualificador).all()
-    todos_qualificadores = Qualificador.query.filter_by(ind_status='A').order_by(Qualificador.num_qualificador).all()
-    return templates.TemplateResponse(
-        'qualificadores.html',
-        {
-            'request': request,
-            'qualificadores': qualificadores_raiz,
-            'todos_qualificadores': todos_qualificadores,
-        },
-    )
-
-
-@router.post('/qualificadores/add')
-@handle_exceptions
-async def add_qualificador(request: Request):
-    form = await request.form()
-    num_qualif = form.get('num_qualificador')
-    desc = form.get('dsc_qualificador')
-    pai_id = form.get('cod_qualificador_pai')
-    if not pai_id or pai_id == '':
-        pai_id = None
-    else:
-        pai_id = int(pai_id)
-    qualificador = Qualificador(
-        num_qualificador=num_qualif,
-        dsc_qualificador=desc,
-        cod_qualificador_pai=pai_id,
-    )
-    db.session.add(qualificador)
-    db.session.commit()
-    return RedirectResponse(request.url_for('qualificadores'), status_code=303)
-
-
-@router.post('/qualificadores/edit/{seq_qualificador}')
-@handle_exceptions
-async def edit_qualificador(request: Request, seq_qualificador: int):
-    form = await request.form()
-    qualificador = Qualificador.query.get_or_404(seq_qualificador)
-    qualificador.num_qualificador = form['num_qualificador']
-    qualificador.dsc_qualificador = form['dsc_qualificador']
-    pai_id = form.get('cod_qualificador_pai')
-    if not pai_id or pai_id == '':
-        qualificador.cod_qualificador_pai = None
-    else:
-        qualificador.cod_qualificador_pai = int(pai_id)
-    db.session.commit()
-    return RedirectResponse(request.url_for('qualificadores'), status_code=303)
-
-
-@router.post('/qualificadores/delete/{seq_qualificador}')
-@handle_exceptions
-async def delete_qualificador(request: Request, seq_qualificador: int):
-    qualificador = Qualificador.query.get_or_404(seq_qualificador)
-    qualificador.ind_status = 'I'
-    db.session.commit()
-    return RedirectResponse(request.url_for('qualificadores'), status_code=303)
 
 
 @router.get('/debug')

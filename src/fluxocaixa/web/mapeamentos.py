@@ -8,6 +8,7 @@ from ..services import (
     create_mapeamento,
     update_mapeamento,
     delete_mapeamento,
+    get_mapeamento_by_id,
 )
 from ..repositories import MapeamentoRepository
 
@@ -17,14 +18,9 @@ from ..repositories import MapeamentoRepository
 async def mapeamentos(request: Request):
     status_filter = request.query_params.get('status', 'A')
     tipo_filter = request.query_params.get('tipo', '')
-    mapeamentos, qualificadores = list_mapeamentos()
-    if status_filter:
-        mapeamentos = [m for m in mapeamentos if m.ind_status == status_filter]
-    if tipo_filter:
-        if tipo_filter == 'receita':
-            mapeamentos = [m for m in mapeamentos if m.qualificador.num_qualificador.startswith('1')]
-        elif tipo_filter == 'despesa':
-            mapeamentos = [m for m in mapeamentos if m.qualificador.num_qualificador.startswith('2')]
+    
+    mapeamentos, qualificadores = list_mapeamentos(status=status_filter, tipo=tipo_filter)
+    
     return templates.TemplateResponse(
         'mapeamentos.html',
         {
@@ -73,8 +69,7 @@ async def delete_mapeamento_route(request: Request, seq_mapeamento: int):
 @router.get('/mapeamentos/get/{seq_mapeamento}')
 @handle_exceptions
 async def get_mapeamento(seq_mapeamento: int):
-    repo = MapeamentoRepository()
-    mapeamento = repo.get(seq_mapeamento)
+    mapeamento = get_mapeamento_by_id(seq_mapeamento)
     return {
         'seq_mapeamento': mapeamento.seq_mapeamento,
         'seq_qualificador': mapeamento.seq_qualificador,

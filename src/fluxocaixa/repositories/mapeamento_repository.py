@@ -48,3 +48,20 @@ class MapeamentoRepository:
         mapeamento = self.get(ident)
         mapeamento.ind_status = 'I'
         self.session.commit()
+
+    def list(self, status: str | None = None, tipo: str | None = None):
+        query = self.session.query(Mapeamento)
+
+        if status:
+            query = query.filter(Mapeamento.ind_status == status)
+
+        if tipo:
+            # Assuming 'receita' starts with '1' and 'despesa' starts with '2'
+            # This requires joining with Qualificador
+            query = query.join(Qualificador)
+            if tipo == 'receita':
+                query = query.filter(Qualificador.num_qualificador.like('1%'))
+            elif tipo == 'despesa':
+                query = query.filter(Qualificador.num_qualificador.like('2%'))
+
+        return query.order_by(Mapeamento.dat_inclusao.desc()).all()

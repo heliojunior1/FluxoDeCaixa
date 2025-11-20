@@ -20,3 +20,8 @@ def update_alerta(ident: int, data: AlertaUpdate, repo: AlertaRepository | None 
 def delete_alerta(ident: int, repo: AlertaRepository | None = None):
     repo = repo or AlertaRepository()
     repo.soft_delete(ident)
+
+
+def get_alerta_by_id(ident: int, repo: AlertaRepository | None = None):
+    repo = repo or AlertaRepository()
+    return repo.get(ident)

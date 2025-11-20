@@ -8,6 +8,7 @@ from ..services import (
     create_alerta,
     update_alerta,
     delete_alerta,
+    get_alerta_by_id,
 )
 from ..repositories import AlertaRepository
 
@@ -44,9 +45,8 @@ async def criar_alerta(request: Request):
 @router.get('/alertas/edit/{seq_alerta}')
 @handle_exceptions
 async def edit_alerta(request: Request, seq_alerta: int):
-    repo = AlertaRepository()
-    alerta = repo.get(seq_alerta)
-    _, qualificadores = list_alertas(repo)
+    alerta = get_alerta_by_id(seq_alerta)
+    _, qualificadores = list_alertas()
     return templates.TemplateResponse(
         'alertas_edit.html',
         {'request': request, 'alerta': alerta, 'qualificadores': qualificadores},
