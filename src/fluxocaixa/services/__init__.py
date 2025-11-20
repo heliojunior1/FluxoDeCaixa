@@ -46,7 +46,7 @@ from .qualificador_service import (
     update_qualificador,
     delete_qualificador as delete_qualificador_service,
 )
-from .relatorio_service import (
+from .relatorio import (
     get_available_years,
     get_resumo_data,
     get_indicadores_data,

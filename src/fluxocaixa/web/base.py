@@ -216,6 +216,11 @@ async def conferencia(request: Request):
 @router.get('/debug')
 @handle_exceptions
 async def debug():
+    # TODO: This debug endpoint contains direct database access and should be:
+    # 1. Moved to a dedicated debug/admin router
+    # 2. Protected with authentication/authorization
+    # 3. Removed in production environment
+    # For now, keeping as-is for backwards compatibility
     output = []
     tipos = TipoLancamento.query.all()
     output.append('<h2>Tipos de Lançamento:</h2>')
@@ -252,3 +257,4 @@ async def debug():
     for lanc in sample_lanc:
         output.append(f'<p>ID: {lanc.seq_lancamento}, Data: {lanc.dat_lancamento}, Valor: {lanc.val_lancamento}, Qualif: {lanc.seq_qualificador}, Tipo: {lanc.cod_tipo_lancamento}</p>')
     return '<br>'.join(output)
+
