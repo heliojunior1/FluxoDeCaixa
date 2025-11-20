@@ -143,61 +143,67 @@ def import_lancamentos_service(
         contas_map[key] = c
         return c
 
-    for i, item in enumerate(rows, start=2):
-        dat = item.get('Data') or item.get('dat_lancamento')
-        desc = item.get('Descrição') or item.get('descricao')
-        valor = item.get('Valor (R$)') or item.get('val_lancamento')
-        tipo_raw = item.get('Tipo') or item.get('cod_tipo_lancamento')
 
-        if not (dat and desc and valor and tipo_raw):
-            errors.append(f"Linha {i}: Dados incompletos (Data, Descrição, Valor ou Tipo faltando)")
-            continue
+    try:
+        for i, item in enumerate(rows, start=2):
+            dat = item.get('Data') or item.get('dat_lancamento')
+            desc = item.get('Descrição') or item.get('descricao')
+            valor = item.get('Valor (R$)') or item.get('val_lancamento')
+            tipo_raw = item.get('Tipo') or item.get('cod_tipo_lancamento')
 
-        if isinstance(dat, datetime):
-            dat = dat.date()
-        elif isinstance(dat, str):
-            try:
-                dat = date.fromisoformat(dat)
-            except ValueError:
-                errors.append(f"Linha {i}: Data inválida '{dat}'")
+            if not (dat and desc and valor and tipo_raw):
+                errors.append(f"Linha {i}: Dados incompletos (Data, Descrição, Valor ou Tipo faltando)")
                 continue
 
-        qual = qualificadores_map.get(str(desc).lower())
-        if not qual:
-            errors.append(f"Linha {i}: Qualificador não encontrado para '{desc}'")
-            continue
+            if isinstance(dat, datetime):
+                dat = dat.date()
+            elif isinstance(dat, str):
+                try:
+                    dat = date.fromisoformat(dat)
+                except ValueError:
+                    errors.append(f"Linha {i}: Data inválida '{dat}'")
+                    continue
 
-        if isinstance(tipo_raw, str) and not tipo_raw.isdigit():
-            tipo = tipos_map.get(tipo_raw.lower())
-            if not tipo:
-                errors.append(f"Linha {i}: Tipo inválido '{tipo_raw}'")
+            qual = qualificadores_map.get(str(desc).lower())
+            if not qual:
+                errors.append(f"Linha {i}: Qualificador não encontrado para '{desc}'")
                 continue
-        else:
-            tipo = int(tipo_raw)
 
-        origem_cod = origens_map.get(str(desc).lower(), default_origem_cod)
-        if not origem_cod:
-            errors.append(f"Linha {i}: Origem não encontrada para '{desc}'")
-            continue
+            if isinstance(tipo_raw, str) and not tipo_raw.isdigit():
+                tipo = tipos_map.get(tipo_raw.lower())
+                if not tipo:
+                    errors.append(f"Linha {i}: Tipo inválido '{tipo_raw}'")
+                    continue
+            else:
+                tipo = int(tipo_raw)
 
-        # Detect optional bank fields
-        banco = item.get('Banco') or item.get('banco') or item.get('BANCO')
-        agencia = item.get('Agencia') or item.get('agencia') or item.get('AGENCIA')
-        conta = item.get('Conta') or item.get('conta') or item.get('CONTA')
-        conta_obj = get_or_create_conta(banco, agencia, conta)
+            origem_cod = origens_map.get(str(desc).lower(), default_origem_cod)
+            if not origem_cod:
+                errors.append(f"Linha {i}: Origem não encontrada para '{desc}'")
+                continue
 
-        lanc = Lancamento(
-            dat_lancamento=dat,
-            seq_qualificador=qual.seq_qualificador,
-            val_lancamento=float(valor),
-            cod_tipo_lancamento=tipo,
-            cod_origem_lancamento=origem_cod,
-            ind_origem='A',
-            cod_pessoa_inclusao=1,
-            seq_conta=(conta_obj.seq_conta if conta_obj else None),
-        )
-        session.add(lanc)
-        count += 1
-    
-    session.commit()
-    return {"sucesso": count, "erros": errors}
+            # Detect optional bank fields
+            banco = item.get('Banco') or item.get('banco') or item.get('BANCO')
+            agencia = item.get('Agencia') or item.get('agencia') or item.get('AGENCIA')
+            conta = item.get('Conta') or item.get('conta') or item.get('CONTA')
+            conta_obj = get_or_create_conta(banco, agencia, conta)
+
+            lanc = Lancamento(
+                dat_lancamento=dat,
+                seq_qualificador=qual.seq_qualificador,
+                val_lancamento=float(valor),
+                cod_tipo_lancamento=tipo,
+                cod_origem_lancamento=origem_cod,
+                ind_origem='A',
+                cod_pessoa_inclusao=1,
+                seq_conta=(conta_obj.seq_conta if conta_obj else None),
+            )
+            session.add(lanc)
+            count += 1
+        
+        session.commit()
+        return {"sucesso": count, "erros": errors}
+    except Exception as e:
+        session.rollback()
+        errors.append(f"Erro fatal durante importação: {str(e)}")
+        return {"sucesso": 0, "erros": errors}

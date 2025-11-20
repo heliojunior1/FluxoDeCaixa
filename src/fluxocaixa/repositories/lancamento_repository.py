@@ -12,13 +12,6 @@ class LancamentoRepository:
     def __init__(self, session: Session | None = None):
         self.session = session or db.session
 
-    def list(self):
-        return (
-            self.session.query(Lancamento)
-            .filter_by(ind_status='A')
-            .order_by(Lancamento.dat_lancamento.desc())
-            .all()
-        )
 
     def list(
         self,
