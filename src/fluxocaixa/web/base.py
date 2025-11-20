@@ -149,7 +149,8 @@ async def import_lancamentos(file: UploadFile = File(...)):
     filename = file.filename or ''
     content = await file.read()
     
-    import_lancamentos_service(content, filename)
+    result = import_lancamentos_service(content, filename)
+    print(f"Relatório de Importação: {result}")
     
     return RedirectResponse('/saldos', status_code=303)
 
@@ -173,7 +174,7 @@ async def download_lancamento_template():
     wb.save(stream)
     stream.seek(0)
     headers = {
-        'Content-Disposition': 'attachment; filename="lancamentos_template.xlsx"'
+        'Content-Disposition': 'attachment; filename=lancamentos_template.xlsx'
     }
     return StreamingResponse(
         stream,

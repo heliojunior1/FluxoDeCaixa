@@ -83,7 +83,7 @@ def delete_lancamento(ident: int, repo: LancamentoRepository | None = None):
 
 def import_lancamentos_service(
     content: bytes, filename: str, session: Session | None = None
-) -> int:
+) -> dict:
     session = session or db.session
     rows: list[dict] = []
     
@@ -100,10 +100,26 @@ def import_lancamentos_service(
             data = {headers[i]: row[i] if i < len(row) else None for i in range(len(headers))}
             rows.append(data)
     else:
-        return 0
+        return {"sucesso": 0, "erros": ["Formato de arquivo não suportado"]}
 
+    # Pre-fetch data to avoid N+1 queries
+    all_qualificadores = session.query(Qualificador).all()
+    qualificadores_map = {q.dsc_qualificador.lower(): q for q in all_qualificadores}
+
+    all_tipos = session.query(TipoLancamento).all()
+    tipos_map = {t.dsc_tipo_lancamento.lower(): t.cod_tipo_lancamento for t in all_tipos}
+
+    all_origens = session.query(OrigemLancamento).all()
+    origens_map = {o.dsc_origem_lancamento.lower(): o.cod_origem_lancamento for o in all_origens}
+    
     default_origem = session.query(OrigemLancamento).first()
+    default_origem_cod = default_origem.cod_origem_lancamento if default_origem else None
+
+    all_contas = session.query(ContaBancaria).all()
+    contas_map = {(c.cod_banco, c.num_agencia, c.num_conta): c for c in all_contas}
+
     count = 0
+    errors = []
 
     def get_or_create_conta(banco, agencia, conta):
         if not (banco and agencia and conta):
@@ -111,29 +127,30 @@ def import_lancamentos_service(
         banco = str(banco).strip()
         agencia = str(agencia).strip()
         conta = str(conta).strip()
-        c = (
-            session.query(ContaBancaria).filter_by(
-                cod_banco=banco, num_agencia=agencia, num_conta=conta
-            ).first()
+        
+        key = (banco, agencia, conta)
+        if key in contas_map:
+            return contas_map[key]
+            
+        c = ContaBancaria(
+            cod_banco=banco,
+            num_agencia=agencia,
+            num_conta=conta,
+            dsc_conta=f"{banco}-{agencia}/{conta}",
         )
-        if not c:
-            c = ContaBancaria(
-                cod_banco=banco,
-                num_agencia=agencia,
-                num_conta=conta,
-                dsc_conta=f"{banco}-{agencia}/{conta}",
-            )
-            session.add(c)
-            session.flush()
+        session.add(c)
+        session.flush()
+        contas_map[key] = c
         return c
 
-    for item in rows:
+    for i, item in enumerate(rows, start=2):
         dat = item.get('Data') or item.get('dat_lancamento')
         desc = item.get('Descrição') or item.get('descricao')
         valor = item.get('Valor (R$)') or item.get('val_lancamento')
         tipo_raw = item.get('Tipo') or item.get('cod_tipo_lancamento')
 
         if not (dat and desc and valor and tipo_raw):
+            errors.append(f"Linha {i}: Dados incompletos (Data, Descrição, Valor ou Tipo faltando)")
             continue
 
         if isinstance(dat, datetime):
@@ -142,21 +159,26 @@ def import_lancamentos_service(
             try:
                 dat = date.fromisoformat(dat)
             except ValueError:
+                errors.append(f"Linha {i}: Data inválida '{dat}'")
                 continue
 
-        qual = session.query(Qualificador).filter(func.lower(Qualificador.dsc_qualificador) == str(desc).lower()).first()
+        qual = qualificadores_map.get(str(desc).lower())
         if not qual:
+            errors.append(f"Linha {i}: Qualificador não encontrado para '{desc}'")
             continue
 
         if isinstance(tipo_raw, str) and not tipo_raw.isdigit():
-            tipo_obj = session.query(TipoLancamento).filter(func.lower(TipoLancamento.dsc_tipo_lancamento) == tipo_raw.lower()).first()
-            if not tipo_obj:
+            tipo = tipos_map.get(tipo_raw.lower())
+            if not tipo:
+                errors.append(f"Linha {i}: Tipo inválido '{tipo_raw}'")
                 continue
-            tipo = tipo_obj.cod_tipo_lancamento
         else:
             tipo = int(tipo_raw)
 
-        origem = session.query(OrigemLancamento).filter(func.lower(OrigemLancamento.dsc_origem_lancamento) == str(desc).lower()).first() or default_origem
+        origem_cod = origens_map.get(str(desc).lower(), default_origem_cod)
+        if not origem_cod:
+            errors.append(f"Linha {i}: Origem não encontrada para '{desc}'")
+            continue
 
         # Detect optional bank fields
         banco = item.get('Banco') or item.get('banco') or item.get('BANCO')
@@ -169,7 +191,7 @@ def import_lancamentos_service(
             seq_qualificador=qual.seq_qualificador,
             val_lancamento=float(valor),
             cod_tipo_lancamento=tipo,
-            cod_origem_lancamento=origem.cod_origem_lancamento,
+            cod_origem_lancamento=origem_cod,
             ind_origem='A',
             cod_pessoa_inclusao=1,
             seq_conta=(conta_obj.seq_conta if conta_obj else None),
@@ -178,4 +200,4 @@ def import_lancamentos_service(
         count += 1
     
     session.commit()
-    return count
+    return {"sucesso": count, "erros": errors}
