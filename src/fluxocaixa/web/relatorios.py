@@ -54,8 +54,18 @@ async def relatorio_previsao_realizado(request: Request):
 @handle_exceptions
 
 async def relatorio_previsao_realizado_data(request: Request):
-    from ..services.previsao_service import relatorio_previsao_realizado_data as service_fn
-    return await service_fn(request)
+    from ..services.previsao_service import get_previsao_realizado_data
+    
+    params = request.query_params
+    ano = int(params.get("ano", date.today().year))
+    cenario_id = int(params.get("cenario")) if params.get("cenario") else None
+    meses = [int(m) for m in params.get("meses", "").split(",") if m]
+    qualificadores_ids = [
+        int(q) for q in params.get("qualificadores", "").split(",") if q
+    ]
+    
+    data = get_previsao_realizado_data(ano, cenario_id, meses, qualificadores_ids)
+    return JSONResponse(data)
 @router.get("/relatorios/resumo")
 @router.post("/relatorios/resumo")
 @handle_exceptions

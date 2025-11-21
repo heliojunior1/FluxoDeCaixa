@@ -12,6 +12,11 @@ def get_root_qualificadores():
 def get_qualificador_by_id(qualificador_id: int):
     return Qualificador.query.get(qualificador_id)
 
+def get_qualificadores_by_ids(ids: list[int]):
+    return Qualificador.query.filter(
+        Qualificador.seq_qualificador.in_(ids)
+    ).all()
+
 def get_qualificador_by_name(name: str):
     from sqlalchemy import func
     return Qualificador.query.filter(func.lower(Qualificador.dsc_qualificador) == name.lower()).first()

@@ -1,28 +1,18 @@
 from datetime import date
 
-from fastapi import Request
-from fastapi.responses import JSONResponse
-from sqlalchemy import extract
-
-from ..models import (
-    Cenario,
-    CenarioAjusteMensal,
-    Qualificador,
-)
 from ..repositories.lancamento_repository import LancamentoRepository
 from ..repositories.tipo_lancamento_repository import TipoLancamentoRepository
+from ..repositories import cenario_repository, qualificador_repository
 from ..utils import format_currency
 from ..utils.constants import MONTH_ABBR_PT
 
 
-async def relatorio_previsao_realizado_data(request: Request):
-    params = request.query_params
-    ano = int(params.get("ano", date.today().year))
-    cenario_id = int(params.get("cenario")) if params.get("cenario") else None
-    meses = [int(m) for m in params.get("meses", "").split(",") if m]
-    qualificadores_ids = [
-        int(q) for q in params.get("qualificadores", "").split(",") if q
-    ]
+def get_previsao_realizado_data(
+    ano: int,
+    cenario_id: int | None,
+    meses: list[int],
+    qualificadores_ids: list[int]
+) -> dict:
     if not meses:
         meses = list(range(1, 13))
 
@@ -32,9 +22,7 @@ async def relatorio_previsao_realizado_data(request: Request):
     cod_entrada = tipo_entrada.cod_tipo_lancamento if tipo_entrada else None
     cod_saida = tipo_saida.cod_tipo_lancamento if tipo_saida else None
 
-    qs = Qualificador.query.filter(
-        Qualificador.seq_qualificador.in_(qualificadores_ids)
-    ).all()
+    qs = qualificador_repository.get_qualificadores_by_ids(qualificadores_ids)
     qual_tipo_map = {
         q.seq_qualificador: (cod_saida if q.tipo_fluxo == "despesa" else cod_entrada)
         for q in qs
@@ -60,20 +48,11 @@ async def relatorio_previsao_realizado_data(request: Request):
         ): float(row.total or 0)
         for row in lanc_rows
     }
-    lanc_map = {
-        (
-            row.seq_qualificador,
-            int(row.ano),
-            int(row.mes),
-            row.cod_tipo_lancamento,
-        ): float(row.total or 0)
-        for row in lanc_rows
-    }
 
     def lanc_val(q_id, ano_ref, mes, cod_tipo):
         return lanc_map.get((q_id, ano_ref, mes, cod_tipo), 0.0)
 
-    cenario_base = Cenario.query.get(cenario_id) if cenario_id else None
+    cenario_base = cenario_repository.get_cenario_by_id(cenario_id) if cenario_id else None
     cenario_cache = {}
 
     def get_cenario_ids_for_year(year):
@@ -81,15 +60,11 @@ async def relatorio_previsao_realizado_data(request: Request):
             return None, None
         if year in cenario_cache:
             return cenario_cache[year]
-        cenarios_year = (
-            Cenario.query
-            .filter(
-                Cenario.nom_cenario == cenario_base.nom_cenario,
-                extract("year", Cenario.dat_criacao) == year,
-            )
-            .order_by(Cenario.dat_criacao)
-            .all()
+        
+        cenarios_year = cenario_repository.get_cenarios_by_name_and_year(
+            cenario_base.nom_cenario, year
         )
+
         if not cenarios_year:
             cenario_cache[year] = (None, None)
         else:
@@ -108,15 +83,13 @@ async def relatorio_previsao_realizado_data(request: Request):
         for cid in pair
         if cid is not None
     }
-    ajustes = (
-        CenarioAjusteMensal.query.filter(
-            CenarioAjusteMensal.seq_cenario.in_(cenario_ids_needed),
-            CenarioAjusteMensal.ano.in_(anos_range),
-            CenarioAjusteMensal.seq_qualificador.in_(qualificadores_ids),
-        ).all()
-        if cenario_ids_needed
-        else []
-    )
+    
+    ajustes = []
+    if cenario_ids_needed:
+        ajustes = cenario_repository.get_ajustes_by_filters(
+            list(cenario_ids_needed), anos_range, qualificadores_ids
+        )
+
     ajuste_map = {
         (a.seq_cenario, a.seq_qualificador, a.ano, a.mes): a for a in ajustes
     }
@@ -132,7 +105,7 @@ async def relatorio_previsao_realizado_data(request: Request):
         return base
 
     def real_val(q_id, ano_ref, meses_ref):
-        cod_tipo = qual_tipo_map[q_id]
+        cod_tipo = qual_tipo_map.get(q_id)
         return sum(lanc_val(q_id, ano_ref, m, cod_tipo) for m in meses_ref)
 
     tabela = []
@@ -203,19 +176,16 @@ async def relatorio_previsao_realizado_data(request: Request):
         diff_final.append(round((real_year - final_sum) / 1_000_000_000, 3))
         diff_inicial.append(round((real_year - inicial_sum) / 1_000_000_000, 3))
 
-    return JSONResponse(
-        {
-            "tabela": tabela,
-            "evolucao": {
-                "labels": labels,
-                "previsao": previsao_series,
-                "realizado": realizado_series,
-            },
-            "diferenca": {
-                "labels": anos_range,
-                "final": diff_final,
-                "inicial": diff_inicial,
-            },
-        }
-    )
-
+    return {
+        "tabela": tabela,
+        "evolucao": {
+            "labels": labels,
+            "previsao": previsao_series,
+            "realizado": realizado_series,
+        },
+        "diferenca": {
+            "labels": anos_range,
+            "final": diff_final,
+            "inicial": diff_inicial,
+        },
+    }
