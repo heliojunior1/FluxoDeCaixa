@@ -12,6 +12,7 @@ from ..models import (
     Cenario,
     CenarioAjusteMensal,
     Conferencia,
+    AlertaGerado,
 )
 from ..models.base import db
 from ..models import ContaBancaria
@@ -726,4 +727,40 @@ def seed_data(session=None):
         ]
         session.add_all(contas)
         session.commit()
+
+    # Seed alertas gerados (para demonstração do sistema de alertas)
+    if not AlertaGerado.query.first():
+        alertas_demo = [
+            # Alerta CRITICAL - Despesa de Pessoal
+            AlertaGerado(
+                dat_processamento=None,  # NULL = sempre visível
+                dat_referencia=date.today(),
+                mensagem='Limite prudencial (46.2%) atingido. Novas contratações requerem atenção do TCE.',
+                categoria='DESPESA_PESSOAL',
+                severidade='CRITICAL',
+                valor_obtido=46.2,
+                valor_esperado=46.0,
+            ),
+            # Alerta WARNING - Receita
+            AlertaGerado(
+                dat_processamento=None,  # NULL = sempre visível
+                dat_referencia=date(2025, 12, 1),
+                mensagem='Queda de arrecadação PPE prevista para Dezembro (-2%) devido à desaceleração econômica.',
+                categoria='RECEITA',
+                severidade='WARNING',
+                valor_obtido=-2.0,
+            ),
+            # Alerta INFO - Saldo
+            AlertaGerado(
+                dat_processamento=None,  # NULL = sempre visível
+                dat_referencia=date.today(),
+                mensagem='Superávit orçamentário de R$ 1.2M identificado. Considere investimentos estratégicos.',
+                categoria='SALDO',
+                severidade='INFO',
+                valor_obtido=1200000.0,
+            ),
+        ]
+        session.add_all(alertas_demo)
+        session.commit()
+
 

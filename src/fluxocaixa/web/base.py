@@ -21,6 +21,7 @@ from ..services import (
     list_contas_bancarias,
     list_active_qualificadores,
     list_conferencias,
+    list_alertas_ativos,
 )
 from ..models import db
 from ..services.seed import seed_data
@@ -28,8 +29,12 @@ from ..services.seed import seed_data
 @router.get('/')
 @handle_exceptions
 async def index(request: Request):
-    """Página principal do sistema - apenas menu de navegação"""
-    return templates.TemplateResponse('index.html', {'request': request})
+    """Página principal do sistema - menu de navigação e alertas de gestão"""
+    alertas = list_alertas_ativos()
+    return templates.TemplateResponse('index.html', {
+        'request': request,
+        'alertas': alertas
+    })
 
 
 @router.get('/init-db')

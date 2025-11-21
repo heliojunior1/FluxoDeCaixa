@@ -9,6 +9,8 @@ from ..services import (
     update_alerta,
     delete_alerta,
     get_alerta_by_id,
+    marcar_alerta_lido,
+    marcar_alerta_resolvido,
 )
 from ..repositories import AlertaRepository
 
@@ -71,9 +73,25 @@ async def update_alerta_route(request: Request, seq_alerta: int):
     return RedirectResponse(request.url_for('alertas'), status_code=303)
 
 
-@router.post('/alertas/delete/{seq_alerta}', name='delete_alerta')
+@router.post('/alertas/{seq_alerta}/deletar')
 @handle_exceptions
-async def delete_alerta_route(request: Request, seq_alerta: int):
+async def deletar_alerta(request: Request, seq_alerta: int):
     delete_alerta(seq_alerta)
     return RedirectResponse(request.url_for('alertas'), status_code=303)
 
+
+# Endpoints para gerenciar alertas gerados (status de leitura/resolução)
+@router.post('/alertas/gerados/{seq}/marcar-lido')
+@handle_exceptions
+async def marcar_alerta_lido_route(request: Request, seq: int):
+    """Marca um alerta gerado como lido."""
+    marcar_alerta_lido(seq)
+    return RedirectResponse(request.url_for('index'), status_code=303)
+
+
+@router.post('/alertas/gerados/{seq}/marcar-resolvido')
+@handle_exceptions
+async def marcar_alerta_resolvido_route(request: Request, seq: int):
+    """Marca um alerta gerado como resolvido."""
+    marcar_alerta_resolvido(seq)
+    return RedirectResponse(request.url_for('index'), status_code=303)

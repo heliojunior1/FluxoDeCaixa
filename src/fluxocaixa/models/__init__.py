@@ -9,6 +9,7 @@ from .conferencia import Conferencia
 from .mapeamento import Mapeamento
 from .cenario import Cenario, CenarioAjusteMensal
 from .alerta import Alerta
+from .alerta_gerado import AlertaGerado
 from .conta_bancaria import ContaBancaria
 
 __all__ = [
@@ -26,5 +27,6 @@ __all__ = [
     'Cenario',
     'CenarioAjusteMensal',
     'Alerta',
+    'AlertaGerado',
     'ContaBancaria',
 ]

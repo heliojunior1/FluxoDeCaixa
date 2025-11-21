@@ -17,6 +17,9 @@ from .alerta_service import (
     update_alerta,
     delete_alerta,
     get_alerta_by_id,
+    list_alertas_ativos,
+    marcar_alerta_lido,
+    marcar_alerta_resolvido,
 )
 from .mapeamento_service import (
     list_mapeamentos,
@@ -74,6 +77,9 @@ __all__ = [
     'update_alerta',
     'delete_alerta',
     'get_alerta_by_id',
+    'list_alertas_ativos',
+    'marcar_alerta_lido',
+    'marcar_alerta_resolvido',
     'list_mapeamentos',
     'create_mapeamento',
     'update_mapeamento',

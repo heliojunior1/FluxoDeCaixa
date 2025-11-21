@@ -6,6 +6,7 @@ from .tipo_lancamento_repository import TipoLancamentoRepository
 from .origem_lancamento_repository import OrigemLancamentoRepository
 from .conta_bancaria_repository import ContaBancariaRepository
 from .conferencia_repository import ConferenciaRepository
+from .alerta_gerado_repository import AlertaGeradoRepository
 
 __all__ = [
     'PagamentoRepository',
@@ -16,4 +17,5 @@ __all__ = [
     'OrigemLancamentoRepository',
     'ContaBancariaRepository',
     'ConferenciaRepository',
+    'AlertaGeradoRepository',
 ]
