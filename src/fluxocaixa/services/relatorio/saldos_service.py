@@ -1,8 +1,8 @@
 """Saldos diários (Daily balance) service."""
 from datetime import date, timedelta
-from sqlalchemy import func
 
-from ...models import db, Lancamento, ContaBancaria
+from ...models import ContaBancaria
+from ...repositories.lancamento_repository import LancamentoRepository
 
 
 def get_saldos_diarios_data(data_ref: date) -> dict:
@@ -14,42 +14,25 @@ def get_saldos_diarios_data(data_ref: date) -> dict:
     Returns:
         Dictionary with daily balances per account, totals, and 30-day evolution chart
     """
+    lancamento_repo = LancamentoRepository()
     contas = ContaBancaria.query.filter_by(ind_status="A").all()
     rows = []
     total_saldo_anterior = total_entradas = total_saidas = total_saldo_final = 0.0
 
     for c in contas:
-        saldo_ate_ontem = (
-            db.session.query(func.sum(Lancamento.val_lancamento))
-            .filter(
-                Lancamento.seq_conta == c.seq_conta,
-                Lancamento.dat_lancamento < data_ref,
-                Lancamento.ind_status == "A",
-            )
-            .scalar()
-            or 0
+        saldo_ate_ontem = lancamento_repo.get_sum_by_account_before_date(
+            seq_conta=c.seq_conta,
+            before_date=data_ref
         )
-        entradas_dia = (
-            db.session.query(func.sum(Lancamento.val_lancamento))
-            .filter(
-                Lancamento.seq_conta == c.seq_conta,
-                Lancamento.dat_lancamento == data_ref,
-                Lancamento.val_lancamento > 0,
-                Lancamento.ind_status == "A",
-            )
-            .scalar()
-            or 0
+        
+        entradas_dia = lancamento_repo.get_sum_by_account_on_date_positive(
+            seq_conta=c.seq_conta,
+            on_date=data_ref
         )
-        saidas_dia = abs(
-            db.session.query(func.sum(Lancamento.val_lancamento))
-            .filter(
-                Lancamento.seq_conta == c.seq_conta,
-                Lancamento.dat_lancamento == data_ref,
-                Lancamento.val_lancamento < 0,
-                Lancamento.ind_status == "A",
-            )
-            .scalar()
-            or 0
+        
+        saidas_dia = lancamento_repo.get_sum_by_account_on_date_negative(
+            seq_conta=c.seq_conta,
+            on_date=data_ref
         )
 
         saldo_final = float(saldo_ate_ontem) + float(entradas_dia) - float(saidas_dia)
@@ -72,32 +55,17 @@ def get_saldos_diarios_data(data_ref: date) -> dict:
     # Compute 30-day evolution of total saldo (all accounts combined) ending at data_ref
     labels = []
     serie_saldo = []
-    # Pre-calc cumulative up to previous day for first point efficiency
     start_day = data_ref - timedelta(days=29)
+    
     # Build a map date->sum(val) for the window to avoid N*day queries
-    vals_by_day = {
-        d[0]: d[1] or 0
-        for d in (
-            db.session.query(Lancamento.dat_lancamento, func.sum(Lancamento.val_lancamento))
-            .filter(
-                Lancamento.ind_status == "A",
-                Lancamento.dat_lancamento >= start_day,
-                Lancamento.dat_lancamento <= data_ref,
-            )
-            .group_by(Lancamento.dat_lancamento)
-            .all()
-        )
-    }
-    # saldo up to day before start_day
-    saldo_ate_vigencia_anterior = (
-        db.session.query(func.sum(Lancamento.val_lancamento))
-        .filter(
-            Lancamento.ind_status == "A",
-            Lancamento.dat_lancamento < start_day,
-        )
-        .scalar()
-        or 0
+    vals_by_day = lancamento_repo.get_daily_sums_in_period(
+        start_date=start_day,
+        end_date=data_ref
     )
+    
+    # saldo up to day before start_day
+    saldo_ate_vigencia_anterior = lancamento_repo.get_sum_before_date(start_day)
+    
     running = float(saldo_ate_vigencia_anterior)
     cur = start_day
     while cur <= data_ref:

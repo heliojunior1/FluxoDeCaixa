@@ -52,17 +52,11 @@ def get_dfc_data(
         )
     else:
         # Get results with month grouping, filtered by selected months
-        from ...models import Lancamento as LancamentoModel
-        query_real = db.session.query(
-            LancamentoModel.seq_qualificador,
-            extractor.label("col"),
-            func.sum(LancamentoModel.val_lancamento).label("total"),
-        ).filter(
-            extract("year", LancamentoModel.dat_lancamento) == ano_selecionado,
-            LancamentoModel.ind_status == "A",
-            extract("month", LancamentoModel.dat_lancamento).in_(meses_selecionados)
+        resultados_reais = lancamento_repo.get_grouped_by_qualificador_and_period(
+            ano=ano_selecionado,
+            meses=meses_selecionados,
+            groupby_column=extractor
         )
-        resultados_reais = query_real.group_by("seq_qualificador", "col").all()
 
     valores_reais = {}
     for seq, col, total in resultados_reais:
@@ -80,21 +74,12 @@ def get_dfc_data(
             or (ano_selecionado == hoje.year and m >= hoje.month)
         }
         if proj_months:
-            from ...models import Lancamento as LancamentoModel
-            query_base = (
-                db.session.query(
-                    LancamentoModel.seq_qualificador,
-                    extract("month", LancamentoModel.dat_lancamento).label("col"),
-                    func.sum(LancamentoModel.val_lancamento).label("total"),
-                )
-                .filter(
-                    extract("year", LancamentoModel.dat_lancamento) == ano_selecionado - 1,
-                    extract("month", LancamentoModel.dat_lancamento).in_(proj_months),
-                    LancamentoModel.ind_status == "A",
-                )
-                .group_by("seq_qualificador", "col")
+            query_base = lancamento_repo.get_base_values_by_month(
+                ano=ano_selecionado,
+                meses=list(proj_months)
             )
-            for seq, col, total in query_base.all():
+            
+            for seq, col, total in query_base:
                 valores_base.setdefault(seq, {})[int(col)] = float(total or 0)
 
             ajustes = CenarioAjusteMensal.query.filter_by(
@@ -240,25 +225,39 @@ def get_dfc_eventos(
         if projetar:
             eventos = []
             for qid in ids:
+                # Get the specific value by qualificador
                 base = lancamento_repo.get_monthly_summary(
                     ano=ano - 1,
                     mes=col,
-                    cod_tipo=None  # Get all tipos for this qualificador
+                    cod_tipo=None
                 )
                 
-                # Get the specific value by qualificador
-                from ...models import Lancamento as LancamentoModel
-                base = (
-                    db.session.query(func.sum(LancamentoModel.val_lancamento))
-                    .filter(
-                        LancamentoModel.seq_qualificador == qid,
-                        extract("year", LancamentoModel.dat_lancamento) == ano - 1,
-                        extract("month", LancamentoModel.dat_lancamento) == col,
-                        LancamentoModel.ind_status == "A",
-                    )
-                    .scalar()
-                    or 0
+                # Since we need per-qualificador, use a more specific query
+                # We can reuse get_grouped_by_qualificador_and_period but filtering for specific qualificador
+                # Or add a specific method. Given it's a single value, we can use get_lancamentos_by_qualificador_and_period
+                # and sum it up, or better, add a specific method for scalar sum.
+                # Reusing get_grouped_by_qualificador_and_period with manual filtering in memory is inefficient if list is large.
+                # But here we are inside a loop.
+                # Let's use get_grouped_by_qualificador_and_period passing the qualificador_ids list if possible?
+                # No, the method doesn't support list of qualificador_ids yet.
+                # Let's use the existing get_lancamentos_by_qualificador_and_period and sum in python (less efficient but cleaner)
+                # OR use the new get_grouped_by_qualificador_year_month which supports list of IDs!
+                
+                # Actually, we just need the sum for this specific QID.
+                # Let's use get_grouped_by_qualificador_and_period but we need to filter by QID.
+                # The repository method doesn't filter by QID.
+                # Let's add a simple query here using the repository session if possible, or add a method.
+                # Adding a method 'get_sum_by_qualificador_and_month' is best.
+                
+                # Wait, I added get_grouped_by_qualificador_year_month in previous turn!
+                # It takes qualificador_ids list.
+                
+                rows = lancamento_repo.get_grouped_by_qualificador_year_month(
+                    qualificador_ids=[qid],
+                    anos=[ano - 1],
+                    meses=[col]
                 )
+                base = sum(r.total for r in rows) if rows else 0
                 base = float(base)
                 ajuste = (
                     CenarioAjusteMensal.query.filter_by(

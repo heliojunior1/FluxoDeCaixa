@@ -1,9 +1,11 @@
 """Comparative analysis service."""
 from datetime import date
 import calendar
-from sqlalchemy import func, extract
 
-from ...models import db, Lancamento, Pagamento, OrigemLancamento, Orgao, TipoLancamento
+from ...models import OrigemLancamento, Orgao
+from ...repositories.lancamento_repository import LancamentoRepository
+from ...repositories.pagamento_repository import PagamentoRepository
+from ...repositories.tipo_lancamento_repository import TipoLancamentoRepository
 
 
 def get_analise_comparativa_data(
@@ -29,51 +31,28 @@ def get_analise_comparativa_data(
     totals["total"] = {str(ano1): 0, str(ano2): 0}
 
     if tipo_analise == "receitas":
-        tipo_entrada = TipoLancamento.query.filter_by(
-            dsc_tipo_lancamento="Entrada"
-        ).first()
+        tipo_repo = TipoLancamentoRepository()
+        lancamento_repo = LancamentoRepository()
+        
+        tipo_entrada = tipo_repo.get_by_descricao("Entrada")
         id_entrada = tipo_entrada.cod_tipo_lancamento if tipo_entrada else -1
-        query = (
-            db.session.query(
-                OrigemLancamento.dsc_origem_lancamento,
-                extract("year", Lancamento.dat_lancamento).label("year"),
-                extract("month", Lancamento.dat_lancamento).label("month"),
-                func.sum(Lancamento.val_lancamento).label("total"),
-            )
-            .join(OrigemLancamento)
-            .filter(
-                Lancamento.cod_tipo_lancamento == id_entrada,
-                extract("year", Lancamento.dat_lancamento).in_([ano1, ano2]),
-                extract("month", Lancamento.dat_lancamento).in_(meses_selecionados),
-            )
-            .group_by("dsc_origem_lancamento", "year", "month")
+        
+        results = lancamento_repo.get_comparative_by_origem(
+            cod_tipo=id_entrada,
+            anos=[ano1, ano2],
+            meses=meses_selecionados
         )
-        results = query.all()
-        all_items = [
-            item[0]
-            for item in db.session.query(OrigemLancamento.dsc_origem_lancamento)
-            .distinct()
-            .all()
-        ]
+        
+        all_items = [o.dsc_origem_lancamento for o in OrigemLancamento.query.distinct().all()]
     else:
-        query = (
-            db.session.query(
-                Orgao.nom_orgao,
-                extract("year", Pagamento.dat_pagamento).label("year"),
-                extract("month", Pagamento.dat_pagamento).label("month"),
-                func.sum(Pagamento.val_pagamento).label("total"),
-            )
-            .join(Orgao)
-            .filter(
-                extract("year", Pagamento.dat_pagamento).in_([ano1, ano2]),
-                extract("month", Pagamento.dat_pagamento).in_(meses_selecionados),
-            )
-            .group_by("nom_orgao", "year", "month")
+        pagamento_repo = PagamentoRepository()
+        
+        results = pagamento_repo.get_comparative_by_orgao(
+            anos=[ano1, ano2],
+            meses=meses_selecionados
         )
-        results = query.all()
-        all_items = [
-            item[0] for item in db.session.query(Orgao.nom_orgao).distinct().all()
-        ]
+        
+        all_items = [o.nom_orgao for o in Orgao.query.distinct().all()]
 
     for item_name in all_items:
         data[item_name] = {str(m): {str(ano1): 0, str(ano2): 0} for m in range(1, 13)}

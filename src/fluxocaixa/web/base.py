@@ -222,39 +222,45 @@ async def debug():
     # 3. Removed in production environment
     # For now, keeping as-is for backwards compatibility
     output = []
-    tipos = TipoLancamento.query.all()
+    
+    from ..repositories.tipo_lancamento_repository import TipoLancamentoRepository
+    from ..repositories.lancamento_repository import LancamentoRepository
+    from ..repositories.pagamento_repository import PagamentoRepository
+    from ..repositories import qualificador_repository
+    
+    tipo_repo = TipoLancamentoRepository()
+    lanc_repo = LancamentoRepository()
+    pag_repo = PagamentoRepository()
+    
+    tipos = tipo_repo.list_all()
     output.append('<h2>Tipos de Lançamento:</h2>')
     for tipo in tipos:
-        count = Lancamento.query.filter_by(cod_tipo_lancamento=tipo.cod_tipo_lancamento).count()
-        total = (
-            db.session.query(func.sum(Lancamento.val_lancamento))
-            .filter_by(cod_tipo_lancamento=tipo.cod_tipo_lancamento)
-            .scalar()
-            or 0
-        )
+        count, total = lanc_repo.get_stats_by_tipo(tipo.cod_tipo_lancamento)
         output.append(f'<p>{tipo.dsc_tipo_lancamento}: {count} registros, Total: {total:,.2f}</p>')
-    count_pag = Pagamento.query.count()
-    total_pag = db.session.query(func.sum(Pagamento.val_pagamento)).scalar() or 0
+        
+    count_pag, total_pag = pag_repo.get_stats()
     output.append('<h2>Pagamentos:</h2>')
     output.append(f'<p>Pagamentos: {count_pag} registros, Total: {total_pag:,.2f}</p>')
-    qual_count = Qualificador.query.count()
+    
+    qual_count = qualificador_repository.count_qualificadores()
     output.append('<h2>Qualificadores:</h2>')
     output.append(f'<p>Total qualificadores: {qual_count}</p>')
-    qualificadores = Qualificador.query.limit(10).all()
+    
+    qualificadores = qualificador_repository.get_qualificadores_limit(10)
     for q in qualificadores:
         output.append(f'<p>ID: {q.seq_qualificador}, Desc: {q.dsc_qualificador}</p>')
+        
     output.append('<h2>Qualificadores de Despesa:</h2>')
     despesa_qualifs = ['FOLHA', 'REPASSE MUNICÍPIOS', 'PASEP']
     for desc in despesa_qualifs:
-        q = Qualificador.query.filter_by(dsc_qualificador=desc).first()
+        q = qualificador_repository.get_qualificador_by_name(desc)
         if q:
-            lanc_count = Lancamento.query.filter_by(seq_qualificador=q.seq_qualificador).count()
+            lanc_count = lanc_repo.count_by_qualificador(q.seq_qualificador)
             output.append(f'<p>{desc}: Encontrado (ID: {q.seq_qualificador}), Lançamentos: {lanc_count}</p>')
         else:
-            output.append(f'<p>{desc}: NÃO ENCONTRADO</p>')
+            output.append(f'<p>{desc}: Não encontrado</p>')
     output.append('<h2>Primeiros 10 Lançamentos:</h2>')
     sample_lanc = Lancamento.query.limit(10).all()
     for lanc in sample_lanc:
         output.append(f'<p>ID: {lanc.seq_lancamento}, Data: {lanc.dat_lancamento}, Valor: {lanc.val_lancamento}, Qualif: {lanc.seq_qualificador}, Tipo: {lanc.cod_tipo_lancamento}</p>')
-    return '<br>'.join(output)
-
+    return HTMLResponse(''.join(output))

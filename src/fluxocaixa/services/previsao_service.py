@@ -2,16 +2,15 @@ from datetime import date
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from sqlalchemy import extract, func
+from sqlalchemy import extract
 
 from ..models import (
-    db,
-    TipoLancamento,
-    Lancamento,
     Cenario,
     CenarioAjusteMensal,
     Qualificador,
 )
+from ..repositories.lancamento_repository import LancamentoRepository
+from ..repositories.tipo_lancamento_repository import TipoLancamentoRepository
 from ..utils import format_currency
 from ..utils.constants import MONTH_ABBR_PT
 
@@ -27,12 +26,9 @@ async def relatorio_previsao_realizado_data(request: Request):
     if not meses:
         meses = list(range(1, 13))
 
-    tipo_entrada = TipoLancamento.query.filter_by(
-        dsc_tipo_lancamento="Entrada"
-    ).first()
-    tipo_saida = TipoLancamento.query.filter_by(
-        dsc_tipo_lancamento="Saída"
-    ).first()
+    tipo_repo = TipoLancamentoRepository()
+    tipo_entrada = tipo_repo.get_by_descricao("Entrada")
+    tipo_saida = tipo_repo.get_by_descricao("Saída")
     cod_entrada = tipo_entrada.cod_tipo_lancamento if tipo_entrada else None
     cod_saida = tipo_saida.cod_tipo_lancamento if tipo_saida else None
 
@@ -47,28 +43,23 @@ async def relatorio_previsao_realizado_data(request: Request):
     anos_range = [ano - 2, ano - 1, ano]
     anos_base = {a - 1 for a in anos_range}
     anos_needed = set(anos_range) | anos_base
-    lanc_rows = (
-        db.session.query(
-            Lancamento.seq_qualificador,
-            extract("year", Lancamento.dat_lancamento).label("ano"),
-            extract("month", Lancamento.dat_lancamento).label("mes"),
-            Lancamento.cod_tipo_lancamento,
-            func.sum(Lancamento.val_lancamento).label("total"),
-        )
-        .filter(
-            Lancamento.seq_qualificador.in_(qualificadores_ids),
-            extract("year", Lancamento.dat_lancamento).in_(anos_needed),
-            extract("month", Lancamento.dat_lancamento).in_(range(1, 13)),
-            Lancamento.ind_status == "A",
-        )
-        .group_by(
-            Lancamento.seq_qualificador,
-            "ano",
-            "mes",
-            Lancamento.cod_tipo_lancamento,
-        )
-        .all()
+    
+    lancamento_repo = LancamentoRepository()
+    lanc_rows = lancamento_repo.get_grouped_by_qualificador_year_month(
+        qualificador_ids=qualificadores_ids,
+        anos=list(anos_needed),
+        meses=list(range(1, 13))
     )
+    
+    lanc_map = {
+        (
+            row.seq_qualificador,
+            int(row.ano),
+            int(row.mes),
+            row.cod_tipo_lancamento,
+        ): float(row.total or 0)
+        for row in lanc_rows
+    }
     lanc_map = {
         (
             row.seq_qualificador,

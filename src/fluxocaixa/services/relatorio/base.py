@@ -1,7 +1,7 @@
 """Common utilities and base classes for relatorio services."""
 from datetime import date
 from sqlalchemy import extract, or_
-from ...models import TipoLancamento
+from ...repositories.tipo_lancamento_repository import TipoLancamentoRepository
 
 
 def criar_filtro_data_meses(ano_selecionado: int, meses_selecionados: list[int], query_table):
@@ -30,8 +30,9 @@ def get_tipo_lancamento_ids() -> dict[str, int]:
     Returns:
         Dictionary with 'entrada' and 'saida' keys mapping to their IDs
     """
-    tipo_entrada = TipoLancamento.query.filter_by(dsc_tipo_lancamento="Entrada").first()
-    tipo_saida = TipoLancamento.query.filter_by(dsc_tipo_lancamento="Saída").first()
+    repo = TipoLancamentoRepository()
+    tipo_entrada = repo.get_by_descricao("Entrada")
+    tipo_saida = repo.get_by_descricao("Saída")
     
     return {
         'entrada': tipo_entrada.cod_tipo_lancamento if tipo_entrada else -1,

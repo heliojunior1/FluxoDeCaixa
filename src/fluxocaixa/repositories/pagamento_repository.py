@@ -27,26 +27,38 @@ class PagamentoRepository:
 
     def get_sum_by_orgao_and_period(
         self,
-        cod_orgao: int,
         start_date: date,
         end_date: date
-    ) -> float:
-        """Get sum of pagamentos by orgao and period.
+    ) -> dict[str, float]:
+        """Get sum of pagamentos by orgao in a period.
         
         Args:
-            cod_orgao: Orgao code
             start_date: Start date
             end_date: End date
         
         Returns:
-            Sum value
+            Dictionary mapping orgao name to sum
         """
-        result = self.session.query(func.sum(Pagamento.val_pagamento)).filter(
-            Pagamento.dat_pagamento.between(start_date, end_date),
-            Pagamento.cod_orgao == cod_orgao,
-        ).scalar()
+        results = self.session.query(
+            Orgao.nom_orgao,
+            func.sum(Pagamento.val_pagamento)
+        ).join(Orgao).filter(
+            Pagamento.dat_pagamento >= start_date,
+            Pagamento.dat_pagamento <= end_date,
+        ).group_by(Orgao.nom_orgao).all()
         
-        return float(result or 0)
+        return {r[0]: float(r[1] or 0) for r in results}
+
+    def get_stats(self) -> tuple[int, float]:
+        """Get count and total sum of all pagamentos.
+        
+        Returns:
+            Tuple (count, total)
+        """
+        count = self.session.query(Pagamento).count()
+        total = self.session.query(func.sum(Pagamento.val_pagamento)).scalar()
+        
+        return count, float(total or 0)
 
     def get_available_years(self) -> list[int]:
         """Get list of years with pagamento data.
@@ -59,6 +71,32 @@ class PagamentoRepository:
         ).distinct().all()
         
         return sorted([int(y[0]) for y in years if y[0]], reverse=True)
+
+    def get_comparative_by_orgao(
+        self,
+        anos: list[int],
+        meses: list[int]
+    ) -> list:
+        """Get comparative data by orgao.
+        
+        Args:
+            anos: List of years to compare
+            meses: List of months to include
+        
+        Returns:
+            List of tuples (orgao, year, month, total)
+        """
+        results = self.session.query(
+            Orgao.nom_orgao,
+            extract("year", Pagamento.dat_pagamento).label("year"),
+            extract("month", Pagamento.dat_pagamento).label("month"),
+            func.sum(Pagamento.val_pagamento).label("total"),
+        ).join(Orgao).filter(
+            extract("year", Pagamento.dat_pagamento).in_(anos),
+            extract("month", Pagamento.dat_pagamento).in_(meses),
+        ).group_by("nom_orgao", "year", "month").all()
+        
+        return results
 
     def create(self, data: PagamentoCreate) -> Pagamento:
         pag = Pagamento(

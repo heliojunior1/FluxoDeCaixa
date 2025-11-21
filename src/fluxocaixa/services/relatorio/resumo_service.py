@@ -84,23 +84,10 @@ def get_resumo_data(
         
         if projetar_mes:
             # Use base data from previous year and apply adjustments
-            lancamentos_base = lancamento_repo.get_grouped_by_qualificador_and_period(
-                ano=ano_selecionado - 1,
-                mes=mes,
-                groupby_column=extract("month", db.session.query(db.Model).subquery().c.dat_lancamento)
+            base_query = lancamento_repo.get_base_values_for_projection(
+                ano=ano_selecionado,
+                mes=mes
             )
-            
-            # Create a mapping for easier lookup
-            from ...models import Lancamento
-            base_query = db.session.query(
-                Lancamento.seq_qualificador,
-                Lancamento.cod_tipo_lancamento,
-                db.func.sum(Lancamento.val_lancamento).label("total"),
-            ).filter(
-                extract("year", Lancamento.dat_lancamento) == ano_selecionado - 1,
-                extract("month", Lancamento.dat_lancamento) == mes,
-                Lancamento.ind_status == "A",
-            ).group_by(Lancamento.seq_qualificador, Lancamento.cod_tipo_lancamento).all()
             
             for seq_qualificador, cod_tipo_lancamento, total_base in base_query:
                 total_base = float(total_base or 0)
