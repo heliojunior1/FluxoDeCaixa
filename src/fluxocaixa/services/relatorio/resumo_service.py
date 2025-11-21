@@ -1,10 +1,11 @@
 """Resumo (Cash Flow Summary) service."""
 from datetime import date
 import calendar
-from sqlalchemy import func, or_, extract
+from sqlalchemy import extract
 
-from ...models import db, Lancamento, CenarioAjusteMensal
-from .base import criar_filtro_data_meses, get_tipo_lancamento_ids
+from ...models import db, CenarioAjusteMensal
+from ...repositories.lancamento_repository import LancamentoRepository
+from .base import get_tipo_lancamento_ids
 
 
 def get_resumo_data(
@@ -28,29 +29,22 @@ def get_resumo_data(
     tipo_ids = get_tipo_lancamento_ids()
     id_entrada = tipo_ids['entrada']
     id_saida = tipo_ids['saida']
+    
+    # Initialize repository
+    lancamento_repo = LancamentoRepository()
 
-    # Calculate period totals
-    entradas_conditions = criar_filtro_data_meses(ano_selecionado, meses_selecionados, Lancamento.dat_lancamento)
-    total_entradas_periodo = 0
-    if entradas_conditions:
-        total_entradas_periodo = (
-            db.session.query(func.sum(Lancamento.val_lancamento))
-            .filter(
-                Lancamento.cod_tipo_lancamento == id_entrada, or_(*entradas_conditions)
-            )
-            .scalar()
-            or 0
-        )
-
-    saidas_conditions = criar_filtro_data_meses(ano_selecionado, meses_selecionados, Lancamento.dat_lancamento)
-    total_saidas_lanc = 0
-    if saidas_conditions:
-        total_saidas_lanc = (
-            db.session.query(func.sum(Lancamento.val_lancamento))
-            .filter(Lancamento.cod_tipo_lancamento == id_saida, or_(*saidas_conditions))
-            .scalar()
-            or 0
-        )
+    # Calculate period totals using repository
+    total_entradas_periodo = lancamento_repo.get_total_by_tipo_and_period(
+        cod_tipo=id_entrada,
+        ano=ano_selecionado,
+        meses=meses_selecionados
+    )
+    
+    total_saidas_lanc = lancamento_repo.get_total_by_tipo_and_period(
+        cod_tipo=id_saida,
+        ano=ano_selecionado,
+        meses=meses_selecionados
+    )
     total_saidas_periodo = abs(total_saidas_lanc)
     disponibilidade_periodo = total_entradas_periodo - total_saidas_periodo
 
@@ -77,10 +71,6 @@ def get_resumo_data(
     total_saidas_recalc = 0
 
     for mes in sorted(meses_selecionados):
-        month_start = date(ano_selecionado, mes, 1)
-        month_end = date(
-            ano_selecionado, mes, calendar.monthrange(ano_selecionado, mes)[1]
-        )
         projetar_mes = (
             estrategia == "projetado"
             and ajustes_cenario
@@ -91,23 +81,28 @@ def get_resumo_data(
         )
         receitas_mes = 0
         despesas_mes = 0
+        
         if projetar_mes:
             # Use base data from previous year and apply adjustments
-            lancamentos_base = (
-                db.session.query(
-                    Lancamento.seq_qualificador,
-                    Lancamento.cod_tipo_lancamento,
-                    func.sum(Lancamento.val_lancamento).label("total"),
-                )
-                .filter(
-                    extract("year", Lancamento.dat_lancamento) == ano_selecionado - 1,
-                    extract("month", Lancamento.dat_lancamento) == mes,
-                    Lancamento.ind_status == "A",
-                )
-                .group_by(Lancamento.seq_qualificador, Lancamento.cod_tipo_lancamento)
-                .all()
+            lancamentos_base = lancamento_repo.get_grouped_by_qualificador_and_period(
+                ano=ano_selecionado - 1,
+                mes=mes,
+                groupby_column=extract("month", db.session.query(db.Model).subquery().c.dat_lancamento)
             )
-            for seq_qualificador, cod_tipo_lancamento, total_base in lancamentos_base:
+            
+            # Create a mapping for easier lookup
+            from ...models import Lancamento
+            base_query = db.session.query(
+                Lancamento.seq_qualificador,
+                Lancamento.cod_tipo_lancamento,
+                db.func.sum(Lancamento.val_lancamento).label("total"),
+            ).filter(
+                extract("year", Lancamento.dat_lancamento) == ano_selecionado - 1,
+                extract("month", Lancamento.dat_lancamento) == mes,
+                Lancamento.ind_status == "A",
+            ).group_by(Lancamento.seq_qualificador, Lancamento.cod_tipo_lancamento).all()
+            
+            for seq_qualificador, cod_tipo_lancamento, total_base in base_query:
                 total_base = float(total_base or 0)
                 valor_ajustado = total_base
                 key = (ano_selecionado, mes, seq_qualificador)
@@ -124,26 +119,17 @@ def get_resumo_data(
                 elif cod_tipo_lancamento == id_saida:
                     despesas_mes += abs(valor_ajustado)
         else:
-            # Use actual data
-            receitas_mes = (
-                db.session.query(func.sum(Lancamento.val_lancamento))
-                .filter(
-                    Lancamento.dat_lancamento.between(month_start, month_end),
-                    Lancamento.cod_tipo_lancamento == id_entrada,
-                    Lancamento.ind_status == "A",
-                )
-                .scalar()
-                or 0
+            # Use actual data from repository
+            receitas_mes = lancamento_repo.get_monthly_summary(
+                ano=ano_selecionado,
+                mes=mes,
+                cod_tipo=id_entrada
             )
-            despesas_lanc_mes = (
-                db.session.query(func.sum(Lancamento.val_lancamento))
-                .filter(
-                    Lancamento.dat_lancamento.between(month_start, month_end),
-                    Lancamento.cod_tipo_lancamento == id_saida,
-                    Lancamento.ind_status == "A",
-                )
-                .scalar()
-                or 0
+            
+            despesas_lanc_mes = lancamento_repo.get_monthly_summary(
+                ano=ano_selecionado,
+                mes=mes,
+                cod_tipo=id_saida
             )
             despesas_mes = abs(despesas_lanc_mes or 0)
         

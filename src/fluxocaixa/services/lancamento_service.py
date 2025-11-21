@@ -31,19 +31,27 @@ def list_lancamentos(
 
 
 def list_tipos_lancamento():
-    return db.session.query(TipoLancamento).all()
+    from ..repositories import TipoLancamentoRepository
+    repo = TipoLancamentoRepository()
+    return repo.list_all()
 
 
 def list_origens_lancamento():
-    return db.session.query(OrigemLancamento).all()
+    from ..repositories import OrigemLancamentoRepository
+    repo = OrigemLancamentoRepository()
+    return repo.list_all()
 
 
 def list_contas_bancarias():
-    return db.session.query(ContaBancaria).filter_by(ind_status='A').all()
+    from ..repositories import ContaBancariaRepository
+    repo = ContaBancariaRepository()
+    return repo.list_active()
 
 
 def list_conferencias():
-    return db.session.query(Conferencia).order_by(Conferencia.dat_conferencia.desc()).all()
+    from ..repositories import ConferenciaRepository
+    repo = ConferenciaRepository()
+    return repo.list_all()
 
 
 def create_lancamento(data: LancamentoCreate, repo: LancamentoRepository | None = None) -> LancamentoOut:

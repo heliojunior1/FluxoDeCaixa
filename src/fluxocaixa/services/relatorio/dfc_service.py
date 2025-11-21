@@ -4,6 +4,7 @@ import calendar
 from sqlalchemy import func, extract
 
 from ...models import db, Lancamento, CenarioAjusteMensal, Qualificador
+from ...repositories.lancamento_repository import LancamentoRepository
 from ...utils.constants import DAY_ABBR_PT, MONTH_ABBR_PT
 
 
@@ -39,25 +40,29 @@ def get_dfc_data(
         col_range = range(1, 13)
         extractor = extract("month", Lancamento.dat_lancamento)
 
-    # Get actual lancamentos
-    query_real = db.session.query(
-        Lancamento.seq_qualificador,
-        extractor.label("col"),
-        func.sum(Lancamento.val_lancamento).label("total"),
-    ).filter(
-        extract("year", Lancamento.dat_lancamento) == ano_selecionado,
-        Lancamento.ind_status == "A",
-    )
+    # Initialize repository
+    lancamento_repo = LancamentoRepository()
+
+    # Get actual lancamentos using repository
     if periodo == "mes":
-        query_real = query_real.filter(
-            extract("month", Lancamento.dat_lancamento) == mes_selecionado
+        resultados_reais = lancamento_repo.get_grouped_by_qualificador_and_period(
+            ano=ano_selecionado,
+            mes=mes_selecionado,
+            groupby_column=extract("day", Lancamento.dat_lancamento)
         )
     else:
-        query_real = query_real.filter(
-            extract("month", Lancamento.dat_lancamento).in_(meses_selecionados)
+        # Get results with month grouping, filtered by selected months
+        from ...models import Lancamento as LancamentoModel
+        query_real = db.session.query(
+            LancamentoModel.seq_qualificador,
+            extractor.label("col"),
+            func.sum(LancamentoModel.val_lancamento).label("total"),
+        ).filter(
+            extract("year", LancamentoModel.dat_lancamento) == ano_selecionado,
+            LancamentoModel.ind_status == "A",
+            extract("month", LancamentoModel.dat_lancamento).in_(meses_selecionados)
         )
-
-    resultados_reais = query_real.group_by("seq_qualificador", "col").all()
+        resultados_reais = query_real.group_by("seq_qualificador", "col").all()
 
     valores_reais = {}
     for seq, col, total in resultados_reais:
@@ -75,16 +80,17 @@ def get_dfc_data(
             or (ano_selecionado == hoje.year and m >= hoje.month)
         }
         if proj_months:
+            from ...models import Lancamento as LancamentoModel
             query_base = (
                 db.session.query(
-                    Lancamento.seq_qualificador,
-                    extract("month", Lancamento.dat_lancamento).label("col"),
-                    func.sum(Lancamento.val_lancamento).label("total"),
+                    LancamentoModel.seq_qualificador,
+                    extract("month", LancamentoModel.dat_lancamento).label("col"),
+                    func.sum(LancamentoModel.val_lancamento).label("total"),
                 )
                 .filter(
-                    extract("year", Lancamento.dat_lancamento) == ano_selecionado - 1,
-                    extract("month", Lancamento.dat_lancamento).in_(proj_months),
-                    Lancamento.ind_status == "A",
+                    extract("year", LancamentoModel.dat_lancamento) == ano_selecionado - 1,
+                    extract("month", LancamentoModel.dat_lancamento).in_(proj_months),
+                    LancamentoModel.ind_status == "A",
                 )
                 .group_by("seq_qualificador", "col")
             )
@@ -199,18 +205,20 @@ def get_dfc_eventos(
     ids = (
         [seq] + [f.seq_qualificador for f in qual.get_todos_filhos()] if qual else [seq]
     )
+    
+    # Initialize repository
+    lancamento_repo = LancamentoRepository()
 
     if periodo == "mes":
         ano, mes = [int(x) for x in mes_ano.split("-")]
-        query = (
-            Lancamento.query.filter(
-                Lancamento.seq_qualificador.in_(ids), Lancamento.ind_status == "A"
-            )
-            .filter(extract("year", Lancamento.dat_lancamento) == ano)
-            .filter(extract("month", Lancamento.dat_lancamento) == mes)
-            .filter(extract("day", Lancamento.dat_lancamento) == col)
+        registros = lancamento_repo.get_lancamentos_by_qualificador_and_period(
+            seq_qualificador=seq,
+            ano=ano,
+            mes=mes,
+            dia=col,
+            qualificador_ids=ids
         )
-        registros = query.order_by(Lancamento.dat_lancamento).all()
+        
         eventos = [
             {
                 "data": r.dat_lancamento.strftime("%d/%m/%Y"),
@@ -232,13 +240,21 @@ def get_dfc_eventos(
         if projetar:
             eventos = []
             for qid in ids:
+                base = lancamento_repo.get_monthly_summary(
+                    ano=ano - 1,
+                    mes=col,
+                    cod_tipo=None  # Get all tipos for this qualificador
+                )
+                
+                # Get the specific value by qualificador
+                from ...models import Lancamento as LancamentoModel
                 base = (
-                    db.session.query(func.sum(Lancamento.val_lancamento))
+                    db.session.query(func.sum(LancamentoModel.val_lancamento))
                     .filter(
-                        Lancamento.seq_qualificador == qid,
-                        extract("year", Lancamento.dat_lancamento) == ano - 1,
-                        extract("month", Lancamento.dat_lancamento) == col,
-                        Lancamento.ind_status == "A",
+                        LancamentoModel.seq_qualificador == qid,
+                        extract("year", LancamentoModel.dat_lancamento) == ano - 1,
+                        extract("month", LancamentoModel.dat_lancamento) == col,
+                        LancamentoModel.ind_status == "A",
                     )
                     .scalar()
                     or 0

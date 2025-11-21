@@ -1,6 +1,6 @@
 """Years service - extract available years from data."""
-from sqlalchemy import extract
-from ...models import db, Lancamento, Pagamento
+from ...repositories.lancamento_repository import LancamentoRepository
+from ...repositories.pagamento_repository import PagamentoRepository
 
 
 def get_available_years() -> list[int]:
@@ -9,7 +9,11 @@ def get_available_years() -> list[int]:
     Returns:
         List of years sorted in descending order
     """
-    lancamento_years = db.session.query(extract("year", Lancamento.dat_lancamento)).distinct().all()
-    pagamento_years = db.session.query(extract("year", Pagamento.dat_pagamento)).distinct().all()
-    years = sorted({y[0] for y in lancamento_years + pagamento_years}, reverse=True)
+    lancamento_repo = LancamentoRepository()
+    pagamento_repo = PagamentoRepository()
+    
+    lancamento_years = set(lancamento_repo.get_available_years())
+    pagamento_years = set(pagamento_repo.get_available_years())
+    
+    years = sorted(lancamento_years | pagamento_years, reverse=True)
     return years

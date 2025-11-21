@@ -1,9 +1,10 @@
 """Indicadores (Indicators) service - financial metrics and charts."""
 from datetime import date
 import calendar
-from sqlalchemy import func
 
-from ...models import db, Lancamento, Pagamento, OrigemLancamento, Orgao
+from ...repositories.lancamento_repository import LancamentoRepository
+from ...repositories.pagamento_repository import PagamentoRepository
+from ...models import OrigemLancamento, Orgao
 from .base import get_tipo_lancamento_ids
 
 
@@ -27,35 +28,27 @@ def get_indicadores_data(
     id_entrada = tipo_ids['entrada']
     id_saida = tipo_ids['saida']
     
+    # Initialize repositories
+    lancamento_repo = LancamentoRepository()
+    pagamento_repo = PagamentoRepository()
+    
     # Area chart: Monthly revenues vs expenses
     area_chart_data = {"labels": [], "receitas": [], "despesas": []}
 
     for mes in sorted(meses_selecionados):
-        month_start = date(ano_selecionado, mes, 1)
-        month_end = (
-            date(ano_selecionado + 1, 1, 1)
-            if mes == 12
-            else date(ano_selecionado, mes + 1, 1)
+        receitas_mes = lancamento_repo.get_monthly_summary(
+            ano=ano_selecionado,
+            mes=mes,
+            cod_tipo=id_entrada
         )
-        receitas_mes = (
-            db.session.query(func.sum(Lancamento.val_lancamento))
-            .filter(
-                Lancamento.dat_lancamento.between(month_start, month_end),
-                Lancamento.cod_tipo_lancamento == id_entrada,
-            )
-            .scalar()
-            or 0
-        )
-        despesas_lanc_mes = (
-            db.session.query(func.sum(Lancamento.val_lancamento))
-            .filter(
-                Lancamento.dat_lancamento.between(month_start, month_end),
-                Lancamento.cod_tipo_lancamento == id_saida,
-            )
-            .scalar()
-            or 0
+        
+        despesas_lanc_mes = lancamento_repo.get_monthly_summary(
+            ano=ano_selecionado,
+            mes=mes,
+            cod_tipo=id_saida
         )
         despesas_mes = abs(despesas_lanc_mes or 0)
+        
         area_chart_data["labels"].append(meses_nomes[mes][:3])
         area_chart_data["receitas"].append(float(receitas_mes))
         area_chart_data["despesas"].append(float(despesas_mes))
@@ -74,16 +67,11 @@ def get_indicadores_data(
                     if mes == 12
                     else date(ano_selecionado, mes + 1, 1)
                 )
-                valor = (
-                    db.session.query(func.sum(Lancamento.val_lancamento))
-                    .filter(
-                        Lancamento.dat_lancamento.between(month_start, month_end),
-                        Lancamento.cod_tipo_lancamento == id_entrada,
-                        Lancamento.cod_origem_lancamento
-                        == origem.cod_origem_lancamento,
-                    )
-                    .scalar()
-                    or 0
+                valor = lancamento_repo.get_sum_by_origem_and_period(
+                    cod_origem=origem.cod_origem_lancamento,
+                    cod_tipo=id_entrada,
+                    start_date=month_start,
+                    end_date=month_end
                 )
                 total_origem += float(valor)
             if total_origem > 0:
@@ -100,14 +88,10 @@ def get_indicadores_data(
                     if mes == 12
                     else date(ano_selecionado, mes + 1, 1)
                 )
-                valor = (
-                    db.session.query(func.sum(Pagamento.val_pagamento))
-                    .filter(
-                        Pagamento.dat_pagamento.between(month_start, month_end),
-                        Pagamento.cod_orgao == orgao.cod_orgao,
-                    )
-                    .scalar()
-                    or 0
+                valor = pagamento_repo.get_sum_by_orgao_and_period(
+                    cod_orgao=orgao.cod_orgao,
+                    start_date=month_start,
+                    end_date=month_end
                 )
                 total_orgao += float(valor)
             if total_orgao > 0:
@@ -119,29 +103,16 @@ def get_indicadores_data(
     saldo_acumulado = 0
     
     for mes in sorted(meses_selecionados):
-        month_start = date(ano_selecionado, mes, 1)
-        month_end = (
-            date(ano_selecionado + 1, 1, 1)
-            if mes == 12
-            else date(ano_selecionado, mes + 1, 1)
+        receitas_mes = lancamento_repo.get_monthly_summary(
+            ano=ano_selecionado,
+            mes=mes,
+            cod_tipo=id_entrada
         )
-        receitas_mes = (
-            db.session.query(func.sum(Lancamento.val_lancamento))
-            .filter(
-                Lancamento.dat_lancamento.between(month_start, month_end),
-                Lancamento.cod_tipo_lancamento == id_entrada,
-            )
-            .scalar()
-            or 0
-        )
-        despesas_lanc_mes = (
-            db.session.query(func.sum(Lancamento.val_lancamento))
-            .filter(
-                Lancamento.dat_lancamento.between(month_start, month_end),
-                Lancamento.cod_tipo_lancamento == id_saida,
-            )
-            .scalar()
-            or 0
+        
+        despesas_lanc_mes = lancamento_repo.get_monthly_summary(
+            ano=ano_selecionado,
+            mes=mes,
+            cod_tipo=id_saida
         )
         despesas_mes = abs(despesas_lanc_mes or 0)
         saldo_mes = float(receitas_mes) - float(despesas_mes)
