@@ -14,6 +14,9 @@ from ..services import (
     get_dfc_eventos,
     list_active_cenarios,
     list_active_qualificadores,
+    get_previsao_receita_data,
+    get_controle_despesa_data,
+    get_ldo_orcamento_data,
 )
 from ..utils.constants import MONTH_NAME_PT
 
@@ -22,6 +25,134 @@ from ..utils.constants import MONTH_NAME_PT
 @handle_exceptions
 async def relatorios(request: Request):
     return templates.TemplateResponse("relatorios.html", {"request": request})
+
+
+@router.get("/relatorios/previsao-receita", name="relatorio_previsao_receita")
+@handle_exceptions
+async def relatorio_previsao_receita(request: Request):
+    """Página do relatório de Previsão de Receita."""
+    anos_disponiveis = get_available_years()
+    ano_default = anos_disponiveis[0] if anos_disponiveis else date.today().year
+    cenarios = list_active_cenarios()
+    
+    # Buscar apenas qualificadores de receita (folha + tipo receita)
+    todos_qualificadores = list_active_qualificadores()
+    qualificadores_receita = [
+        q for q in todos_qualificadores 
+        if q.is_folha() and q.tipo_fluxo == 'receita'
+    ]
+    
+    return templates.TemplateResponse(
+        "rel_previsao_receita.html",
+        {
+            "request": request,
+            "anos_disponiveis": anos_disponiveis,
+            "ano_default": ano_default,
+            "cenarios": cenarios,
+            "qualificadores": qualificadores_receita,
+        }
+    )
+
+
+@router.get("/relatorios/previsao-receita/data", name="relatorio_previsao_receita_data")
+@handle_exceptions
+async def relatorio_previsao_receita_data(request: Request):
+    """API JSON para dados do gráfico de Previsão de Receita."""
+    params = request.query_params
+    ano = int(params.get("ano", date.today().year))
+    cenario_id = int(params.get("cenario")) if params.get("cenario") else None
+    qualificadores_ids = [
+        int(q) for q in params.get("qualificadores", "").split(",") if q
+    ]
+    meses = [int(m) for m in params.get("meses", "").split(",") if m] or None
+    
+    data = get_previsao_receita_data(ano, cenario_id, qualificadores_ids, meses)
+    return JSONResponse(data)
+
+
+@router.get("/relatorios/controle-despesa", name="relatorio_controle_despesa")
+@handle_exceptions
+async def relatorio_controle_despesa(request: Request):
+    """Página do relatório de Controle de Despesa."""
+    anos_disponiveis = get_available_years()
+    ano_default = anos_disponiveis[0] if anos_disponiveis else date.today().year
+    cenarios = list_active_cenarios()
+    
+    # Buscar apenas qualificadores de despesa (folha + tipo despesa)
+    todos_qualificadores = list_active_qualificadores()
+    qualificadores_despesa = [
+        q for q in todos_qualificadores 
+        if q.is_folha() and q.tipo_fluxo == 'despesa'
+    ]
+    
+    return templates.TemplateResponse(
+        "rel_controle_despesa.html",
+        {
+            "request": request,
+            "anos_disponiveis": anos_disponiveis,
+            "ano_default": ano_default,
+            "cenarios": cenarios,
+            "qualificadores": qualificadores_despesa,
+        }
+    )
+
+
+@router.get("/relatorios/controle-despesa/data", name="relatorio_controle_despesa_data")
+@handle_exceptions
+async def relatorio_controle_despesa_data(request: Request):
+    """API JSON para dados do gráfico de Controle de Despesa."""
+    params = request.query_params
+    ano = int(params.get("ano", date.today().year))
+    cenario_id = int(params.get("cenario")) if params.get("cenario") else None
+    qualificadores_ids = [
+        int(q) for q in params.get("qualificadores", "").split(",") if q
+    ]
+    meses = [int(m) for m in params.get("meses", "").split(",") if m] or None
+    
+    data = get_controle_despesa_data(ano, cenario_id, qualificadores_ids, meses)
+    return JSONResponse(data)
+
+
+@router.get("/relatorios/ldo-orcamento", name="relatorio_ldo_orcamento")
+@handle_exceptions
+async def relatorio_ldo_orcamento(request: Request):
+    """Página do relatório de LDO & Orçamento."""
+    anos_disponiveis = get_available_years()
+    ano_default = anos_disponiveis[0] if anos_disponiveis else date.today().year
+    
+    # Buscar todos os qualificadores folha
+    todos_qualificadores = list_active_qualificadores()
+    qualificadores_receita = [
+        q for q in todos_qualificadores 
+        if q.is_folha() and q.tipo_fluxo == 'receita'
+    ]
+    qualificadores_despesa = [
+        q for q in todos_qualificadores 
+        if q.is_folha() and q.tipo_fluxo == 'despesa'
+    ]
+    
+    return templates.TemplateResponse(
+        "rel_ldo_orcamento.html",
+        {
+            "request": request,
+            "anos_disponiveis": anos_disponiveis,
+            "ano_default": ano_default,
+            "qualificadores_receita": qualificadores_receita,
+            "qualificadores_despesa": qualificadores_despesa,
+        }
+    )
+
+
+@router.get("/relatorios/ldo-orcamento/data", name="relatorio_ldo_orcamento_data")
+@handle_exceptions
+async def relatorio_ldo_orcamento_data(request: Request):
+    """API JSON para dados do gráfico de LDO & Orçamento."""
+    params = request.query_params
+    ano = int(params.get("ano", date.today().year))
+    
+    data = get_ldo_orcamento_data(ano)
+    return JSONResponse(data)
+
 
 
 @router.get("/relatorios/previsao-realizado", name="relatorio_previsao_realizado")

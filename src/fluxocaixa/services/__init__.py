@@ -57,6 +57,9 @@ from .relatorio import (
     get_saldos_diarios_data,
     get_dfc_data,
     get_dfc_eventos,
+    get_previsao_receita_data,
+    get_controle_despesa_data,
+    get_ldo_orcamento_data,
 )
 
 __all__ = [
@@ -109,4 +112,7 @@ __all__ = [
     'get_saldos_diarios_data',
     'get_dfc_data',
     'get_dfc_eventos',
+    'get_previsao_receita_data',
+    'get_controle_despesa_data',
+    'get_ldo_orcamento_data',
 ]

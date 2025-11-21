@@ -519,6 +519,65 @@ class LancamentoRepository:
         
         return results
 
+    def get_sum_by_qualificadores_and_month(
+        self,
+        qualificadores_ids: list[int],
+        cod_tipo: int,
+        ano: int,
+        mes: int
+    ) -> float:
+        """Get sum of lancamentos for qualificadores in a specific month.
+        
+        Args:
+            qualificadores_ids: List of qualificador IDs
+            cod_tipo: Tipo lancamento code
+            ano: Year
+            mes: Month (1-12)
+        
+        Returns:
+            Sum value
+        """
+        if not qualificadores_ids:
+            return 0.0
+        
+        result = self.session.query(func.sum(Lancamento.val_lancamento)).filter(
+            Lancamento.seq_qualificador.in_(qualificadores_ids),
+            Lancamento.cod_tipo_lancamento == cod_tipo,
+            extract('year', Lancamento.dat_lancamento) == ano,
+            extract('month', Lancamento.dat_lancamento) == mes,
+            Lancamento.ind_status == 'A'
+        ).scalar()
+        
+        return float(result or 0)
+
+    def get_sum_by_qualificadores_and_year(
+        self,
+        qualificadores_ids: list[int],
+        cod_tipo: int,
+        ano: int
+    ) -> float:
+        """Get sum of lancamentos for qualificadores in a full year.
+        
+        Args:
+            qualificadores_ids: List of qualificador IDs
+            cod_tipo: Tipo lancamento code
+            ano: Year
+        
+        Returns:
+            Sum value
+        """
+        if not qualificadores_ids:
+            return 0.0
+        
+        result = self.session.query(func.sum(Lancamento.val_lancamento)).filter(
+            Lancamento.seq_qualificador.in_(qualificadores_ids),
+            Lancamento.cod_tipo_lancamento == cod_tipo,
+            extract('year', Lancamento.dat_lancamento) == ano,
+            Lancamento.ind_status == 'A'
+        ).scalar()
+        
+        return float(result or 0)
+
     def get_sample(self, limit: int = 10) -> list[Lancamento]:
         """Get a sample of lancamentos.
         

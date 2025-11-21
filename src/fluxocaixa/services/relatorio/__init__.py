@@ -9,6 +9,9 @@ from .comparativo_service import get_analise_comparativa_data
 from .saldos_service import get_saldos_diarios_data
 from .dfc_service import get_dfc_data, get_dfc_eventos
 from .years_service import get_available_years
+from .previsao_receita_service import get_previsao_receita_data
+from .controle_despesa_service import get_controle_despesa_data
+from .ldo_orcamento_service import get_ldo_orcamento_data
 
 __all__ = [
     'get_resumo_data',
@@ -18,4 +21,7 @@ __all__ = [
     'get_dfc_data',
     'get_dfc_eventos',
     'get_available_years',
+    'get_previsao_receita_data',
+    'get_controle_despesa_data',
+    'get_ldo_orcamento_data',
 ]

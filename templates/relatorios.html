@@ -8,16 +8,20 @@
 </div>
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
     <a href="{{ url_for('relatorio_resumo') }}" class="nav-card">
-        <div class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full" style="background-color: #E7F1FA;">
+        <div
+            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
+                style="background-color: #E7F1FA;">
                 <i data-lucide="file-text" style="color: var(--sefaz-primary-blue);"></i>
             </div>
             <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Resumo</p>
         </div>
     </a>
     <a href="{{ url_for('relatorio_dfc') }}" class="nav-card">
-        <div class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full" style="background-color: #E7F1FA;">
+        <div
+            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
+                style="background-color: #E7F1FA;">
                 <i data-lucide="clipboard-check" style="color: var(--sefaz-primary-blue);"></i>
             </div>
             <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Análise de Fluxo (DFC)</p>
@@ -25,25 +29,64 @@
         </div>
     </a>
     <a href="{{ url_for('relatorio_indicadores') }}" class="nav-card">
-        <div class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full" style="background-color: #E7F1FA;">
+        <div
+            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
+                style="background-color: #E7F1FA;">
                 <i data-lucide="bar-chart-2" style="color: var(--sefaz-primary-blue);"></i>
             </div>
             <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Indicadores</p>
         </div>
     </a>
     <a href="{{ url_for('relatorio_analise_comparativa') }}" class="nav-card">
-        <div class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full" style="background-color: #E7F1FA;">
+        <div
+            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
+                style="background-color: #E7F1FA;">
                 <i data-lucide="layers" style="color: var(--sefaz-primary-blue);"></i>
             </div>
             <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Análise Comparativa</p>
             <p class="text-xs text-gray-500 mt-1">Compara ingressos entre diferentes períodos</p>
         </div>
     </a>
+    <a href="{{ url_for('relatorio_previsao_receita') }}" class="nav-card">
+        <div
+            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
+                style="background-color: #E7F1FA;">
+                <i data-lucide="trending-up" style="color: var(--sefaz-primary-blue);"></i>
+            </div>
+            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Previsão de Receita</p>
+            <p class="text-xs text-gray-500 mt-1">Realizado vs Projetado por Cenário</p>
+        </div>
+    </a>
+    <a href="{{ url_for('relatorio_controle_despesa') }}" class="nav-card">
+        <div
+            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-orange-400 transition-all text-center flex flex-col justify-center items-center">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
+                style="background-color: #FFF7ED;">
+                <i data-lucide="wallet" style="color: #EA580C;"></i>
+            </div>
+            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Controle de Despesa</p>
+            <p class="text-xs text-gray-500 mt-1">Execução vs Previsão Orçamentária</p>
+        </div>
+    </a>
+    <a href="{{ url_for('relatorio_ldo_orcamento') }}" class="nav-card">
+        <div
+            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-indigo-400 transition-all text-center flex flex-col justify-center items-center">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
+                style="background-color: #EEF2FF;">
+                <i data-lucide="file-text" style="color: #6366F1;"></i>
+            </div>
+            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">LDO & Orçamento</p>
+            <p class="text-xs text-gray-500 mt-1">Comparativo LDO, Orçamento e Realizado</p>
+        </div>
+    </a>
     <a href="{{ url_for('relatorio_previsao_realizado') }}" class="nav-card">
-        <div class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full" style="background-color: #E7F1FA;">
+        <div
+            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
+                style="background-color: #E7F1FA;">
                 <i data-lucide="target" style="color: var(--sefaz-primary-blue);"></i>
             </div>
             <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Previsão x Realizado</p>
@@ -51,11 +94,14 @@
         </div>
     </a>
     <a href="{{ url_for('relatorio_saldos_diarios') }}" class="nav-card">
-        <div class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full" style="background-color: #E7F1FA;">
+        <div
+            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
+                style="background-color: #E7F1FA;">
                 <i data-lucide="banknote" style="color: var(--sefaz-primary-blue);"></i>
             </div>
-            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Saldos Diários por Conta</p>
+            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Saldos Diários por Conta
+            </p>
             <p class="text-xs text-gray-500 mt-1">Entradas, saídas e saldo por conta</p>
         </div>
     </a>
