@@ -155,6 +155,34 @@ class LancamentoRepository:
         
         return query.order_by(Lancamento.dat_lancamento).all()
 
+    def get_by_qualificadores_and_month_year(
+        self,
+        qualificador_ids: list[int],
+        ano: int,
+        mes: int
+    ):
+        """Get lancamentos for a list of qualificadores in a specific month/year.
+        
+        Args:
+            qualificador_ids: List of qualificador IDs
+            ano: Year
+            mes: Month
+            
+        Returns:
+            List of Lancamento objects
+        """
+        return (
+            self.session.query(Lancamento)
+            .filter(
+                Lancamento.seq_qualificador.in_(qualificador_ids),
+                Lancamento.ind_status == "A",
+                extract("year", Lancamento.dat_lancamento) == ano,
+                extract("month", Lancamento.dat_lancamento) == mes
+            )
+            .order_by(Lancamento.dat_lancamento)
+            .all()
+        )
+
     def get_grouped_by_qualificador_and_period(
         self,
         ano: int,
@@ -348,7 +376,7 @@ class LancamentoRepository:
         results = self.session.query(
             Lancamento.dat_lancamento,
             func.sum(Lancamento.val_lancamento)
-        ).filter(
+            ).filter(
             Lancamento.ind_status == "A",
             Lancamento.dat_lancamento >= start_date,
             Lancamento.dat_lancamento <= end_date,

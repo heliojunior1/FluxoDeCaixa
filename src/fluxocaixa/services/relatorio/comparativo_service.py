@@ -2,10 +2,10 @@
 from datetime import date
 import calendar
 
-from ...models import OrigemLancamento, Orgao
 from ...repositories.lancamento_repository import LancamentoRepository
 from ...repositories.pagamento_repository import PagamentoRepository
 from ...repositories.tipo_lancamento_repository import TipoLancamentoRepository
+from ...repositories.origem_lancamento_repository import OrigemLancamentoRepository
 
 
 def get_analise_comparativa_data(
@@ -33,6 +33,7 @@ def get_analise_comparativa_data(
     if tipo_analise == "receitas":
         tipo_repo = TipoLancamentoRepository()
         lancamento_repo = LancamentoRepository()
+        origem_repo = OrigemLancamentoRepository()
         
         tipo_entrada = tipo_repo.get_by_descricao("Entrada")
         id_entrada = tipo_entrada.cod_tipo_lancamento if tipo_entrada else -1
@@ -43,7 +44,7 @@ def get_analise_comparativa_data(
             meses=meses_selecionados
         )
         
-        all_items = [o.dsc_origem_lancamento for o in OrigemLancamento.query.distinct().all()]
+        all_items = [o.dsc_origem_lancamento for o in origem_repo.list_all()]
     else:
         pagamento_repo = PagamentoRepository()
         
@@ -52,7 +53,7 @@ def get_analise_comparativa_data(
             meses=meses_selecionados
         )
         
-        all_items = [o.nom_orgao for o in Orgao.query.distinct().all()]
+        all_items = [o.nom_orgao for o in pagamento_repo.list_orgaos()]
 
     for item_name in all_items:
         data[item_name] = {str(m): {str(ano1): 0, str(ano2): 0} for m in range(1, 13)}

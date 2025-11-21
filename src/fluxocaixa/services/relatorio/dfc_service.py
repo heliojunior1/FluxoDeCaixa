@@ -1,10 +1,11 @@
 """DFC (Demonstração de Fluxo de Caixa) service - Cash Flow Statement."""
 from datetime import date
 import calendar
-from sqlalchemy import func, extract
+from sqlalchemy import extract
 
-from ...models import db, Lancamento, CenarioAjusteMensal, Qualificador
+from ...models import Lancamento, Qualificador
 from ...repositories.lancamento_repository import LancamentoRepository
+from ...repositories import cenario_repository, qualificador_repository
 from ...utils.constants import DAY_ABBR_PT, MONTH_ABBR_PT
 
 
@@ -82,17 +83,14 @@ def get_dfc_data(
             for seq, col, total in query_base:
                 valores_base.setdefault(seq, {})[int(col)] = float(total or 0)
 
-            ajustes = CenarioAjusteMensal.query.filter_by(
-                seq_cenario=cenario_selecionado_id, ano=ano_selecionado
-            ).all()
+            ajustes = cenario_repository.get_ajustes_by_cenario_and_year(
+                cenario_id=cenario_selecionado_id,
+                ano=ano_selecionado
+            )
             ajustes_cenario = {(a.mes, a.seq_qualificador): a for a in ajustes}
 
     # Build hierarchical tree from root qualificadores
-    qualificadores_root = (
-        Qualificador.query.filter_by(cod_qualificador_pai=None, ind_status="A")
-        .order_by(Qualificador.num_qualificador)
-        .all()
-    )
+    qualificadores_root = qualificador_repository.get_root_qualificadores()
 
     def build_node(q: Qualificador) -> dict:
         """Recursively build DFC node with values and children."""
@@ -186,7 +184,7 @@ def get_dfc_eventos(
     Returns:
         Dictionary with detailed events list and total
     """
-    qual = Qualificador.query.get(seq)
+    qual = qualificador_repository.get_qualificador_by_id(seq)
     ids = (
         [seq] + [f.seq_qualificador for f in qual.get_todos_filhos()] if qual else [seq]
     )
@@ -226,32 +224,6 @@ def get_dfc_eventos(
             eventos = []
             for qid in ids:
                 # Get the specific value by qualificador
-                base = lancamento_repo.get_monthly_summary(
-                    ano=ano - 1,
-                    mes=col,
-                    cod_tipo=None
-                )
-                
-                # Since we need per-qualificador, use a more specific query
-                # We can reuse get_grouped_by_qualificador_and_period but filtering for specific qualificador
-                # Or add a specific method. Given it's a single value, we can use get_lancamentos_by_qualificador_and_period
-                # and sum it up, or better, add a specific method for scalar sum.
-                # Reusing get_grouped_by_qualificador_and_period with manual filtering in memory is inefficient if list is large.
-                # But here we are inside a loop.
-                # Let's use get_grouped_by_qualificador_and_period passing the qualificador_ids list if possible?
-                # No, the method doesn't support list of qualificador_ids yet.
-                # Let's use the existing get_lancamentos_by_qualificador_and_period and sum in python (less efficient but cleaner)
-                # OR use the new get_grouped_by_qualificador_year_month which supports list of IDs!
-                
-                # Actually, we just need the sum for this specific QID.
-                # Let's use get_grouped_by_qualificador_and_period but we need to filter by QID.
-                # The repository method doesn't filter by QID.
-                # Let's add a simple query here using the repository session if possible, or add a method.
-                # Adding a method 'get_sum_by_qualificador_and_month' is best.
-                
-                # Wait, I added get_grouped_by_qualificador_year_month in previous turn!
-                # It takes qualificador_ids list.
-                
                 rows = lancamento_repo.get_grouped_by_qualificador_year_month(
                     qualificador_ids=[qid],
                     anos=[ano - 1],
@@ -259,16 +231,14 @@ def get_dfc_eventos(
                 )
                 base = sum(r.total for r in rows) if rows else 0
                 base = float(base)
-                ajuste = (
-                    CenarioAjusteMensal.query.filter_by(
-                        seq_cenario=int(cenario_id),
-                        seq_qualificador=qid,
-                        ano=ano,
-                        mes=col,
-                    ).first()
-                    if cenario_id
-                    else None
+                
+                ajuste = cenario_repository.get_ajuste_by_unique_keys(
+                    cenario_id=int(cenario_id),
+                    qualificador_id=qid,
+                    ano=ano,
+                    mes=col
                 )
+                
                 valor = base
                 if ajuste:
                     ajuste_val = float(ajuste.val_ajuste)
@@ -277,7 +247,7 @@ def get_dfc_eventos(
                     elif ajuste.cod_tipo_ajuste == "V":
                         valor = base + ajuste_val
                 if valor != 0:
-                    qobj = Qualificador.query.get(qid)
+                    qobj = qualificador_repository.get_qualificador_by_id(qid)
                     eventos.append(
                         {
                             "data": f"{col:02d}/{ano}",
@@ -288,14 +258,11 @@ def get_dfc_eventos(
                         }
                     )
         else:
-            query = (
-                Lancamento.query.filter(
-                    Lancamento.seq_qualificador.in_(ids), Lancamento.ind_status == "A"
-                )
-                .filter(extract("year", Lancamento.dat_lancamento) == ano)
-                .filter(extract("month", Lancamento.dat_lancamento) == col)
+            registros = lancamento_repo.get_by_qualificadores_and_month_year(
+                qualificador_ids=ids,
+                ano=ano,
+                mes=col
             )
-            registros = query.order_by(Lancamento.dat_lancamento).all()
             eventos = [
                 {
                     "data": r.dat_lancamento.strftime("%d/%m/%Y"),

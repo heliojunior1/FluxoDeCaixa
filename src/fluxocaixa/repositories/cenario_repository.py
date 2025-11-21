@@ -43,6 +43,20 @@ def delete_cenario_logical(cenario_id: int, user_id: int):
 def get_ajustes_by_cenario(cenario_id: int):
     return CenarioAjusteMensal.query.filter_by(seq_cenario=cenario_id).all()
 
+def get_ajustes_by_cenario_and_year(cenario_id: int, ano: int):
+    return CenarioAjusteMensal.query.filter_by(
+        seq_cenario=cenario_id, 
+        ano=ano
+    ).all()
+
+def get_ajuste_by_unique_keys(cenario_id: int, qualificador_id: int, ano: int, mes: int):
+    return CenarioAjusteMensal.query.filter_by(
+        seq_cenario=cenario_id,
+        seq_qualificador=qualificador_id,
+        ano=ano,
+        mes=mes
+    ).first()
+
 def get_ajustes_by_filters(cenario_ids: list[int], anos: list[int], qualificador_ids: list[int]):
     return (
         CenarioAjusteMensal.query.filter(
