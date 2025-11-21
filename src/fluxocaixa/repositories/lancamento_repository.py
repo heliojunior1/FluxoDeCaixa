@@ -519,6 +519,17 @@ class LancamentoRepository:
         
         return results
 
+    def get_sample(self, limit: int = 10) -> list[Lancamento]:
+        """Get a sample of lancamentos.
+        
+        Args:
+            limit: Number of records to return
+            
+        Returns:
+            List of Lancamento objects
+        """
+        return self.session.query(Lancamento).limit(limit).all()
+
     def create(self, data: LancamentoCreate) -> Lancamento:
         lanc = Lancamento(
             dat_lancamento=data.dat_lancamento,
