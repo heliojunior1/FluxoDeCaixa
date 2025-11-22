@@ -1,10 +1,11 @@
 """Resumo (Cash Flow Summary) service."""
-from datetime import date
+from datetime import date, timedelta
 import calendar
 from sqlalchemy import extract
 
 from ...models import db, CenarioAjusteMensal
 from ...repositories.lancamento_repository import LancamentoRepository
+from ...repositories.saldo_conta_repository import SaldoContaRepository
 from .base import get_tipo_lancamento_ids
 from ...utils.constants import MONTH_NAME_PT
 
@@ -31,8 +32,9 @@ def get_resumo_data(
     id_entrada = tipo_ids['entrada']
     id_saida = tipo_ids['saida']
     
-    # Initialize repository
+    # Initialize repositories
     lancamento_repo = LancamentoRepository()
+    saldo_repo = SaldoContaRepository()
 
     # Calculate period totals using repository
     total_entradas_periodo = lancamento_repo.get_total_by_tipo_and_period(
@@ -48,6 +50,19 @@ def get_resumo_data(
     )
     total_saidas_periodo = abs(total_saidas_lanc)
     disponibilidade_periodo = total_entradas_periodo - total_saidas_periodo
+    
+    # Get initial bank balance from day before period start
+    # Determine first day of period
+    primeiro_mes = min(meses_selecionados)
+    data_inicio_periodo = date(ano_selecionado, primeiro_mes, 1)
+    data_saldo_inicial = data_inicio_periodo - timedelta(days=1)  # Day before period
+    
+    saldo_inicial_conta = saldo_repo.get_saldo_total_by_date(data_saldo_inicial)
+    if saldo_inicial_conta == 0:
+        saldo_inicial_conta = saldo_repo.get_latest_saldo_total_before_date(data_saldo_inicial)
+    
+    # Calculate final bank balance
+    saldo_final_conta = saldo_inicial_conta + total_entradas_periodo - total_saidas_periodo
 
     # Load scenario adjustments if in projection mode
     ajustes_cenario = {}
@@ -60,12 +75,14 @@ def get_resumo_data(
     # Build cash flow data month by month
     cash_flow_data = {
         "labels": [],
+        "saldo_inicial_mensal": [],  # NEW: Monthly initial balances
         "receitas": [],
         "despesas": [],
         "saldos": [],
         "saldo_final": [],
         "meses_projetados": [],
     }
+    saldo_acumulado_banco = saldo_inicial_conta  # Start with bank initial balance
     saldo_acumulado = 0
     hoje = date.today()
     total_entradas_recalc = 0
@@ -122,6 +139,7 @@ def get_resumo_data(
             despesas_mes = abs(despesas_lanc_mes or 0)
         
         cash_flow_data["labels"].append(meses_nomes[mes][:3])
+        cash_flow_data["saldo_inicial_mensal"].append(saldo_acumulado_banco)
         cash_flow_data["receitas"].append(float(receitas_mes))
         cash_flow_data["despesas"].append(float(despesas_mes))
         cash_flow_data["meses_projetados"].append(projetar_mes)
@@ -129,18 +147,22 @@ def get_resumo_data(
         total_saidas_recalc += float(despesas_mes)
         saldo_mes = float(receitas_mes) - float(despesas_mes)
         saldo_acumulado += saldo_mes
+        saldo_acumulado_banco += saldo_mes  # Update bank balance
         cash_flow_data["saldos"].append(saldo_mes)
-        cash_flow_data["saldo_final"].append(saldo_acumulado)
+        cash_flow_data["saldo_final"].append(saldo_acumulado_banco)
 
     if estrategia == "projetado" and ajustes_cenario:
         total_entradas_periodo = total_entradas_recalc
         total_saidas_periodo = total_saidas_recalc
         disponibilidade_periodo = total_entradas_periodo - total_saidas_periodo
+        saldo_final_conta = saldo_inicial_conta + total_entradas_periodo - total_saidas_periodo
         
     return {
+        "saldo_inicial_conta": saldo_inicial_conta,
         "total_entradas_periodo": total_entradas_periodo,
         "total_saidas_periodo": total_saidas_periodo,
         "disponibilidade_periodo": disponibilidade_periodo,
+        "saldo_final_conta": saldo_final_conta,
         "cash_flow_data": cash_flow_data,
         "meses_nomes": meses_nomes,
     }

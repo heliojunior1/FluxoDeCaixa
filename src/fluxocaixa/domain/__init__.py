@@ -3,6 +3,7 @@ from .lancamento import LancamentoCreate, LancamentoOut
 from .alerta import AlertaCreate, AlertaUpdate
 from .alerta_gerado import AlertaGeradoCreate, AlertaGeradoUpdate
 from .mapeamento import MapeamentoCreate, MapeamentoOut
+from .saldo_conta import SaldoContaCreate, SaldoContaUpdate
 
 __all__ = [
     'PagamentoCreate',
@@ -15,4 +16,6 @@ __all__ = [
     'AlertaGeradoUpdate',
     'MapeamentoCreate',
     'MapeamentoOut',
+    'SaldoContaCreate',
+    'SaldoContaUpdate',
 ]

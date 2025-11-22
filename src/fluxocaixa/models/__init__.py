@@ -11,6 +11,7 @@ from .cenario import Cenario, CenarioAjusteMensal
 from .alerta import Alerta
 from .alerta_gerado import AlertaGerado
 from .conta_bancaria import ContaBancaria
+from .saldo_conta import SaldoConta
 
 __all__ = [
     'db',
@@ -29,4 +30,5 @@ __all__ = [
     'Alerta',
     'AlertaGerado',
     'ContaBancaria',
+    'SaldoConta',
 ]

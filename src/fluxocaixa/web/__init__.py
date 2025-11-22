@@ -12,6 +12,6 @@ templates = Jinja2Templates(directory=os.path.join(BASE_DIR, 'templates'))
 templates.env.filters['format_currency'] = format_currency
 
 # Import routes so they register themselves with the router
-from . import base, pagamentos, mapeamentos, relatorios, alertas, cenarios, qualificadores  # noqa: E402,F401
+from . import base, pagamentos, mapeamentos, relatorios, alertas, cenarios, qualificadores, saldos_bancarios  # noqa: E402,F401
 
 __all__ = ['router', 'templates', 'handle_exceptions']

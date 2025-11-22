@@ -119,8 +119,25 @@
                         class="w-12 h-12 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600 mb-4 group-hover:scale-110 transition-transform duration-200">
                         <i data-lucide="dollar-sign" class="w-6 h-6"></i>
                     </div>
-                    <h4 class="text-lg font-semibold text-slate-800 mb-1">Saldos</h4>
-                    <p class="text-sm text-slate-500">Controle de saldos e contas bancárias</p>
+                    <h4 class="text-lg font-semibold text-slate-800 mb-1">Lançamentos</h4>
+                    <p class="text-sm text-slate-500">Controle de lançamentos financeiros</p>
+                </div>
+            </a>
+
+            <!-- Saldos Bancários -->
+            <a href="{{ url_for('saldos_bancarios') }}"
+                class="group relative bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-teal-300 transition-all duration-200 overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i data-lucide="landmark"
+                        class="w-24 h-24 text-teal-600 transform rotate-12 translate-x-4 -translate-y-4"></i>
+                </div>
+                <div class="relative z-10">
+                    <div
+                        class="w-12 h-12 bg-teal-50 rounded-lg flex items-center justify-center text-teal-600 mb-4 group-hover:scale-110 transition-transform duration-200">
+                        <i data-lucide="building-2" class="w-6 h-6"></i>
+                    </div>
+                    <h4 class="text-lg font-semibold text-slate-800 mb-1">Saldos Bancários</h4>
+                    <p class="text-sm text-slate-500">Gestão de saldos diários das contas</p>
                 </div>
             </a>
 

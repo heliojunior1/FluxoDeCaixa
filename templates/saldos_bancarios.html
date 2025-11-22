@@ -1,0 +1,287 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div class="flex items-center">
+            <a href="{{ url_for('index') }}" class="text-gray-500 hover:text-gray-700">
+                <i data-lucide="arrow-left-circle" class="w-8 h-8"></i>
+            </a>
+            <h2 class="text-2xl font-bold text-gray-800 ml-4">Saldos Bancários</h2>
+        </div>
+        <button id="novo-saldo-btn"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center">
+            <i data-lucide="plus" class="w-5 h-5 mr-2"></i>
+            <span>Novo Saldo</span>
+        </button>
+    </div>
+
+    <!-- Import Section -->
+    <form action="{{ url_for('import_saldos_bancarios') }}" method="post" enctype="multipart/form-data"
+        class="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
+        <input type="file" name="file" accept=".csv,.xlsx" class="border rounded px-2 py-1" required>
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+            Importar Arquivo
+        </button>
+        <a href="{{ url_for('download_saldos_template') }}" class="text-blue-600 underline" download>
+            Baixar Modelo
+        </a>
+    </form>
+
+    <!-- Filters -->
+    <form method="POST" action="{{ url_for('saldos_bancarios') }}" class="bg-white p-6 rounded-lg shadow-md">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+                <label for="seq_conta" class="block text-sm font-medium text-gray-700">Conta Bancária</label>
+                <select name="seq_conta" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    <option value="">Todas as Contas</option>
+                    {% for c in contas %}
+                    <option value="{{ c.seq_conta }}" {% if seq_conta_filter==c.seq_conta %}selected{% endif %}>
+                        {{ c.cod_banco }} / {{ c.num_agencia }} / {{ c.num_conta }}
+                        {% if c.dsc_conta %} - {{ c.dsc_conta }}{% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="data_inicio" class="block text-sm font-medium text-gray-700">Data Início</label>
+                <input type="date" name="data_inicio" value="{{ data_inicio_filter or '' }}"
+                    class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            </div>
+            <div>
+                <label for="data_fim" class="block text-sm font-medium text-gray-700">Data Fim</label>
+                <input type="date" name="data_fim" value="{{ data_fim_filter or '' }}"
+                    class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            </div>
+        </div>
+        <div class="flex justify-end mt-6">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">
+                Consultar
+            </button>
+        </div>
+    </form>
+
+    <!-- Table -->
+    <div class="bg-white p-6 rounded-lg shadow-md">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conta
+                    </th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Saldo
+                        (R$)</th>
+                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Ações
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for s in saldos %}
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {{ s.dat_saldo.strftime('%d/%m/%Y') }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-medium">
+                        {{ s.conta.cod_banco }} / {{ s.conta.num_agencia }} / {{ s.conta.num_conta }}
+                        {% if s.conta.dsc_conta %}
+                        <span class="text-gray-500">- {{ s.conta.dsc_conta }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold text-green-600">
+                        {{ s.val_saldo|format_currency }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                        <button type="button" class="edit-saldo-btn text-indigo-600 hover:text-indigo-900"
+                            data-seq_saldo_conta="{{ s.seq_saldo_conta }}" data-seq_conta="{{ s.seq_conta }}"
+                            data-dat_saldo="{{ s.dat_saldo.strftime('%Y-%m-%d') }}" data-val_saldo="{{ s.val_saldo }}">
+                            <i data-lucide="edit" class="w-5 h-5"></i>
+                        </button>
+                        <form action="{{ url_for('delete_saldo_bancario', seq_saldo_conta=s.seq_saldo_conta) }}"
+                            method="POST" class="inline-block ml-4"
+                            onsubmit="return confirm('Tem certeza que deseja excluir este saldo?');">
+                            <button type="submit" class="text-red-600 hover:text-red-900">
+                                <i data-lucide="trash-2" class="w-5 h-5"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+                {% if not saldos %}
+                <tr>
+                    <td colspan="4" class="px-6 py-8 text-center text-gray-500">
+                        Nenhum saldo encontrado
+                    </td>
+                </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal de Novo Saldo -->
+<div id="novo-saldo-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center pb-3 border-b">
+            <h3 class="text-2xl font-bold text-gray-800">Novo Saldo Bancário</h3>
+            <button id="close-novo-modal-btn" class="text-gray-500 hover:text-gray-800">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </div>
+        <div class="mt-5">
+            <form id="novo-saldo-form" action="{{ url_for('add_saldo_bancario') }}" method="POST">
+                <div class="space-y-4">
+                    <div>
+                        <label for="novo_seq_conta" class="block text-sm font-medium text-gray-700">Conta
+                            Bancária</label>
+                        <select name="seq_conta" id="novo_seq_conta"
+                            class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                            <option value="">Selecione uma conta...</option>
+                            {% for c in contas %}
+                            <option value="{{ c.seq_conta }}">
+                                {{ c.cod_banco }} / {{ c.num_agencia }} / {{ c.num_conta }}
+                                {% if c.dsc_conta %} - {{ c.dsc_conta }}{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="novo_dat_saldo" class="block text-sm font-medium text-gray-700">Data</label>
+                        <input type="date" name="dat_saldo" id="novo_dat_saldo"
+                            class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                    </div>
+                    <div>
+                        <label for="novo_val_saldo" class="block text-sm font-medium text-gray-700">Saldo (R$)</label>
+                        <input type="number" step="0.01" name="val_saldo" id="novo_val_saldo"
+                            class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="0.00"
+                            required>
+                    </div>
+                </div>
+                <div class="flex justify-end mt-6 gap-3">
+                    <button type="button" id="cancel-novo-btn"
+                        class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg">
+                        Cancelar
+                    </button>
+                    <button type="submit"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">
+                        Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Editar Saldo -->
+<div id="edit-saldo-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+    <div class="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+        <div class="flex justify-between items-center pb-3 border-b">
+            <h3 class="text-2xl font-bold text-gray-800">Editar Saldo Bancário</h3>
+            <button id="close-edit-modal-btn" class="text-gray-500 hover:text-gray-800">
+                <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+        </div>
+        <div class="mt-5">
+            <form id="edit-saldo-form" action="" method="POST">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Conta Bancária</label>
+                        <input type="text" id="edit_conta_display" readonly
+                            class="form-input mt-1 block w-full rounded-md border-gray-300 bg-gray-50">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Data</label>
+                        <input type="text" id="edit_dat_display" readonly
+                            class="form-input mt-1 block w-full rounded-md border-gray-300 bg-gray-50">
+                    </div>
+                    <div>
+                        <label for="edit_val_saldo" class="block text-sm font-medium text-gray-700">Saldo (R$)</label>
+                        <input type="number" step="0.01" name="val_saldo" id="edit_val_saldo"
+                            class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                    </div>
+                </div>
+                <div class="flex justify-end mt-6 gap-3">
+                    <button type="button" id="cancel-edit-btn"
+                        class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg">
+                        Cancelar
+                    </button>
+                    <button type="submit"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">
+                        Salvar Alterações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Modal de Novo Saldo
+        const novoSaldoBtn = document.getElementById('novo-saldo-btn');
+        const novoModal = document.getElementById('novo-saldo-modal');
+        const closeNovoModalBtn = document.getElementById('close-novo-modal-btn');
+        const cancelNovoBtn = document.getElementById('cancel-novo-btn');
+
+        if (novoSaldoBtn) {
+            novoSaldoBtn.addEventListener('click', () => novoModal.classList.remove('hidden'));
+        }
+        if (closeNovoModalBtn) {
+            closeNovoModalBtn.addEventListener('click', () => novoModal.classList.add('hidden'));
+        }
+        if (cancelNovoBtn) {
+            cancelNovoBtn.addEventListener('click', () => novoModal.classList.add('hidden'));
+        }
+
+        // Modal de Edição
+        const editModal = document.getElementById('edit-saldo-modal');
+        const closeEditModalBtn = document.getElementById('close-edit-modal-btn');
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+        const editForm = document.getElementById('edit-saldo-form');
+        const editButtons = document.querySelectorAll('.edit-saldo-btn');
+
+        // Build contas map from server data
+        const contasData = {{ contas| tojson | safe
+    }};
+    const contasMap = {};
+    if (Array.isArray(contasData)) {
+        contasData.forEach(c => {
+            const contaLabel = c.cod_banco + ' / ' + c.num_agencia + ' / ' + c.num_conta + (c.dsc_conta ? ' - ' + c.dsc_conta : '');
+            contasMap[c.seq_conta] = contaLabel;
+        });
+    }
+
+    editButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const seq = button.dataset.seq_saldo_conta;
+            const seqConta = button.dataset.seq_conta;
+            const datSaldo = button.dataset.dat_saldo;
+            const valSaldo = button.dataset.val_saldo;
+
+            editForm.action = `/saldos-bancarios/${seq}/editar`;
+            document.getElementById('edit_conta_display').value = contasMap[seqConta] || '';
+            document.getElementById('edit_dat_display').value = new Date(datSaldo).toLocaleDateString('pt-BR');
+            document.getElementById('edit_val_saldo').value = valSaldo;
+
+            editModal.classList.remove('hidden');
+        });
+    });
+
+    const closeEditModal = () => {
+        if (editModal) editModal.classList.add('hidden');
+    };
+
+    if (closeEditModalBtn) closeEditModalBtn.addEventListener('click', closeEditModal);
+    if (cancelEditBtn) cancelEditBtn.addEventListener('click', closeEditModal);
+
+    // Close modals on outside click
+    window.addEventListener('click', (event) => {
+        if (event.target === novoModal) novoModal.classList.add('hidden');
+        if (event.target === editModal) editModal.classList.add('hidden');
+    });
+    });
+</script>
+{% endblock %}

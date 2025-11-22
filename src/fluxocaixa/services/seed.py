@@ -1,5 +1,5 @@
-from datetime import date
-from sqlalchemy import func
+from datetime import date, timedelta
+from sqlalchemy import func, and_
 import calendar
 from ..models import (
     Mapeamento,
@@ -13,6 +13,7 @@ from ..models import (
     CenarioAjusteMensal,
     Conferencia,
     AlertaGerado,
+    SaldoConta,
 )
 from ..models.base import db
 from ..models import ContaBancaria
@@ -67,15 +68,7 @@ def seed_data(session=None):
     # Populate Qualificadores (estrutura hierárquica)
     if not Qualificador.query.first():
         # Criar estrutura hierárquica baseada na imagem
-        # Nível 0 - Saldo Inicial
-        saldo_inicial = Qualificador(
-            num_qualificador='0',
-            dsc_qualificador='SALDO INICIAL',
-            cod_qualificador_pai=None
-        )
-        session.add(saldo_inicial)
-        session.flush()  # Para obter o ID
-        
+ 
         # Nível 1 - Receita Líquida
         receita_liquida = Qualificador(
             num_qualificador='1',
@@ -358,6 +351,19 @@ def seed_data(session=None):
         'FECOEP - RESTOS A PAGAR - FONTE 761': [42857.13, 32153.02, 23163.06, 22429.36, 20879.54, 20100.86, 20767.69, 21007.48, 22429.65, 23323.25, 23323.25, 23323.25]
     }
 
+    # Map qualifiers to specific accounts for realistic data
+    # 1: Conta Única (Tesouro), 2: Judicial, 3: Salario, 4: FPE, 5: Recursos Próprios
+    qualificador_conta_map = {
+        'ICMS': 1, 'IPVA': 1, 'ITCMD': 1, 'IR': 1, 'DEMAIS RECEITAS': 1,
+        'FPE': 4,
+        'ROYALTIES': 5, 'FECOEP': 5, 'APLICAÇÕES FINANCEIRAS': 5,
+        'FOLHA': 3, 'PASEP': 3,
+        'SAÚDE 12%': 1, 'EDUCAÇÃO 5%': 1, 'PODERES': 1, 'REPASSE MUNICÍPIOS': 1,
+        'PRECATÓRIOS': 2,
+        'CUSTEIO': 1, 'INVESTIMENTO + AUMENTO DE CAPITAL': 1,
+        'RESTOS A PAGAR TESOURO e DEMAIS': 1, 'FECOEP - RESTOS A PAGAR - FONTE 761': 5
+    }
+
     # Add realistic seed data based on actual values
     if not Lancamento.query.first():
         tipo_entrada = TipoLancamento.query.filter_by(dsc_tipo_lancamento='Entrada').first()
@@ -367,6 +373,9 @@ def seed_data(session=None):
         for origem_nome, valores in receitas_2025.items():
             qualificador = encontrar_qualificador(origem_nome)
             if qualificador and origem_manual:
+                # Determine account
+                seq_conta = qualificador_conta_map.get(origem_nome, 1) # Default to Treasury
+                
                 for month, valor in enumerate(valores, 1):
                     month_date = date(2025, month, 15)
                     session.add(Lancamento(
@@ -375,13 +384,17 @@ def seed_data(session=None):
                         val_lancamento=valor * 1000,  # Convert to thousands
                         cod_tipo_lancamento=tipo_entrada.cod_tipo_lancamento,
                         cod_origem_lancamento=origem_manual.cod_origem_lancamento,
-                        cod_pessoa_inclusao=1
+                        cod_pessoa_inclusao=1,
+                        seq_conta=seq_conta
                     ))
 
         # Add 2024 receitas
         for origem_nome, valores in receitas_2024.items():
             qualificador = encontrar_qualificador(origem_nome)
             if qualificador and origem_manual:
+                # Determine account
+                seq_conta = qualificador_conta_map.get(origem_nome, 1) # Default to Treasury
+
                 for month, valor in enumerate(valores, 1):
                     month_date = date(2024, month, 15)
                     session.add(Lancamento(
@@ -390,7 +403,8 @@ def seed_data(session=None):
                         val_lancamento=valor * 1000,  # Convert to thousands
                         cod_tipo_lancamento=tipo_entrada.cod_tipo_lancamento,
                         cod_origem_lancamento=origem_manual.cod_origem_lancamento,
-                        cod_pessoa_inclusao=1
+                        cod_pessoa_inclusao=1,
+                        seq_conta=seq_conta
                     ))
 
         # Add saídas (despesas) baseadas nos órgãos de pagamento
@@ -400,6 +414,9 @@ def seed_data(session=None):
             for orgao_nome, valores in despesas_2025.items():
                 qualificador = encontrar_qualificador(orgao_nome)
                 if qualificador:
+                    # Determine account
+                    seq_conta = qualificador_conta_map.get(orgao_nome, 1) # Default to Treasury
+
                     for month, valor in enumerate(valores, 1):
                         if valor > 0:  # Skip zero values
                             month_date = date(2025, month, 15)
@@ -409,13 +426,17 @@ def seed_data(session=None):
                                 val_lancamento=-valor * 1000,  # Negative for expenses
                                 cod_tipo_lancamento=tipo_saida.cod_tipo_lancamento,
                                 cod_origem_lancamento=origem_manual.cod_origem_lancamento,
-                                cod_pessoa_inclusao=1
+                                cod_pessoa_inclusao=1,
+                                seq_conta=seq_conta
                             ))
 
             # Add 2024 despesas como lançamentos de saída
             for orgao_nome, valores in despesas_2024.items():
                 qualificador = encontrar_qualificador(orgao_nome)
                 if qualificador:
+                    # Determine account
+                    seq_conta = qualificador_conta_map.get(orgao_nome, 1) # Default to Treasury
+
                     for month, valor in enumerate(valores, 1):
                         if valor > 0:  # Skip zero values
                             month_date = date(2024, month, 15)
@@ -425,7 +446,8 @@ def seed_data(session=None):
                                 val_lancamento=-valor * 1000,  # Negative for expenses
                                 cod_tipo_lancamento=tipo_saida.cod_tipo_lancamento,
                                 cod_origem_lancamento=origem_manual.cod_origem_lancamento,
-                                cod_pessoa_inclusao=1
+                                cod_pessoa_inclusao=1,
+                                seq_conta=seq_conta
                             ))
 
     # Add realistic pagamentos (despesas) with proper organ and qualifier mapping
@@ -762,6 +784,7 @@ def seed_data(session=None):
                 categoria='RECEITA',
                 severidade='WARNING',
                 valor_obtido=-2.0,
+                valor_esperado=0.0,
             ),
             # Alerta INFO - Saldo
             AlertaGerado(
@@ -771,9 +794,60 @@ def seed_data(session=None):
                 categoria='SALDO',
                 severidade='INFO',
                 valor_obtido=1200000.0,
+                valor_esperado=0.0,
             ),
         ]
         session.add_all(alertas_demo)
         session.commit()
 
-
+    # Seed daily account balances (SaldoConta)
+    if not SaldoConta.query.first():
+        contas = ContaBancaria.query.filter_by(ind_status='A').all()
+        
+        if contas:
+            # Base initial balances for each account (as of Dec 31, 2023)
+            saldos_base = {
+                1: 250000000.00,  # Conta Única - Tesouro
+                2: 180000000.00,  # Conta Judicial  
+                3: 80000000.00,   # Conta Salário
+                4: 150000000.00,  # Conta FPE
+                5: 90000000.00,   # Recursos Próprios
+            }
+            
+            # Generate daily balances from Jan 1, 2024 to today
+            data_inicio = date(2024, 1, 1)
+            data_fim = date.today()
+            
+            # For each account, generate daily balances
+            for conta in contas:
+                seq_conta = conta.seq_conta
+                saldo_atual = saldos_base.get(seq_conta, 100000000.00)
+                
+                # Iterate through each day
+                data_atual = data_inicio
+                while data_atual <= data_fim:
+                    # Get transactions for this account on this day
+                    lancamentos_dia = session.query(Lancamento).filter(
+                        and_(
+                            Lancamento.seq_conta == seq_conta,
+                            Lancamento.dat_lancamento == data_atual
+                        )
+                    ).all()
+                    
+                    # Apply transactions to balance
+                    for lanc in lancamentos_dia:
+                        saldo_atual += float(lanc.val_lancamento)
+                    
+                    # Create balance record
+                    session.add(SaldoConta(
+                        seq_conta=seq_conta,
+                        dat_saldo=data_atual,
+                        val_saldo=round(saldo_atual, 2),
+                        cod_pessoa_inclusao=1
+                    ))
+                    
+                    # Move to next day
+                    data_atual += timedelta(days=1)
+            
+            session.commit()
+            print(f"Seeded daily balances for {len(contas)} accounts from {data_inicio} to {data_fim}")

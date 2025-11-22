@@ -1,10 +1,11 @@
 """DFC (Demonstração de Fluxo de Caixa) service - Cash Flow Statement."""
-from datetime import date
+from datetime import date, timedelta
 import calendar
 from sqlalchemy import extract
 
 from ...models import Lancamento, Qualificador
 from ...repositories.lancamento_repository import LancamentoRepository
+from ...repositories.saldo_conta_repository import SaldoContaRepository
 from ...repositories import cenario_repository, qualificador_repository
 from ...utils.constants import DAY_ABBR_PT, MONTH_ABBR_PT, MONTH_NAME_PT
 
@@ -41,8 +42,21 @@ def get_dfc_data(
         col_range = range(1, 13)
         extractor = extract("month", Lancamento.dat_lancamento)
 
-    # Initialize repository
+    # Initialize repositories
     lancamento_repo = LancamentoRepository()
+    saldo_repo = SaldoContaRepository()
+    
+    # Get initial bank balance from day before period
+    if periodo == "mes":
+        data_inicial = date(ano_selecionado, mes_selecionado, 1)
+    else:
+        primeiro_mes = min(col_range)
+        data_inicial = date(ano_selecionado, primeiro_mes, 1)
+    
+    data_saldo_anterior = data_inicial - timedelta(days=1)
+    saldo_banco_inicial = saldo_repo.get_saldo_total_by_date(data_saldo_anterior)
+    if saldo_banco_inicial == 0:
+        saldo_banco_inicial = saldo_repo.get_latest_saldo_total_before_date(data_saldo_anterior)
 
     # Get actual lancamentos using repository
     if periodo == "mes":
@@ -153,6 +167,18 @@ def get_dfc_data(
         headers = ["Nome"] + [MONTH_ABBR_PT[m] for m in col_range]
         
     meses_nomes = MONTH_NAME_PT
+    
+    # Calculate accumulated bank balances for each column
+    saldos_banco_anterior = []  # Saldo at start of each day/month
+    saldos_banco_final = []      # Saldo at end of each day/month
+    resultado_dia = []           # Net result (receitas - despesas)
+    
+    saldo_acumulado = saldo_banco_inicial
+    for total_col in totals:
+        saldos_banco_anterior.append(saldo_acumulado)
+        resultado_dia.append(total_col)
+        saldo_acumulado += total_col
+        saldos_banco_final.append(saldo_acumulado)
 
     return {
         "headers": headers,
@@ -160,6 +186,9 @@ def get_dfc_data(
         "totals": totals,
         "meses_projetados": list(sorted(proj_months)),
         "meses_nomes": meses_nomes,
+        "saldos_banco_anterior": saldos_banco_anterior,
+        "saldos_banco_final": saldos_banco_final,
+        "resultado_dia": resultado_dia,
     }
 
 

@@ -58,12 +58,13 @@ def get_analise_comparativa_data(
     else:
         pagamento_repo = PagamentoRepository()
         
-        results = pagamento_repo.get_comparative_by_orgao(
+        results = pagamento_repo.get_comparative_by_qualificador(
             anos=[ano1, ano2],
             meses=meses_selecionados
         )
         
-        all_items = [o.nom_orgao for o in pagamento_repo.list_orgaos()]
+        qualificadores = pagamento_repo.list_qualificadores()
+        all_items = [q.dsc_qualificador for q in qualificadores if q.tipo_fluxo == 'despesa']
 
     for item_name in all_items:
         data[item_name] = {str(m): {str(ano1): 0, str(ano2): 0} for m in range(1, 13)}

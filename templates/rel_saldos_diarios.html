@@ -11,16 +11,36 @@
   <div>
     <label class="block text-sm text-gray-600">Data de Referência</label>
     <input type="date" name="data_ref" value="{{ (data_ref or '').strftime('%Y-%m-%d') if data_ref else '' }}"
-           class="form-input rounded-md border-gray-300 shadow-sm">
+      class="form-input rounded-md border-gray-300 shadow-sm">
   </div>
   <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Filtrar</button>
 </form>
+
+<!-- Nota explicativa sobre a origem dos dados -->
+<div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-4">
+  <div class="flex">
+    <div class="flex-shrink-0">
+      <i data-lucide="info" class="h-5 w-5 text-blue-400"></i>
+    </div>
+    <div class="ml-3">
+      <p class="text-sm text-blue-700">
+        <strong>Este relatório cruza duas fontes de dados:</strong>
+      </p>
+      <ul class="mt-2 ml-4 text-sm text-blue-600 list-disc">
+        <li><strong>Saldos Iniciais:</strong> Informados pelo banco ou cadastrados manualmente (tabela flc_saldo_conta)
+        </li>
+        <li><strong>Receitas/Despesas:</strong> Lançamentos do sistema vinculados à conta específica</li>
+        <li><strong>Divergência:</strong> Diferença entre saldo calculado e saldo do banco no dia seguinte</li>
+      </ul>
+    </div>
+  </div>
+</div>
 
 <!-- Resumo do dia: Saldo Anterior, Entradas, Saídas, Saldo Final do Dia -->
 <div class="bg-white p-4 rounded-lg shadow-sm mb-4">
   <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
     <div class="flex items-center justify-between border rounded-md p-3">
-      <div class="text-sm text-gray-600 font-medium">SALDO ANTERIOR</div>
+      <div class="text-sm text-gray-600 font-medium">SALDO INICIAL CONTA</div>
       <div class="text-right text-gray-700 font-semibold">{{ totais.saldo_anterior | format_currency }}</div>
     </div>
     <div class="flex items-center justify-between border rounded-md p-3">
@@ -43,10 +63,11 @@
     <thead class="bg-gray-50">
       <tr>
         <th class="p-2 text-left">Banco/Agência/Conta</th>
-        <th class="p-2 text-right">Saldo Anterior</th>
+        <th class="p-2 text-right">Saldo Inicial</th>
         <th class="p-2 text-right">Entradas do Dia</th>
         <th class="p-2 text-right">Saídas do Dia</th>
         <th class="p-2 text-right">Saldo Final</th>
+        <th class="p-2 text-right">Divergência</th>
       </tr>
     </thead>
     <tbody>
@@ -56,10 +77,31 @@
           {{ r.conta.cod_banco }} / {{ r.conta.num_agencia }} / {{ r.conta.num_conta }}
           {% if r.conta.dsc_conta %}<div class="text-xs text-gray-500">{{ r.conta.dsc_conta }}</div>{% endif %}
         </td>
-        <td class="p-2 text-right">{{ r.saldo_anterior|format_currency }}</td>
-        <td class="p-2 text-right text-green-600">{{ r.entradas_dia|format_currency }}</td>
-        <td class="p-2 text-right text-red-600">{{ r.saidas_dia|format_currency }}</td>
+        <td class="p-2 text-right">
+          {{ r.saldo_inicial|format_currency }}
+          {% if r.saldo_exato %}
+          <span class="ml-1 text-xs text-green-600" title="Saldo exato do dia">✓</span>
+          {% else %}
+          <span class="ml-1 text-xs text-yellow-600" title="Saldo estimado (dia anterior)">≈</span>
+          {% endif %}
+        </td>
+        <td class="p-2 text-right text-green-600" title="Lançamentos de entrada vinculados a esta conta">{{
+          r.entradas_dia|format_currency }}</td>
+        <td class="p-2 text-right text-red-600" title="Lançamentos de saída vinculados a esta conta">{{
+          r.saidas_dia|format_currency }}</td>
         <td class="p-2 text-right font-semibold">{{ r.saldo_final|format_currency }}</td>
+        <td
+          class="p-2 text-right {% if r.divergencia and r.divergencia|abs > 0.01 %}text-red-600 font-semibold{% else %}text-gray-500{% endif %}">
+          {% if r.divergencia is not none %}
+          {% if r.divergencia|abs > 0.01 %}
+          {{ r.divergencia|format_currency }} <span class="text-xs">⚠️</span>
+          {% else %}
+          -
+          {% endif %}
+          {% else %}
+          -
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>
@@ -77,8 +119,8 @@
 {{ super() }}
 <script>
   document.addEventListener('DOMContentLoaded', function () {
-  const labels = JSON.parse('{{ evolucao_labels | tojson | safe }}');
-  const data = JSON.parse('{{ evolucao_saldos | tojson | safe }}');
+    const labels = JSON.parse('{{ evolucao_labels | tojson | safe }}');
+    const data = JSON.parse('{{ evolucao_saldos | tojson | safe }}');
     const canvas = document.getElementById('evolucaoSaldoChart');
     if (!canvas || !labels || !data) return;
     const ctx = canvas.getContext('2d');

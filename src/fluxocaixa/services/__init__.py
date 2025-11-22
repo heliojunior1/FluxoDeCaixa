@@ -49,6 +49,14 @@ from .qualificador_service import (
     update_qualificador,
     delete_qualificador as delete_qualificador_service,
 )
+from .saldo_conta_service import (
+    list_saldos_conta,
+    get_saldo_conta,
+    create_saldo_conta,
+    update_saldo_conta,
+    delete_saldo_conta,
+    import_saldos_service,
+)
 from .relatorio import (
     get_available_years,
     get_resumo_data,
@@ -105,6 +113,12 @@ __all__ = [
     'create_qualificador',
     'update_qualificador',
     'delete_qualificador_service',
+    'list_saldos_conta',
+    'get_saldo_conta',
+    'create_saldo_conta',
+    'update_saldo_conta',
+    'delete_saldo_conta',
+    'import_saldos_service',
     'get_available_years',
     'get_resumo_data',
     'get_indicadores_data',

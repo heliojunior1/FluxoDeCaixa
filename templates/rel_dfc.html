@@ -7,6 +7,7 @@
         border-right: 1px solid #e5e7eb;
         padding: 0.5rem;
     }
+
     /* Evita quebra de linha na célula de nome dos qualificados */
     .dfc-table td.node-level-0,
     .dfc-table td.node-level-1,
@@ -14,42 +15,63 @@
     .dfc-table td.node-level-3 {
         white-space: nowrap;
     }
-    
+
     .dfc-table th:last-child,
     .dfc-table td:last-child {
         border-right: none;
     }
+
     .dfc-table tbody tr:nth-child(even) {
         background-color: #f9fafb;
     }
+
     .dfc-table tbody tr:hover {
         background-color: #f3f4f6;
     }
+
     .dfc-table tfoot td {
         background-color: #f1f5f9;
         font-weight: 600;
     }
-    .dfc-table .collapsible > td:first-child {
+
+    .dfc-table .collapsible>td:first-child {
         cursor: pointer;
     }
+
     .dfc-table .icon-toggle {
         transition: transform 0.2s ease-in-out;
     }
+
     .dfc-table .icon-toggle.expanded {
         transform: rotate(90deg);
     }
+
     .dfc-table .clickable-value {
         cursor: pointer;
         text-decoration: underline;
         font-weight: 500;
     }
+
     .dfc-table .clickable-value:hover {
         color: var(--sefaz-primary-blue);
     }
-    .node-level-0 { border-left: 4px solid #3B82F6; }
-    .node-level-1 { border-left: 4px solid #10B981; }
-    .node-level-2 { border-left: 4px solid #F59E0B; }
-    .node-level-3 { border-left: 4px solid #EF4444; }
+
+    .node-level-0 {
+        border-left: 4px solid #3B82F6;
+    }
+
+    .node-level-1 {
+        border-left: 4px solid #10B981;
+    }
+
+    .node-level-2 {
+        border-left: 4px solid #F59E0B;
+    }
+
+    .node-level-3 {
+        border-left: 4px solid #EF4444;
+    }
+
     .number-badge {
         background-color: #f3f4f6;
         border-radius: 9999px;
@@ -70,54 +92,68 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
                 <div>
                     <label class="text-sm font-medium" for="periodo">Período</label>
-                    <select name="periodo" id="dfc-periodo-filter" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
-                        <option value="mes" {% if periodo == 'mes' %}selected{% endif %}>Mês</option>
-                        <option value="ano" {% if periodo == 'ano' %}selected{% endif %}>Ano</option>
+                    <select name="periodo" id="dfc-periodo-filter"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
+                        <option value="mes" {% if periodo=='mes' %}selected{% endif %}>Mês</option>
+                        <option value="ano" {% if periodo=='ano' %}selected{% endif %}>Ano</option>
                     </select>
                 </div>
                 <div id="dfc-date-filter-container"></div>
                 <div id="estrategia-wrapper">
                     <label for="estrategia" class="text-sm font-medium">Estratégia</label>
-                    <select name="estrategia" id="estrategia" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
-                        <option value="realizado" {% if estrategia_selecionada == 'realizado' %}selected{% endif %}>Realizado</option>
-                        <option value="projetado" {% if estrategia_selecionada == 'projetado' %}selected{% endif %}>Projetado</option>
+                    <select name="estrategia" id="estrategia"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
+                        <option value="realizado" {% if estrategia_selecionada=='realizado' %}selected{% endif %}>
+                            Realizado</option>
+                        <option value="projetado" {% if estrategia_selecionada=='projetado' %}selected{% endif %}>
+                            Projetado</option>
                     </select>
                 </div>
                 <div id="cenario-container" class="{% if estrategia_selecionada != 'projetado' %}hidden{% endif %}">
                     <label for="cenario_id" class="text-sm font-medium">Cenário</label>
-                    <select name="cenario_id" id="cenario_id" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
+                    <select name="cenario_id" id="cenario_id"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
                         <option value="">Selecione um cenário</option>
                         {% for c in cenarios_disponiveis %}
-                            <option value="{{ c.seq_cenario }}" {% if c.seq_cenario == cenario_selecionado_id %}selected{% endif %}>{{ c.nom_cenario }}</option>
+                        <option value="{{ c.seq_cenario }}" {% if c.seq_cenario==cenario_selecionado_id %}selected{%
+                            endif %}>{{ c.nom_cenario }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div id="meses-container" class="relative {% if estrategia_selecionada != 'projetado' %}hidden{% endif %}">
-                    <label for="meses-dropdown" class="block text-sm font-medium text-gray-700 mb-1">Meses para Análise</label>
+                <div id="meses-container"
+                    class="relative {% if estrategia_selecionada != 'projetado' %}hidden{% endif %}">
+                    <label for="meses-dropdown" class="block text-sm font-medium text-gray-700 mb-1">Meses para
+                        Análise</label>
                     <div class="relative">
-                        <button type="button" id="meses-dropdown-btn" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white text-left flex items-center justify-between">
+                        <button type="button" id="meses-dropdown-btn"
+                            class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-white text-left flex items-center justify-between">
                             <span id="meses-selected-text">Todos os Meses</span>
                             <i data-lucide="chevron-down" class="w-4 h-4"></i>
                         </button>
-                        <div id="meses-dropdown-menu" class="absolute z-50 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg hidden max-h-60 overflow-y-auto">
+                        <div id="meses-dropdown-menu"
+                            class="absolute z-50 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg hidden max-h-60 overflow-y-auto">
                             <div class="p-2">
                                 <label class="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
-                                    <input type="checkbox" id="todos-meses" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <input type="checkbox" id="todos-meses"
+                                        class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
                                     <span class="text-sm font-semibold text-blue-600">Todos os Meses</span>
                                 </label>
                                 <hr class="my-2 border-gray-200">
                                 {% for mes_num, mes_nome in meses_nomes.items() %}
-                                    <label class="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
-                                        <input type="checkbox" name="meses" value="{{ mes_num }}" {% if mes_num|string in meses_selecionados %}checked{% endif %} class="mes-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                                        <span class="text-sm text-gray-700">{{ mes_nome }}</span>
-                                    </label>
+                                <label class="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                    <input type="checkbox" name="meses" value="{{ mes_num }}" {% if mes_num|string in
+                                        meses_selecionados %}checked{% endif %}
+                                        class="mes-checkbox rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                    <span class="text-sm text-gray-700">{{ mes_nome }}</span>
+                                </label>
                                 {% endfor %}
                             </div>
                         </div>
                     </div>
                 </div>
                 <div class="flex items-end">
-                    <button type="submit" class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 flex items-center justify-center space-x-1">
+                    <button type="submit"
+                        class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 flex items-center justify-center space-x-1">
                         <i data-lucide="filter" class="w-4 h-4"></i>
                         <span>Filtrar</span>
                     </button>
@@ -139,168 +175,204 @@
 {% endblock %}
 {% block scripts %}
 <script>
-const dfcData = {{ dre_data | tojson | safe }};
-const headers = {{ headers | tojson | safe }};
-const totals = {{ totals | tojson | safe }};
-const periodo = '{{ periodo }}';
-const dataSelecionada = '{{ mes_ano }}';
-const availableYears = {{ anos_disponiveis | tojson | safe }};
-const mesesProjetados = {{ meses_projetados | tojson | safe }};
+    const dfcData = {{ dre_data | tojson | safe }};
+    const headers = {{ headers | tojson | safe }};
+    const totals = {{ totals | tojson | safe }};
+    const saldosBancoAnterior = {{ saldos_banco_anterior | tojson | safe }};
+    const saldosBancoFinal = {{ saldos_banco_final | tojson | safe }};
+    const resultadoDia = {{ resultado_dia | tojson | safe }};
+    const periodo = '{{ periodo }}';
+    const dataSelecionada = '{{ mes_ano }}';
+    const availableYears = {{ anos_disponiveis | tojson | safe }};
+    const mesesProjetados = {{ meses_projetados | tojson | safe }};
 
-function formatCurrency(value, showZero = true) {
-    if (value === 0 && !showZero) return '';
-    const isNegative = value < 0;
-    const formatted = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Math.abs(value));
-    const finalValue = isNegative ? `-${formatted}` : formatted;
-    return isNegative ? `<span class="text-red-600">${finalValue}</span>` : finalValue;
-}
-
-function updateDfcDateFilter() {
-    const container = document.getElementById('dfc-date-filter-container');
-    if (!container) return;
-    if (document.getElementById('dfc-periodo-filter').value === 'mes') {
-        container.innerHTML = `<div><label class="text-sm font-medium">Mês</label><input name="mes_ano" type="month" value="${dataSelecionada}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm"></div>`;
-    } else {
-        container.innerHTML = `<div><label class="text-sm font-medium">Ano</label><select name="mes_ano" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">${availableYears.map(y => `<option value="${y}" ${y == dataSelecionada ? 'selected' : ''}>${y}</option>`).join('')}</select></div>`;
+    function formatCurrency(value, showZero = true) {
+        if (value === 0 && !showZero) return '';
+        const isNegative = value < 0;
+        const formatted = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Math.abs(value));
+        const finalValue = isNegative ? `-${formatted}` : formatted;
+        return isNegative ? `<span class="text-red-600">${finalValue}</span>` : finalValue;
     }
-}
 
-function updatePeriodFilters() {
-    const show = document.getElementById('dfc-periodo-filter').value === 'ano';
-    const estrategiaWrapper = document.getElementById('estrategia-wrapper');
-    const cenarioContainer = document.getElementById('cenario-container');
-    const mesesContainer = document.getElementById('meses-container');
-    if (!estrategiaWrapper) return;
-    if (show) {
-        estrategiaWrapper.classList.remove('hidden');
-        if (document.getElementById('estrategia').value === 'projetado') {
-            cenarioContainer.classList.remove('hidden');
-            mesesContainer.classList.remove('hidden');
-        }
-    } else {
-        estrategiaWrapper.classList.add('hidden');
-        cenarioContainer.classList.add('hidden');
-        mesesContainer.classList.add('hidden');
-    }
-}
-
-function renderDFC() {
-    const tableHead = document.getElementById('dfc-table-head');
-    const tableBody = document.getElementById('dfc-table-body');
-    const tableFooter = document.getElementById('dfc-table-footer');
-    tableHead.innerHTML = `<tr>${headers.map((h, idx) => {
-        if(idx === 0) return `<th class="p-2 w-2/5">${h}</th>`;
-        const proj = mesesProjetados.includes(idx);
-        const icon = proj ? '<i data-lucide="activity" class="inline h-3 w-3 text-blue-600 ml-1"></i>' : '';
-        return `<th class="p-2 text-right">${h}${icon}</th>`;
-    }).join('')}</tr>`;
-    let bodyHtml = '';
-    function renderRow(item, visible=true) {
-        const hasChildren = item.children && item.children.length > 0;
-        const rowClass = hasChildren ? 'collapsible font-semibold' : '';
-        const visibility = visible ? '' : 'style="display:none;"';
-        const indent = `padding-left: ${item.level * 20 + 10}px;`;
-        bodyHtml += `<tr class="${rowClass}" data-id="${item.id}" ${item.parentId ? `data-parent="${item.parentId}"` : ''} ${visibility}>`;
-        bodyHtml += `<td class="p-2 node-level-${item.level}" style="${indent}">`;
-        if (hasChildren) {
-            bodyHtml += `<i data-lucide="chevron-right" class="icon-toggle inline-block h-4 w-4 mr-1"></i>`;
+    function updateDfcDateFilter() {
+        const container = document.getElementById('dfc-date-filter-container');
+        if (!container) return;
+        if (document.getElementById('dfc-periodo-filter').value === 'mes') {
+            container.innerHTML = `<div><label class="text-sm font-medium">Mês</label><input name="mes_ano" type="month" value="${dataSelecionada}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm"></div>`;
         } else {
-            bodyHtml += '<span class="inline-block w-4 mr-1"></span>';
-        }
-        bodyHtml += `<span class="number-badge">${item.number}</span>${item.name}</td>`;
-        item.values.forEach((value, idx) => {
-            const cls = value !== 0 ? 'clickable-value' : '';
-            const isProj = item.proj[idx];
-            const icon = isProj ? '<i data-lucide="activity" class="inline h-3 w-3 text-blue-600 ml-1"></i>' : '';
-            bodyHtml += `<td class="p-2 text-right font-mono ${cls}" data-col="${idx + 1}" data-qualifier-id="${item.id}" data-qualifier-name="${item.name}" data-proj="${isProj ? 1 : 0}">${formatCurrency(value, false)}${icon}</td>`;
-        });
-        bodyHtml += '</tr>';
-        if (hasChildren) {
-            item.children.forEach(child => { child.parentId = item.id; renderRow(child, false); });
+            container.innerHTML = `<div><label class="text-sm font-medium">Ano</label><select name="mes_ano" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">${availableYears.map(y => `<option value="${y}" ${y == dataSelecionada ? 'selected' : ''}>${y}</option>`).join('')}</select></div>`;
         }
     }
-    dfcData.forEach(item => renderRow(item));
-    tableBody.innerHTML = bodyHtml;
-    let footerHtml = `<td class="p-2">${periodo === 'mes' ? 'Saldo do dia' : 'Saldo do mês'}</td>`;
-    totals.forEach(t => { footerHtml += `<td class="p-2 text-right font-mono">${formatCurrency(t)}</td>`; });
-    tableFooter.innerHTML = footerHtml;
-    lucide.createIcons();
-    tableBody.querySelectorAll('.collapsible').forEach(row => {
-        row.firstElementChild.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const id = row.dataset.id;
-            const icon = row.querySelector('.icon-toggle');
-            icon.classList.toggle('expanded');
-            const children = tableBody.querySelectorAll(`tr[data-parent="${id}"]`);
-            children.forEach(ch => {
-                if (ch.style.display === 'none') {
-                    ch.style.display = 'table-row';
-                } else {
-                    ch.style.display = 'none';
-                    ch.querySelectorAll('.icon-toggle').forEach(i=>i.classList.remove('expanded'));
-                    tableBody.querySelectorAll(`tr[data-parent="${ch.dataset.id}"]`).forEach(gc => gc.style.display = 'none');
-                }
-            });
-        });
-    });
-    tableBody.querySelectorAll('.clickable-value').forEach(cell => {
-        cell.addEventListener('click', () => {
-            const qualifierId = cell.dataset.qualifierId;
-            const qualifierName = cell.dataset.qualifierName;
-            const col = cell.dataset.col;
-            openEventosModal(qualifierId, qualifierName, col);
-        });
-    });
-}
 
-document.addEventListener('DOMContentLoaded', function () {
-    updateDfcDateFilter();
-    updatePeriodFilters();
-    document.getElementById('dfc-periodo-filter').addEventListener('change', () => {
-        updateDfcDateFilter();
-        updatePeriodFilters();
-    });
-    renderDFC();
-    const estrategiaSelect = document.getElementById('estrategia');
-    const cenarioContainer = document.getElementById('cenario-container');
-    const mesesContainer = document.getElementById('meses-container');
-    estrategiaSelect.addEventListener('change', function() {
-        if (this.value === 'projetado') {
-            cenarioContainer.classList.remove('hidden');
-            mesesContainer.classList.remove('hidden');
+    function updatePeriodFilters() {
+        const show = document.getElementById('dfc-periodo-filter').value === 'ano';
+        const estrategiaWrapper = document.getElementById('estrategia-wrapper');
+        const cenarioContainer = document.getElementById('cenario-container');
+        const mesesContainer = document.getElementById('meses-container');
+        if (!estrategiaWrapper) return;
+        if (show) {
+            estrategiaWrapper.classList.remove('hidden');
+            if (document.getElementById('estrategia').value === 'projetado') {
+                cenarioContainer.classList.remove('hidden');
+                mesesContainer.classList.remove('hidden');
+            }
         } else {
+            estrategiaWrapper.classList.add('hidden');
             cenarioContainer.classList.add('hidden');
             mesesContainer.classList.add('hidden');
         }
-        updatePeriodFilters();
-    });
-    const mesesDropdownBtn = document.getElementById('meses-dropdown-btn');
-    const mesesDropdownMenu = document.getElementById('meses-dropdown-menu');
-    const mesesSelectedText = document.getElementById('meses-selected-text');
-    const todosMeses = document.getElementById('todos-meses');
-    const mesCheckboxes = document.querySelectorAll('.mes-checkbox');
-    mesesDropdownBtn.addEventListener('click', function(e){e.preventDefault();mesesDropdownMenu.classList.toggle('hidden');});
-    document.addEventListener('click', function(e){if(!mesesDropdownBtn.contains(e.target)&&!mesesDropdownMenu.contains(e.target)){mesesDropdownMenu.classList.add('hidden');}});
-    function updateDropdownText(){const selected=Array.from(mesCheckboxes).filter(cb=>cb.checked);const count=selected.length;if(count===0){mesesSelectedText.textContent='Nenhum mês selecionado';}else if(count===mesCheckboxes.length){mesesSelectedText.textContent='Todos os Meses';}else if(count===1){mesesSelectedText.textContent=selected[0].parentElement.querySelector('span').textContent;}else{mesesSelectedText.textContent=`${count} meses selecionados`;}}
-    function checkAllSelected(){const count=Array.from(mesCheckboxes).filter(cb=>cb.checked).length;if(count===mesCheckboxes.length){todosMeses.checked=true;todosMeses.indeterminate=false;}else if(count===0){todosMeses.checked=false;todosMeses.indeterminate=false;}else{todosMeses.checked=false;todosMeses.indeterminate=true;}updateDropdownText();}
-    todosMeses.addEventListener('change',function(){mesCheckboxes.forEach(cb=>{cb.checked=this.checked;});updateDropdownText();});
-    mesCheckboxes.forEach(cb=>{cb.addEventListener('change',checkAllSelected);});
-    checkAllSelected();
-});
+    }
 
-function openEventosModal(qualifierId, qualifierName, col) {
-    const estrategia = document.getElementById('estrategia')?.value || 'realizado';
-    const cenario = document.getElementById('cenario_id')?.value || '';
-    const params = new URLSearchParams({ seq: qualifierId, periodo: periodo, col: col, mes_ano: dataSelecionada, estrategia: estrategia, cenario_id: cenario });
-    fetch(`/relatorios/dfc/eventos?${params.toString()}`)
-        .then(r => r.json())
-        .then(data => {
-            const modal = document.getElementById('modal-eventos');
-            let rows = '';
-            data.eventos.forEach(ev => {
-                rows += `<tr class="border-b"><td class="p-2">${ev.data}</td><td class="p-2">${ev.descricao}</td><td class="p-2 text-right font-mono">${formatCurrency(ev.valor)}</td><td class="p-2">${ev.tipo}</td><td class="p-2">${ev.origem}</td></tr>`;
+    function renderDFC() {
+        const tableHead = document.getElementById('dfc-table-head');
+        const tableBody = document.getElementById('dfc-table-body');
+        const tableFooter = document.getElementById('dfc-table-footer');
+        tableHead.innerHTML = `<tr>${headers.map((h, idx) => {
+            if (idx === 0) return `<th class="p-2 w-2/5">${h}</th>`;
+            const proj = mesesProjetados.includes(idx);
+            const icon = proj ? '<i data-lucide="activity" class="inline h-3 w-3 text-blue-600 ml-1"></i>' : '';
+            return `<th class="p-2 text-right">${h}${icon}</th>`;
+        }).join('')}</tr>`;
+        let bodyHtml = '';
+        function renderRow(item, visible = true) {
+            const hasChildren = item.children && item.children.length > 0;
+            const rowClass = hasChildren ? 'collapsible font-semibold' : '';
+            const visibility = visible ? '' : 'style="display:none;"';
+            const indent = `padding-left: ${item.level * 20 + 10}px;`;
+
+            // Expand by default if level < 1 (Show up to x.x, hide x.x.x)
+            const isExpanded = item.level < 1;
+
+            bodyHtml += `<tr class="${rowClass}" data-id="${item.id}" ${item.parentId ? `data-parent="${item.parentId}"` : ''} ${visibility}>`;
+            bodyHtml += `<td class="p-2 node-level-${item.level}" style="${indent}">`;
+            if (hasChildren) {
+                const expandedClass = isExpanded ? 'expanded' : '';
+                bodyHtml += `<i data-lucide="chevron-right" class="icon-toggle ${expandedClass} inline-block h-4 w-4 mr-1"></i>`;
+            } else {
+                bodyHtml += '<span class="inline-block w-4 mr-1"></span>';
+            }
+            bodyHtml += `<span class="number-badge">${item.number}</span>${item.name}</td>`;
+            item.values.forEach((value, idx) => {
+                const cls = value !== 0 ? 'clickable-value' : '';
+                const isProj = item.proj[idx];
+                const icon = isProj ? '<i data-lucide="activity" class="inline h-3 w-3 text-blue-600 ml-1"></i>' : '';
+                bodyHtml += `<td class="p-2 text-right font-mono ${cls}" data-col="${idx + 1}" data-qualifier-id="${item.id}" data-qualifier-name="${item.name}" data-proj="${isProj ? 1 : 0}">${formatCurrency(value, false)}${icon}</td>`;
             });
-            modal.innerHTML = `
+            bodyHtml += '</tr>';
+            if (hasChildren) {
+                // Pass visibility to children: they are visible only if parent is visible AND expanded
+                item.children.forEach(child => {
+                    child.parentId = item.id;
+                    renderRow(child, visible && isExpanded);
+                });
+            }
+        }
+        dfcData.forEach(item => renderRow(item));
+        // Add SALDO INICIAL row at the top
+        let saldoInicialHtml = '';
+        saldoInicialHtml += '<tr class="font-semibold">';
+        saldoInicialHtml += '<td class="p-2"><i data-lucide="wallet" class="inline-block h-4 w-4 mr-2"></i>SALDO INICIAL</td>';
+        saldosBancoAnterior.forEach(saldo => {
+            saldoInicialHtml += `<td class="p-2 text-right font-mono">${formatCurrency(saldo)}</td>`;
+        });
+        saldoInicialHtml += '</tr>';
+
+        tableBody.innerHTML = saldoInicialHtml + bodyHtml;
+
+        // Add Saldo do dia row after main data (Penultimate)
+        let saldoDiaHtml = '';
+        saldoDiaHtml += '<tr class="bg-gray-50 font-bold">';
+        saldoDiaHtml += `<td class="p-2">${periodo === 'mes' ? 'Saldo do dia (Receita -Despesa)' : 'Saldo do mês (Receita -Despesa)'}</td>`;
+        totals.forEach(t => {
+            saldoDiaHtml += `<td class="p-2 text-right font-mono">${formatCurrency(t)}</td>`;
+        });
+        saldoDiaHtml += '</tr>';
+        tableBody.innerHTML += saldoDiaHtml;
+
+        // Add SALDO BANCO (Final) as Footer (Last)
+        let footerHtml = '';
+        footerHtml += `<td class="p-2"><i data-lucide="building-2" class="inline-block h-4 w-4 mr-2"></i>SALDO BANCO (Final)</td>`;
+        saldosBancoFinal.forEach(saldo => {
+            footerHtml += `<td class="p-2 text-right font-mono">${formatCurrency(saldo)}</td>`;
+        });
+        tableFooter.innerHTML = footerHtml;
+        lucide.createIcons();
+        tableBody.querySelectorAll('.collapsible').forEach(row => {
+            row.firstElementChild.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const id = row.dataset.id;
+                const icon = row.querySelector('.icon-toggle');
+                icon.classList.toggle('expanded');
+                const children = tableBody.querySelectorAll(`tr[data-parent="${id}"]`);
+                children.forEach(ch => {
+                    if (ch.style.display === 'none') {
+                        ch.style.display = 'table-row';
+                    } else {
+                        ch.style.display = 'none';
+                        ch.querySelectorAll('.icon-toggle').forEach(i => i.classList.remove('expanded'));
+                        tableBody.querySelectorAll(`tr[data-parent="${ch.dataset.id}"]`).forEach(gc => gc.style.display = 'none');
+                    }
+                });
+            });
+        });
+        tableBody.querySelectorAll('.clickable-value').forEach(cell => {
+            cell.addEventListener('click', () => {
+                const qualifierId = cell.dataset.qualifierId;
+                const qualifierName = cell.dataset.qualifierName;
+                const col = cell.dataset.col;
+                openEventosModal(qualifierId, qualifierName, col);
+            });
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        updateDfcDateFilter();
+        updatePeriodFilters();
+        document.getElementById('dfc-periodo-filter').addEventListener('change', () => {
+            updateDfcDateFilter();
+            updatePeriodFilters();
+        });
+        renderDFC();
+        const estrategiaSelect = document.getElementById('estrategia');
+        const cenarioContainer = document.getElementById('cenario-container');
+        const mesesContainer = document.getElementById('meses-container');
+        estrategiaSelect.addEventListener('change', function () {
+            if (this.value === 'projetado') {
+                cenarioContainer.classList.remove('hidden');
+                mesesContainer.classList.remove('hidden');
+            } else {
+                cenarioContainer.classList.add('hidden');
+                mesesContainer.classList.add('hidden');
+            }
+            updatePeriodFilters();
+        });
+        const mesesDropdownBtn = document.getElementById('meses-dropdown-btn');
+        const mesesDropdownMenu = document.getElementById('meses-dropdown-menu');
+        const mesesSelectedText = document.getElementById('meses-selected-text');
+        const todosMeses = document.getElementById('todos-meses');
+        const mesCheckboxes = document.querySelectorAll('.mes-checkbox');
+        mesesDropdownBtn.addEventListener('click', function (e) { e.preventDefault(); mesesDropdownMenu.classList.toggle('hidden'); });
+        document.addEventListener('click', function (e) { if (!mesesDropdownBtn.contains(e.target) && !mesesDropdownMenu.contains(e.target)) { mesesDropdownMenu.classList.add('hidden'); } });
+        function updateDropdownText() { const selected = Array.from(mesCheckboxes).filter(cb => cb.checked); const count = selected.length; if (count === 0) { mesesSelectedText.textContent = 'Nenhum mês selecionado'; } else if (count === mesCheckboxes.length) { mesesSelectedText.textContent = 'Todos os Meses'; } else if (count === 1) { mesesSelectedText.textContent = selected[0].parentElement.querySelector('span').textContent; } else { mesesSelectedText.textContent = `${count} meses selecionados`; } }
+        function checkAllSelected() { const count = Array.from(mesCheckboxes).filter(cb => cb.checked).length; if (count === mesCheckboxes.length) { todosMeses.checked = true; todosMeses.indeterminate = false; } else if (count === 0) { todosMeses.checked = false; todosMeses.indeterminate = false; } else { todosMeses.checked = false; todosMeses.indeterminate = true; } updateDropdownText(); }
+        todosMeses.addEventListener('change', function () { mesCheckboxes.forEach(cb => { cb.checked = this.checked; }); updateDropdownText(); });
+        mesCheckboxes.forEach(cb => { cb.addEventListener('change', checkAllSelected); });
+        checkAllSelected();
+    });
+
+    function openEventosModal(qualifierId, qualifierName, col) {
+        const estrategia = document.getElementById('estrategia')?.value || 'realizado';
+        const cenario = document.getElementById('cenario_id')?.value || '';
+        const params = new URLSearchParams({ seq: qualifierId, periodo: periodo, col: col, mes_ano: dataSelecionada, estrategia: estrategia, cenario_id: cenario });
+        fetch(`/relatorios/dfc/eventos?${params.toString()}`)
+            .then(r => r.json())
+            .then(data => {
+                const modal = document.getElementById('modal-eventos');
+                let rows = '';
+                data.eventos.forEach(ev => {
+                    rows += `<tr class="border-b"><td class="p-2">${ev.data}</td><td class="p-2">${ev.descricao}</td><td class="p-2 text-right font-mono">${formatCurrency(ev.valor)}</td><td class="p-2">${ev.tipo}</td><td class="p-2">${ev.origem}</td></tr>`;
+                });
+                modal.innerHTML = `
             <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
                 <div class="p-4 border-b flex justify-between items-center">
                     <h2 class="text-xl font-bold">Lançamentos: ${qualifierName}</h2>
@@ -317,10 +389,10 @@ function openEventosModal(qualifierId, qualifierName, col) {
                     <button class="btn-close-modal px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Fechar</button>
                 </div>
             </div>`;
-            modal.classList.remove('hidden');
-            modal.querySelectorAll('.btn-close-modal').forEach(btn => btn.addEventListener('click', () => modal.classList.add('hidden')));
-            lucide.createIcons();
-        });
-}
+                modal.classList.remove('hidden');
+                modal.querySelectorAll('.btn-close-modal').forEach(btn => btn.addEventListener('click', () => modal.classList.add('hidden')));
+                lucide.createIcons();
+            });
+    }
 </script>
 {% endblock %}

@@ -101,6 +101,32 @@ class PagamentoRepository:
         
         return results
 
+    def get_comparative_by_qualificador(
+        self,
+        anos: list[int],
+        meses: list[int]
+    ) -> list:
+        """Get comparative data by qualificador.
+        
+        Args:
+            anos: List of years to compare
+            meses: List of months to include
+        
+        Returns:
+            List of tuples (qualificador_name, year, month, total)
+        """
+        results = self.session.query(
+            Qualificador.dsc_qualificador,
+            extract("year", Pagamento.dat_pagamento).label("year"),
+            extract("month", Pagamento.dat_pagamento).label("month"),
+            func.sum(Pagamento.val_pagamento).label("total"),
+        ).join(Qualificador).filter(
+            extract("year", Pagamento.dat_pagamento).in_(anos),
+            extract("month", Pagamento.dat_pagamento).in_(meses),
+        ).group_by(Qualificador.dsc_qualificador, "year", "month").all()
+        
+        return results
+
     def create(self, data: PagamentoCreate) -> Pagamento:
         pag = Pagamento(
             dat_pagamento=data.dat_pagamento,
