@@ -1,10 +1,8 @@
-from __future__ import annotations
-
 from datetime import date
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, extract
 
-from ..models import Pagamento, Orgao
+from ..models import Pagamento, Orgao, Qualificador
 from ..models.base import db
 from ..domain import PagamentoCreate
 
@@ -18,12 +16,17 @@ class PagamentoRepository:
     def list_pagamentos(self):
         return (
             self.session.query(Pagamento)
+            .options(joinedload(Pagamento.qualificador))
             .order_by(Pagamento.dat_pagamento.desc())
             .all()
         )
 
     def list_orgaos(self):
-        return self.session.query(Orgao).all()
+        return self.session.query(Orgao).order_by(Orgao.nom_orgao).all()
+    
+    def list_qualificadores(self):
+        """List all active qualificadores for payment selection."""
+        return self.session.query(Qualificador).filter_by(ind_status='A').order_by(Qualificador.num_qualificador).all()
 
     def get_sum_by_orgao_and_period(
         self,
@@ -102,6 +105,7 @@ class PagamentoRepository:
         pag = Pagamento(
             dat_pagamento=data.dat_pagamento,
             cod_orgao=data.cod_orgao,
+            seq_qualificador=data.seq_qualificador,
             val_pagamento=data.val_pagamento,
             dsc_pagamento=data.dsc_pagamento,
         )

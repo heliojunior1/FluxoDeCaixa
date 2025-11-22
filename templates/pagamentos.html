@@ -6,17 +6,27 @@
     </a>
     <h2 class="text-xl font-semibold text-gray-700 ml-4">Pagamentos</h2>
 </div>
-<form action="{{ url_for('add_pagamento') }}" method="post" class="mb-4 grid grid-cols-1 md:grid-cols-4 gap-4 bg-white p-4 rounded-md">
+<form action="{{ url_for('add_pagamento') }}" method="post"
+    class="mb-4 grid grid-cols-1 md:grid-cols-5 gap-4 bg-white p-4 rounded-md">
     <div>
         <label class="block text-sm">Data</label>
         <input type="date" name="dat_pagamento" class="border rounded w-full" required>
     </div>
     <div>
         <label class="block text-sm">Órgão</label>
-        <select name="cod_orgao" class="border rounded w-full">
-        {% for o in orgaos %}
+        <select name="cod_orgao" class="border rounded w-full" required>
+            {% for o in orgaos %}
             <option value="{{o.cod_orgao}}">{{o.nom_orgao}}</option>
-        {% endfor %}
+            {% endfor %}
+        </select>
+    </div>
+    <div>
+        <label class="block text-sm">Qualificador</label>
+        <select name="seq_qualificador" class="border rounded w-full">
+            <option value="">Selecione (opcional)</option>
+            {% for q in qualificadores %}
+            <option value="{{q.seq_qualificador}}">{{q.num_qualificador}} - {{q.dsc_qualificador}}</option>
+            {% endfor %}
         </select>
     </div>
     <div>
@@ -27,7 +37,7 @@
         <label class="block text-sm">Descrição</label>
         <input type="text" name="dsc_pagamento" class="border rounded w-full">
     </div>
-    <div class="md:col-span-4 text-right">
+    <div class="md:col-span-5 text-right">
         <button class="bg-blue-600 text-white px-4 py-2 rounded" type="submit">Adicionar</button>
     </div>
 </form>
@@ -36,24 +46,27 @@
         <tr>
             <th class="border px-2 py-1">Data</th>
             <th class="border px-2 py-1">Órgão</th>
+            <th class="border px-2 py-1">Qualificador</th>
             <th class="border px-2 py-1">Valor</th>
             <th class="border px-2 py-1">Descrição</th>
         </tr>
     </thead>
     <tbody>
-    {% for p in pagamentos %}
+        {% for p in pagamentos %}
         <tr>
             <td class="border px-2 py-1">{{ p.dat_pagamento }}</td>
             <td class="border px-2 py-1">{{ p.orgao.nom_orgao }}</td>
+            <td class="border px-2 py-1">{{ p.qualificador.dsc_qualificador if p.qualificador else '-' }}</td>
             <td class="border px-2 py-1 text-right">{{ '%.2f'|format(p.val_pagamento) }}</td>
             <td class="border px-2 py-1">{{ p.dsc_pagamento }}</td>
         </tr>
-    {% endfor %}
+        {% endfor %}
     </tbody>
 </table>
 <div class="mt-4">
     <div class="flex justify-between items-center mb-4">
-        <button onclick="history.back()" class="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
+        <button onclick="history.back()"
+            class="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">
             <i data-lucide="arrow-left-circle" class="w-8 h-8"></i>
         </button>
     </div>

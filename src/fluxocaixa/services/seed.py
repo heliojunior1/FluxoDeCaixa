@@ -43,32 +43,25 @@ def seed_data(session=None):
 
     if not OrigemLancamento.query.first():
         session.add_all([
-            OrigemLancamento(dsc_origem_lancamento='IR'),
-            OrigemLancamento(dsc_origem_lancamento='IPVA'),
-            OrigemLancamento(dsc_origem_lancamento='ITCMD'),
-            OrigemLancamento(dsc_origem_lancamento='ICMS'),
-            OrigemLancamento(dsc_origem_lancamento='FECOEP'),
-            OrigemLancamento(dsc_origem_lancamento='FPE'),
-            OrigemLancamento(dsc_origem_lancamento='ROYALTIES'),
-            OrigemLancamento(dsc_origem_lancamento='APLICAÇÕES FINANCEIRAS'),
-            OrigemLancamento(dsc_origem_lancamento='DEMAIS RECEITAS'),
+            OrigemLancamento(dsc_origem_lancamento='Manual', ind_status='A'),
+            OrigemLancamento(dsc_origem_lancamento='Automático', ind_status='A'),
+            OrigemLancamento(dsc_origem_lancamento='Importado', ind_status='A'),
         ])
 
     if not Orgao.query.first():
         session.add_all([
-            Orgao(nom_orgao='REPASSE MUNICÍPIOS'),
-            Orgao(nom_orgao='REPASSE FUNDEB'),
-            Orgao(nom_orgao='SAÚDE 12%'),
-            Orgao(nom_orgao='EDUCAÇÃO 5%'),
-            Orgao(nom_orgao='PODERES'),
-            Orgao(nom_orgao='DÍVIDAS'),
-            Orgao(nom_orgao='PASEP'),
-            Orgao(nom_orgao='PRECATÓRIOS'),
-            Orgao(nom_orgao='FOLHA'),
-            Orgao(nom_orgao='CUSTEIO'),
-            Orgao(nom_orgao='INVESTIMENTO + AUMENTO DE CAPITAL'),
-            Orgao(nom_orgao='RESTOS A PAGAR TESOURO e DEMAIS'),
-            Orgao(nom_orgao='FECOEP - RESTOS A PAGAR - FONTE 761'),
+            Orgao(nom_orgao='Secretaria de Saúde'),
+            Orgao(nom_orgao='Secretaria de Educação'),
+            Orgao(nom_orgao='Secretaria de Fazenda'),
+            Orgao(nom_orgao='Secretaria de Administração'),
+            Orgao(nom_orgao='Secretaria de Infraestrutura'),
+            Orgao(nom_orgao='Secretaria de Segurança Pública'),
+            Orgao(nom_orgao='Universidade Estadual'),
+            Orgao(nom_orgao='Assembleia Legislativa'),
+            Orgao(nom_orgao='Tribunal de Contas'),
+            Orgao(nom_orgao='Tribunal de Justiça'),
+            Orgao(nom_orgao='Ministério Público'),
+            Orgao(nom_orgao='Defensoria Pública'),
         ])
 
     # Populate Qualificadores (estrutura hierárquica)
@@ -368,12 +361,12 @@ def seed_data(session=None):
     # Add realistic seed data based on actual values
     if not Lancamento.query.first():
         tipo_entrada = TipoLancamento.query.filter_by(dsc_tipo_lancamento='Entrada').first()
+        origem_manual = OrigemLancamento.query.filter_by(dsc_origem_lancamento='Manual').first()
         
         # Add 2025 receitas
         for origem_nome, valores in receitas_2025.items():
-            origem = OrigemLancamento.query.filter_by(dsc_origem_lancamento=origem_nome).first()
             qualificador = encontrar_qualificador(origem_nome)
-            if origem and qualificador:
+            if qualificador and origem_manual:
                 for month, valor in enumerate(valores, 1):
                     month_date = date(2025, month, 15)
                     session.add(Lancamento(
@@ -381,16 +374,14 @@ def seed_data(session=None):
                         seq_qualificador=qualificador.seq_qualificador,
                         val_lancamento=valor * 1000,  # Convert to thousands
                         cod_tipo_lancamento=tipo_entrada.cod_tipo_lancamento,
-                        cod_origem_lancamento=origem.cod_origem_lancamento,
-                        ind_origem='M',
+                        cod_origem_lancamento=origem_manual.cod_origem_lancamento,
                         cod_pessoa_inclusao=1
                     ))
 
         # Add 2024 receitas
         for origem_nome, valores in receitas_2024.items():
-            origem = OrigemLancamento.query.filter_by(dsc_origem_lancamento=origem_nome).first()
             qualificador = encontrar_qualificador(origem_nome)
-            if origem and qualificador:
+            if qualificador and origem_manual:
                 for month, valor in enumerate(valores, 1):
                     month_date = date(2024, month, 15)
                     session.add(Lancamento(
@@ -398,20 +389,17 @@ def seed_data(session=None):
                         seq_qualificador=qualificador.seq_qualificador,
                         val_lancamento=valor * 1000,  # Convert to thousands
                         cod_tipo_lancamento=tipo_entrada.cod_tipo_lancamento,
-                        cod_origem_lancamento=origem.cod_origem_lancamento,
-                        ind_origem='M',
+                        cod_origem_lancamento=origem_manual.cod_origem_lancamento,
                         cod_pessoa_inclusao=1
                     ))
 
         # Add saídas (despesas) baseadas nos órgãos de pagamento
         tipo_saida = TipoLancamento.query.filter_by(dsc_tipo_lancamento='Saída').first()
-        if tipo_saida:
+        if tipo_saida and origem_manual:
             # Add 2025 despesas como lançamentos de saída
             for orgao_nome, valores in despesas_2025.items():
                 qualificador = encontrar_qualificador(orgao_nome)
-                # Use a origem padrão para despesas (pode ser a primeira disponível)
-                origem_padrao = OrigemLancamento.query.first()
-                if qualificador and origem_padrao:
+                if qualificador:
                     for month, valor in enumerate(valores, 1):
                         if valor > 0:  # Skip zero values
                             month_date = date(2025, month, 15)
@@ -420,16 +408,14 @@ def seed_data(session=None):
                                 seq_qualificador=qualificador.seq_qualificador,
                                 val_lancamento=-valor * 1000,  # Negative for expenses
                                 cod_tipo_lancamento=tipo_saida.cod_tipo_lancamento,
-                                cod_origem_lancamento=origem_padrao.cod_origem_lancamento,
-                                ind_origem='M',
+                                cod_origem_lancamento=origem_manual.cod_origem_lancamento,
                                 cod_pessoa_inclusao=1
                             ))
 
             # Add 2024 despesas como lançamentos de saída
             for orgao_nome, valores in despesas_2024.items():
                 qualificador = encontrar_qualificador(orgao_nome)
-                origem_padrao = OrigemLancamento.query.first()
-                if qualificador and origem_padrao:
+                if qualificador:
                     for month, valor in enumerate(valores, 1):
                         if valor > 0:  # Skip zero values
                             month_date = date(2024, month, 15)
@@ -438,40 +424,67 @@ def seed_data(session=None):
                                 seq_qualificador=qualificador.seq_qualificador,
                                 val_lancamento=-valor * 1000,  # Negative for expenses
                                 cod_tipo_lancamento=tipo_saida.cod_tipo_lancamento,
-                                cod_origem_lancamento=origem_padrao.cod_origem_lancamento,
-                                ind_origem='M',
+                                cod_origem_lancamento=origem_manual.cod_origem_lancamento,
                                 cod_pessoa_inclusao=1
                             ))
 
-    # Add realistic pagamentos (despesas)
+    # Add realistic pagamentos (despesas) with proper organ and qualifier mapping
     if not Pagamento.query.first():
+        # Mapeamento de despesas para órgãos e qualificadores reais
+        despesa_para_orgao_e_qual = {
+            'REPASSE MUNICÍPIOS': ('Secretaria de Fazenda', 'REPASSE MUNICÍPIOS'),
+            'REPASSE FUNDEB': ('Secretaria de Educação', 'REPASSE FUNDEB'),
+            'SAÚDE 12%': ('Secretaria de Saúde', 'SAÚDE 12%'),
+            'EDUCAÇÃO 5%': ('Secretaria de Educação', 'EDUCAÇÃO 5%'),
+            'PODERES': ('Assembleia Legislativa', 'PODERES'),
+            'PASEP': ('Secretaria de Administração', 'PASEP'),
+            'PRECATÓRIOS': ('Tribunal de Justiça', 'PRECATÓRIOS'),
+            'FOLHA': ('Secretaria de Administração', 'FOLHA'),
+            'CUSTEIO': ('Secretaria de Administração', 'CUSTEIO'),
+            'INVESTIMENTO + AUMENTO DE CAPITAL': ('Secretaria de Infraestrutura', 'INVESTIMENTO + AUMENTO DE CAPITAL'),
+            'RESTOS A PAGAR TESOURO e DEMAIS': ('Secretaria de Fazenda', 'RESTOS A PAGAR TESOURO e DEMAIS'),
+            'FECOEP - RESTOS A PAGAR - FONTE 761': ('Secretaria de Fazenda', 'FECOEP - RESTOS A PAGAR - FONTE 761'),
+            'DÍVIDAS': ('Secretaria de Fazenda', 'DÍVIDAS'),
+        }
+        
         # Add 2025 despesas
-        for orgao_nome, valores in despesas_2025.items():
-            orgao = Orgao.query.filter_by(nom_orgao=orgao_nome).first()
-            if orgao:
-                for month, valor in enumerate(valores, 1):
-                    if valor > 0:  # Skip zero values
-                        month_date = date(2025, month, 15)
-                        session.add(Pagamento(
-                            dat_pagamento=month_date,
-                            cod_orgao=orgao.cod_orgao,
-                            val_pagamento=valor * 1000,  # Convert to thousands
-                            dsc_pagamento=f'Despesa {orgao_nome} - {calendar.month_name[month]} 2025'
-                        ))
+        for despesa_nome, valores in despesas_2025.items():
+            if despesa_nome in despesa_para_orgao_e_qual:
+                orgao_nome, qualificador_nome = despesa_para_orgao_e_qual[despesa_nome]
+                orgao = Orgao.query.filter_by(nom_orgao=orgao_nome).first()
+                qualificador = encontrar_qualificador(qualificador_nome)
+                
+                if orgao:
+                    for month, valor in enumerate(valores, 1):
+                        if valor > 0:  # Skip zero values
+                            month_date = date(2025, month, 15)
+                            session.add(Pagamento(
+                                dat_pagamento=month_date,
+                                cod_orgao=orgao.cod_orgao,
+                                seq_qualificador=qualificador.seq_qualificador if qualificador else None,
+                                val_pagamento=valor * 1000,  # Convert to thousands
+                                dsc_pagamento=f'Despesa {despesa_nome} - {calendar.month_name[month]} 2025'
+                            ))
 
         # Add 2024 despesas
-        for orgao_nome, valores in despesas_2024.items():
-            orgao = Orgao.query.filter_by(nom_orgao=orgao_nome).first()
-            if orgao:
-                for month, valor in enumerate(valores, 1):
-                    if valor > 0:  # Skip zero values
-                        month_date = date(2024, month, 15)
-                        session.add(Pagamento(
-                            dat_pagamento=month_date,
-                            cod_orgao=orgao.cod_orgao,
-                            val_pagamento=valor * 1000,  # Convert to thousands
-                            dsc_pagamento=f'Despesa {orgao_nome} - {calendar.month_name[month]} 2024'
-                        ))
+        for despesa_nome, valores in despesas_2024.items():
+            if despesa_nome in despesa_para_orgao_e_qual:
+                orgao_nome, qualificador_nome = despesa_para_orgao_e_qual[despesa_nome]
+                orgao = Orgao.query.filter_by(nom_orgao=orgao_nome).first()
+                qualificador = encontrar_qualificador(qualificador_nome)
+                
+                if orgao:
+                    for month, valor in enumerate(valores, 1):
+                        if valor > 0:  # Skip zero values
+                            month_date = date(2024, month, 15)
+                            session.add(Pagamento(
+                                dat_pagamento=month_date,
+                                cod_orgao=orgao.cod_orgao,
+                                seq_qualificador=qualificador.seq_qualificador if qualificador else None,
+                                val_pagamento=valor * 1000,  # Convert to thousands
+                                dsc_pagamento=f'Despesa {despesa_nome} - {calendar.month_name[month]} 2024'
+                            ))
+
 
     # Add example mappings
     try:

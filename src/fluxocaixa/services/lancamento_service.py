@@ -120,8 +120,9 @@ def import_lancamentos_service(
     all_origens = session.query(OrigemLancamento).all()
     origens_map = {o.dsc_origem_lancamento.lower(): o.cod_origem_lancamento for o in all_origens}
     
-    default_origem = session.query(OrigemLancamento).first()
-    default_origem_cod = default_origem.cod_origem_lancamento if default_origem else None
+    # Use "Importado" origin for imported entries
+    origem_importado = session.query(OrigemLancamento).filter_by(dsc_origem_lancamento='Importado').first()
+    origem_importado_cod = origem_importado.cod_origem_lancamento if origem_importado else None
 
     all_contas = session.query(ContaBancaria).all()
     contas_map = {(c.cod_banco, c.num_agencia, c.num_conta): c for c in all_contas}
@@ -185,9 +186,9 @@ def import_lancamentos_service(
             else:
                 tipo = int(tipo_raw)
 
-            origem_cod = origens_map.get(str(desc).lower(), default_origem_cod)
-            if not origem_cod:
-                errors.append(f"Linha {i}: Origem não encontrada para '{desc}'")
+            # Use Importado origin for all imported entries
+            if not origem_importado_cod:
+                errors.append(f"Linha {i}: Origem 'Importado' não encontrada no sistema")
                 continue
 
             # Detect optional bank fields
@@ -201,8 +202,7 @@ def import_lancamentos_service(
                 seq_qualificador=qual.seq_qualificador,
                 val_lancamento=float(valor),
                 cod_tipo_lancamento=tipo,
-                cod_origem_lancamento=origem_cod,
-                ind_origem='A',
+                cod_origem_lancamento=origem_importado_cod,
                 cod_pessoa_inclusao=1,
                 seq_conta=(conta_obj.seq_conta if conta_obj else None),
             )

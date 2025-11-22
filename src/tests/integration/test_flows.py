@@ -31,15 +31,17 @@ def test_add_lancamento_flow(client: TestClient):
 
 
 def test_add_pagamento_flow(client: TestClient):
-    from fluxocaixa.models import db, Pagamento, Orgao
+    from fluxocaixa.models import db, Pagamento, Orgao, Qualificador
 
     initial = db.session.query(Pagamento).count()
     orgao = Orgao.query.first()
+    qualificador = Qualificador.query.first()
     resp = client.post(
         '/pagamentos/add',
         data={
             'dat_pagamento': '2025-02-01',
             'cod_orgao': orgao.cod_orgao,
+            'seq_qualificador': qualificador.seq_qualificador,
             'val_pagamento': '200.00',
             'dsc_pagamento': 'Teste de pagamento',
         },
@@ -47,6 +49,10 @@ def test_add_pagamento_flow(client: TestClient):
     )
     assert resp.status_code == 303
     assert db.session.query(Pagamento).count() == initial + 1
+    
+    # Verify the payment was created with qualifier
+    last_payment = db.session.query(Pagamento).order_by(Pagamento.seq_pagamento.desc()).first()
+    assert last_payment.seq_qualificador == qualificador.seq_qualificador
 
 
 def test_relatorio_resumo_page(client: TestClient):

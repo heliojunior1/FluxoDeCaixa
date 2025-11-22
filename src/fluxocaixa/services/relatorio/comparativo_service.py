@@ -5,7 +5,6 @@ import calendar
 from ...repositories.lancamento_repository import LancamentoRepository
 from ...repositories.pagamento_repository import PagamentoRepository
 from ...repositories.tipo_lancamento_repository import TipoLancamentoRepository
-from ...repositories.origem_lancamento_repository import OrigemLancamentoRepository
 
 
 def get_analise_comparativa_data(
@@ -31,20 +30,30 @@ def get_analise_comparativa_data(
     totals["total"] = {str(ano1): 0, str(ano2): 0}
 
     if tipo_analise == "receitas":
+        from ...models import Qualificador
         tipo_repo = TipoLancamentoRepository()
         lancamento_repo = LancamentoRepository()
-        origem_repo = OrigemLancamentoRepository()
         
         tipo_entrada = tipo_repo.get_by_descricao("Entrada")
         id_entrada = tipo_entrada.cod_tipo_lancamento if tipo_entrada else -1
         
-        results = lancamento_repo.get_comparative_by_origem(
-            cod_tipo=id_entrada,
+        # Get all leaf qualifiers for revenues
+        qualificadores = Qualificador.query.filter_by(ind_status='A').all()
+        qualificadores_folha = [q for q in qualificadores if q.is_folha() and q.tipo_fluxo == 'receita']
+        
+        # Get all qualificador IDs
+        qualificador_ids = [q.seq_qualificador for q in qualificadores_folha]
+        
+        # Get comparative data by qualificador
+        results = lancamento_repo.get_grouped_by_qualificador_year_month(
+            qualificador_ids=qualificador_ids,
             anos=[ano1, ano2],
             meses=meses_selecionados
         )
         
-        all_items = [o.dsc_origem_lancamento for o in origem_repo.list_all()]
+        # Map seq_qualificador to description for display
+        qualificador_map = {q.seq_qualificador: q.dsc_qualificador for q in qualificadores_folha}
+        all_items = [q.dsc_qualificador for q in qualificadores_folha]
     else:
         pagamento_repo = PagamentoRepository()
         
@@ -59,9 +68,18 @@ def get_analise_comparativa_data(
         data[item_name] = {str(m): {str(ano1): 0, str(ano2): 0} for m in range(1, 13)}
         data[item_name]["total"] = {str(ano1): 0, str(ano2): 0}
 
-    for item, year, month, total_val in results:
-        if item in data:
-            data[item][str(month)][str(year)] = float(total_val or 0)
+    # Process results
+    if tipo_analise == "receitas":
+        # Results format: (seq_qualificador, ano, mes, cod_tipo_lancamento, total)
+        for seq_qual, year, month, cod_tipo, total_val in results:
+            item_name = qualificador_map.get(seq_qual)
+            if item_name and item_name in data:
+                data[item_name][str(month)][str(year)] = float(total_val or 0)
+    else:
+        # Results format for despesas: (item, year, month, total)
+        for item, year, month, total_val in results:
+            if item in data:
+                data[item][str(month)][str(year)] = float(total_val or 0)
 
     for item_name, item_data in data.items():
         total1 = sum(item_data[str(m)][str(ano1)] for m in meses_selecionados)

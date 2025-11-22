@@ -596,7 +596,6 @@ class LancamentoRepository:
             val_lancamento=data.val_lancamento,
             cod_tipo_lancamento=data.cod_tipo_lancamento,
             cod_origem_lancamento=data.cod_origem_lancamento,
-            ind_origem='M',
             cod_pessoa_inclusao=1,
             seq_conta=data.seq_conta,
         )

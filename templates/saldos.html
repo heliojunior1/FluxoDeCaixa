@@ -7,16 +7,19 @@
         </a>
         <h2 class="text-2xl font-bold text-gray-800 ml-4">Lançamentos Recentes</h2>
     </div>
-    <button id="manual-entry-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center">
+    <button id="manual-entry-btn"
+        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg flex items-center">
         <i data-lucide="plus" class="w-5 h-5 mr-2"></i>
         <span>Inserção Manual</span>
     </button>
 </div>
 
 <!-- Importação de lançamentos -->
-<form action="{{ url_for('import_lancamentos') }}" method="post" enctype="multipart/form-data" class="bg-white p-4 rounded-lg shadow-md mb-6 flex items-center gap-4">
+<form action="{{ url_for('import_lancamentos') }}" method="post" enctype="multipart/form-data"
+    class="bg-white p-4 rounded-lg shadow-md mb-6 flex items-center gap-4">
     <input type="file" name="file" accept=".csv,.xlsx" class="border rounded px-2 py-1" required>
-    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Importar Arquivo</button>
+    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Importar
+        Arquivo</button>
     <a href="{{ url_for('download_lancamento_template') }}" class="text-blue-600 underline" download>Baixar Modelo</a>
 </form>
 
@@ -26,9 +29,11 @@
         <div>
             <label for="competencia" class="block text-sm font-medium text-gray-700">Competência</label>
             <div class="flex items-center mt-1">
-                <input type="date" name="start_date" class="form-input block w-full rounded-md border-gray-300 shadow-sm" placeholder="de">
+                <input type="date" name="start_date"
+                    class="form-input block w-full rounded-md border-gray-300 shadow-sm" placeholder="de">
                 <span class="mx-2 text-gray-500">-</span>
-                <input type="date" name="end_date" class="form-input block w-full rounded-md border-gray-300 shadow-sm" placeholder="a">
+                <input type="date" name="end_date" class="form-input block w-full rounded-md border-gray-300 shadow-sm"
+                    placeholder="a">
             </div>
         </div>
         <div>
@@ -42,11 +47,14 @@
         </div>
         <div>
             <label for="descricao" class="block text-sm font-medium text-gray-700">Descrição</label>
-            <input type="text" name="descricao" class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="Buscar por descrição...">
+            <input type="text" name="descricao"
+                class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+                placeholder="Buscar por descrição...">
         </div>
         <div>
             <label for="origem" class="block text-sm font-medium text-gray-700">Qualificador</label>
-            <select name="qualificador_folha" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            <select name="qualificador_folha"
+                class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                 <option value="">Todos</option>
                 {% for q in qualificadores_folha %}
                 <option value="{{ q.seq_qualificador }}">{{ q.num_qualificador }} - {{ q.dsc_qualificador }}</option>
@@ -67,8 +75,10 @@
         <thead class="bg-gray-50">
             <tr>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descrição</th>
-                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Valor (R$)</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descrição
+                </th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Valor (R$)
+                </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origem</th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conta</th>
@@ -78,41 +88,53 @@
         <tbody class="bg-white divide-y divide-gray-200">
             {% for l in lancamentos %}
             <tr>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ l.dat_lancamento.strftime('%Y-%m-%d') }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-medium">{{ l.qualificador.num_qualificador }} - {{ l.qualificador.dsc_qualificador }}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold {% if l.val_lancamento < 0 %}text-red-600{% else %}text-green-600{% endif %}">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ l.dat_lancamento.strftime('%Y-%m-%d')
+                    }}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-medium">{{
+                    l.qualificador.num_qualificador }} - {{ l.qualificador.dsc_qualificador }}</td>
+                <td
+                    class="px-6 py-4 whitespace-nowrap text-sm text-right font-semibold {% if l.val_lancamento < 0 %}text-red-600{% else %}text-green-600{% endif %}">
                     {{ l.val_lancamento|format_currency }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ l.tipo.dsc_tipo_lancamento }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm">
-                    {% if l.ind_origem == 'M' %}
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Manual</span>
-                    {% elif l.ind_origem == 'A' %}
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Automático</span>
+                    {% if l.origem.dsc_origem_lancamento == 'Manual' %}
+                    <span
+                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Manual</span>
+                    {% elif l.origem.dsc_origem_lancamento == 'Automático' %}
+                    <span
+                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">Automático</span>
+                    {% elif l.origem.dsc_origem_lancamento == 'Importado' %}
+                    <span
+                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">Importado</span>
                     {% else %}
-                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">{{ l.ind_origem }}</span>
+                    <span
+                        class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">{{
+                        l.origem.dsc_origem_lancamento }}</span>
                     {% endif %}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                     {% if l.conta %}
-                        {{ l.conta.cod_banco }} / {{ l.conta.num_agencia }} / {{ l.conta.num_conta }}
+                    {{ l.conta.cod_banco }} / {{ l.conta.num_agencia }} / {{ l.conta.num_conta }}
                     {% else %}
-                        -
+                    -
                     {% endif %}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                     <button type="button" class="edit-entry-btn text-indigo-600 hover:text-indigo-900"
-                            data-seq_lancamento="{{ l.seq_lancamento }}"
-                            data-dat_lancamento="{{ l.dat_lancamento.strftime('%Y-%m-%d') }}"
-                            data-seq_qualificador="{{ l.seq_qualificador }}"
-                            data-val_lancamento="{{ l.val_lancamento }}"
-                            data-cod_tipo_lancamento="{{ l.cod_tipo_lancamento }}"
-                            data-cod_origem_lancamento="{{ l.cod_origem_lancamento }}"
-                            data-seq_conta="{{ l.seq_conta or '' }}">
+                        data-seq_lancamento="{{ l.seq_lancamento }}"
+                        data-dat_lancamento="{{ l.dat_lancamento.strftime('%Y-%m-%d') }}"
+                        data-seq_qualificador="{{ l.seq_qualificador }}" data-val_lancamento="{{ l.val_lancamento }}"
+                        data-cod_tipo_lancamento="{{ l.cod_tipo_lancamento }}"
+                        data-cod_origem_lancamento="{{ l.cod_origem_lancamento }}"
+                        data-seq_conta="{{ l.seq_conta or '' }}">
                         <i data-lucide="edit" class="w-5 h-5"></i>
                     </button>
-                    <form action="{{ url_for('delete_lancamento', seq_lancamento=l.seq_lancamento) }}" method="POST" class="inline-block" onsubmit="return confirm('Tem certeza que deseja excluir este lançamento?');">
-                        <button type="submit" class="text-red-600 hover:text-red-900 ml-4 bg-transparent border-none p-0">
+                    <form action="{{ url_for('delete_lancamento', seq_lancamento=l.seq_lancamento) }}" method="POST"
+                        class="inline-block"
+                        onsubmit="return confirm('Tem certeza que deseja excluir este lançamento?');">
+                        <button type="submit"
+                            class="text-red-600 hover:text-red-900 ml-4 bg-transparent border-none p-0">
                             <i data-lucide="trash-2" class="w-5 h-5"></i>
                         </button>
                     </form>
@@ -137,34 +159,43 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label for="dat_lancamento" class="block text-sm font-medium text-gray-700">Data</label>
-                        <input type="date" name="dat_lancamento" id="dat_lancamento" class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                        <input type="date" name="dat_lancamento" id="dat_lancamento"
+                            class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
                     </div>
                     <div>
-                        <label for="seq_qualificador" class="block text-sm font-medium text-gray-700">Qualificador</label>
-                        <select name="seq_qualificador" id="seq_qualificador" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                        <label for="seq_qualificador"
+                            class="block text-sm font-medium text-gray-700">Qualificador</label>
+                        <select name="seq_qualificador" id="seq_qualificador"
+                            class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
                             <option value="">Selecione um qualificador...</option>
                             {% for q in qualificadores %}
                             {% if q.is_folha() %}
-                            <option value="{{ q.seq_qualificador }}">{{ q.num_qualificador }} - {{ q.path_completo }}</option>
+                            <option value="{{ q.seq_qualificador }}">{{ q.num_qualificador }} - {{ q.path_completo }}
+                            </option>
                             {% endif %}
                             {% endfor %}
                         </select>
                     </div>
                     <div>
                         <label for="val_lancamento" class="block text-sm font-medium text-gray-700">Valor (R$)</label>
-                        <input type="number" step="0.01" name="val_lancamento" id="val_lancamento" class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="0.00" required>
+                        <input type="number" step="0.01" name="val_lancamento" id="val_lancamento"
+                            class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="0.00"
+                            required>
                     </div>
                     <div>
                         <label for="cod_tipo_lancamento" class="block text-sm font-medium text-gray-700">Tipo</label>
-                        <select name="cod_tipo_lancamento" id="cod_tipo_lancamento" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                        <select name="cod_tipo_lancamento" id="cod_tipo_lancamento"
+                            class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
                             {% for t in tipos %}
                             <option value="{{ t.cod_tipo_lancamento }}">{{ t.dsc_tipo_lancamento }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div class="md:col-span-2">
-                        <label for="cod_origem_lancamento" class="block text-sm font-medium text-gray-700">Origem</label>
-                        <select name="cod_origem_lancamento" id="cod_origem_lancamento" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                        <label for="cod_origem_lancamento"
+                            class="block text-sm font-medium text-gray-700">Origem</label>
+                        <select name="cod_origem_lancamento" id="cod_origem_lancamento"
+                            class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
                             {% for o in origens %}
                             <option value="{{ o.cod_origem_lancamento }}">{{ o.dsc_origem_lancamento }}</option>
                             {% endfor %}
@@ -172,19 +203,23 @@
                     </div>
                     <div class="md:col-span-2">
                         <label for="seq_conta" class="block text-sm font-medium text-gray-700">Conta Bancária</label>
-                        <select name="seq_conta" id="seq_conta" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        <select name="seq_conta" id="seq_conta"
+                            class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                             <option value="">Selecione</option>
                             {% for c in contas %}
-                            <option value="{{ c.seq_conta }}">{{ c.cod_banco }} / {{ c.num_agencia }} / {{ c.num_conta }}{% if c.dsc_conta %} - {{ c.dsc_conta }}{% endif %}</option>
+                            <option value="{{ c.seq_conta }}">{{ c.cod_banco }} / {{ c.num_agencia }} / {{ c.num_conta
+                                }}{% if c.dsc_conta %} - {{ c.dsc_conta }}{% endif %}</option>
                             {% endfor %}
                         </select>
                     </div>
                 </div>
                 <div class="flex justify-end mt-8">
-                    <button type="button" id="cancel-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg mr-4">
+                    <button type="button" id="cancel-btn"
+                        class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg mr-4">
                         Cancelar
                     </button>
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">
+                    <button type="submit"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">
                         Salvar
                     </button>
                 </div>
@@ -207,53 +242,68 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label for="edit_dat_lancamento" class="block text-sm font-medium text-gray-700">Data</label>
-                        <input type="date" name="dat_lancamento" id="edit_dat_lancamento" class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                        <input type="date" name="dat_lancamento" id="edit_dat_lancamento"
+                            class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
                     </div>
                     <div>
-                        <label for="edit_seq_qualificador" class="block text-sm font-medium text-gray-700">Qualificador</label>
-                        <select name="seq_qualificador" id="edit_seq_qualificador" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                        <label for="edit_seq_qualificador"
+                            class="block text-sm font-medium text-gray-700">Qualificador</label>
+                        <select name="seq_qualificador" id="edit_seq_qualificador"
+                            class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
                             {% for q in qualificadores %}
                             {% if q.is_folha() %}
-                            <option value="{{ q.seq_qualificador }}">{{ q.num_qualificador }} - {{ q.path_completo }}</option>
+                            <option value="{{ q.seq_qualificador }}">{{ q.num_qualificador }} - {{ q.path_completo }}
+                            </option>
                             {% endif %}
                             {% endfor %}
                         </select>
                     </div>
                     <div>
-                        <label for="edit_val_lancamento" class="block text-sm font-medium text-gray-700">Valor (R$)</label>
-                        <input type="number" step="0.01" name="val_lancamento" id="edit_val_lancamento" class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                        <label for="edit_val_lancamento" class="block text-sm font-medium text-gray-700">Valor
+                            (R$)</label>
+                        <input type="number" step="0.01" name="val_lancamento" id="edit_val_lancamento"
+                            class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
                     </div>
                     <div>
-                        <label for="edit_cod_tipo_lancamento" class="block text-sm font-medium text-gray-700">Tipo</label>
-                        <select name="cod_tipo_lancamento" id="edit_cod_tipo_lancamento" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                        <label for="edit_cod_tipo_lancamento"
+                            class="block text-sm font-medium text-gray-700">Tipo</label>
+                        <select name="cod_tipo_lancamento" id="edit_cod_tipo_lancamento"
+                            class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
                             {% for t in tipos %}
                             <option value="{{ t.cod_tipo_lancamento }}">{{ t.dsc_tipo_lancamento }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div class="md:col-span-2">
-                        <label for="edit_cod_origem_lancamento" class="block text-sm font-medium text-gray-700">Origem</label>
-                        <select name="cod_origem_lancamento" id="edit_cod_origem_lancamento" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+                        <label for="edit_cod_origem_lancamento"
+                            class="block text-sm font-medium text-gray-700">Origem</label>
+                        <select name="cod_origem_lancamento" id="edit_cod_origem_lancamento"
+                            class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
                             {% for o in origens %}
                             <option value="{{ o.cod_origem_lancamento }}">{{ o.dsc_origem_lancamento }}</option>
                             {% endfor %}
                         </select>
                     </div>
                     <div class="md:col-span-2">
-                        <label for="edit_seq_conta" class="block text-sm font-medium text-gray-700">Conta Bancária</label>
-                        <select name="seq_conta" id="edit_seq_conta" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        <label for="edit_seq_conta" class="block text-sm font-medium text-gray-700">Conta
+                            Bancária</label>
+                        <select name="seq_conta" id="edit_seq_conta"
+                            class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                             <option value="">Selecione</option>
                             {% for c in contas %}
-                            <option value="{{ c.seq_conta }}">{{ c.cod_banco }} / {{ c.num_agencia }} / {{ c.num_conta }}{% if c.dsc_conta %} - {{ c.dsc_conta }}{% endif %}</option>
+                            <option value="{{ c.seq_conta }}">{{ c.cod_banco }} / {{ c.num_agencia }} / {{ c.num_conta
+                                }}{% if c.dsc_conta %} - {{ c.dsc_conta }}{% endif %}</option>
                             {% endfor %}
                         </select>
                     </div>
                 </div>
                 <div class="flex justify-end mt-8">
-                    <button type="button" id="cancel-edit-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg mr-4">
+                    <button type="button" id="cancel-edit-btn"
+                        class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded-lg mr-4">
                         Cancelar
                     </button>
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">
+                    <button type="submit"
+                        class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">
                         Salvar Alterações
                     </button>
                 </div>

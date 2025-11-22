@@ -9,8 +9,10 @@ class Pagamento(Base):
     seq_pagamento = Column(Integer, primary_key=True)
     dat_pagamento = Column(Date, nullable=False)
     cod_orgao = Column(Integer, ForeignKey('flc_orgao.cod_orgao'), nullable=False)
+    seq_qualificador = Column(Integer, ForeignKey('flc_qualificador.seq_qualificador'), nullable=True)
     val_pagamento = Column(Numeric(18,2), nullable=False)
     dsc_pagamento = Column(String(255))
     dat_inclusao = Column(Date, default=date.today, nullable=False)
 
     orgao = relationship('Orgao')
+    qualificador = relationship('Qualificador')

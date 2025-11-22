@@ -20,7 +20,6 @@ class Lancamento(Base):
     val_lancamento = Column(Numeric(18,2), nullable=False)
     cod_tipo_lancamento = Column(Integer, ForeignKey('flc_tipo_lancamento.cod_tipo_lancamento'), nullable=False)
     cod_origem_lancamento = Column(Integer, ForeignKey('flc_origem_lancamento.cod_origem_lancamento'), nullable=False)
-    ind_origem = Column(String(1), nullable=False)
     dat_inclusao = Column(Date, default=date.today, nullable=False)
     cod_pessoa_inclusao = Column(Integer, nullable=False)
     dat_alteracao = Column(Date)
