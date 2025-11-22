@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,51 +9,330 @@
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        },
+                        slate: {
+                            850: '#1e293b',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script
+        src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body {font-family: 'Inter', sans-serif; background-color: #f8f9fa;}
-        :root {
-            --sefaz-header-bg: #2A3F54;
-            --sefaz-primary-blue: #337AB7;
-            --sefaz-border-color: #E6E9ED;
-            --sefaz-card-bg: #FFFFFF;
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f1f5f9;
+            /* Slate 100 */
         }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #aaa; }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        .sidebar-link {
+            transition: all 0.2s ease-in-out;
+        }
+
+        .sidebar-link:hover,
+        .sidebar-link.active {
+            background-color: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+        }
+
+        /* Collapsed Sidebar Styles */
+        #sidebar.collapsed {
+            width: 5rem;
+            /* w-20 */
+        }
+
+        #sidebar.collapsed .sidebar-text,
+        #sidebar.collapsed .sidebar-header-text,
+        #sidebar.collapsed .sidebar-section-title,
+        #sidebar.collapsed .sidebar-user-info {
+            display: none;
+        }
+
+        #sidebar.collapsed .sidebar-link {
+            justify-content: center;
+            padding-left: 0;
+            padding-right: 0;
+        }
+
+        #sidebar.collapsed .sidebar-logo-container {
+            justify-content: center;
+            width: 100%;
+        }
+
+        #sidebar.collapsed .sidebar-user-container {
+            justify-content: center;
+        }
     </style>
 </head>
-<body>
-<header style="background-color: var(--sefaz-header-bg);" class="text-white shadow-md">
-    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex items-center justify-between h-16">
-            <div class="flex items-center">
-                <img src="{{ url_for('static', path='img/fluxocaixa.png') }}" alt="Logo FLUXO DE CAIXA" class="h-10 mr-4" onerror="this.onerror=null;this.src='https://placehold.co/200x50/FFFFFF/2A3F54?text=SEFAZ-AL';">
-                <span class="border-l border-white/50 h-8 mr-4"></span>
-                <h1 class="text-xl font-semibold">Fluxo de Caixa</h1>
-            </div>
-            <div class="flex items-center space-x-4">
-                <p class="text-sm hidden sm:block">Usuário: Francisco Helio</p>
-                <img src="https://placehold.co/40x40/E2E8F0/4A5568?text=FH" class="rounded-full" alt="Avatar">
+
+<body class="flex h-screen overflow-hidden bg-slate-100">
+
+    <!-- Sidebar -->
+    <aside
+        class="w-64 bg-slate-900 text-slate-300 flex-shrink-0 hidden md:flex flex-col transition-all duration-300 relative group"
+        id="sidebar">
+
+        <!-- Toggle Button (Visible on hover or always) -->
+        <button onclick="toggleDesktopSidebar()"
+            class="absolute -right-3 top-20 bg-blue-600 text-white rounded-full p-1 shadow-md hover:bg-blue-700 transition-colors z-50 hidden md:flex items-center justify-center w-6 h-6 border border-slate-800">
+            <i data-lucide="chevron-left" id="sidebar-toggle-icon"
+                class="w-4 h-4 transition-transform duration-300"></i>
+        </button>
+
+        <div
+            class="h-16 flex items-center px-6 border-b border-slate-800 bg-slate-900 sidebar-logo-container transition-all">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/30 flex-shrink-0">
+                    FC
+                </div>
+                <span
+                    class="text-lg font-semibold text-white tracking-tight sidebar-header-text whitespace-nowrap">Fluxo
+                    de Caixa</span>
             </div>
         </div>
+
+        <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+            <p
+                class="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 mt-2 sidebar-section-title whitespace-nowrap">
+                Principal</p>
+
+            <a href="{{ url_for('index') }}"
+                class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:text-white group"
+                title="Dashboard">
+                <i data-lucide="layout-dashboard"
+                    class="w-5 h-5 text-slate-400 group-hover:text-blue-400 transition-colors flex-shrink-0"></i>
+                <span class="sidebar-text whitespace-nowrap">Dashboard</span>
+            </a>
+
+            <a href="{{ url_for('relatorios') }}"
+                class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:text-white group"
+                title="Relatórios">
+                <i data-lucide="bar-chart-2"
+                    class="w-5 h-5 text-slate-400 group-hover:text-blue-400 transition-colors flex-shrink-0"></i>
+                <span class="sidebar-text whitespace-nowrap">Relatórios</span>
+            </a>
+
+            <p
+                class="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 mt-6 sidebar-section-title whitespace-nowrap">
+                Gestão</p>
+
+            <a href="{{ url_for('saldos') }}"
+                class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:text-white group"
+                title="Saldos">
+                <i data-lucide="wallet"
+                    class="w-5 h-5 text-slate-400 group-hover:text-blue-400 transition-colors flex-shrink-0"></i>
+                <span class="sidebar-text whitespace-nowrap">Saldos</span>
+            </a>
+
+            <a href="{{ url_for('projecoes_menu') }}"
+                class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:text-white group"
+                title="Projeções">
+                <i data-lucide="trending-up"
+                    class="w-5 h-5 text-slate-400 group-hover:text-blue-400 transition-colors flex-shrink-0"></i>
+                <span class="sidebar-text whitespace-nowrap">Projeções</span>
+            </a>
+
+            <a href="{{ url_for('pagamentos') }}"
+                class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:text-white group"
+                title="Pagamentos">
+                <i data-lucide="credit-card"
+                    class="w-5 h-5 text-slate-400 group-hover:text-blue-400 transition-colors flex-shrink-0"></i>
+                <span class="sidebar-text whitespace-nowrap">Pagamentos</span>
+            </a>
+
+            <a href="{{ url_for('conferencia') }}"
+                class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:text-white group"
+                title="Conferência">
+                <i data-lucide="check-circle-2"
+                    class="w-5 h-5 text-slate-400 group-hover:text-blue-400 transition-colors flex-shrink-0"></i>
+                <span class="sidebar-text whitespace-nowrap">Conferência</span>
+            </a>
+
+            <p
+                class="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 mt-6 sidebar-section-title whitespace-nowrap">
+                Configurações</p>
+
+            <a href="{{ url_for('mapeamentos') }}"
+                class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:text-white group"
+                title="Mapeamentos">
+                <i data-lucide="git-branch"
+                    class="w-5 h-5 text-slate-400 group-hover:text-blue-400 transition-colors flex-shrink-0"></i>
+                <span class="sidebar-text whitespace-nowrap">Mapeamentos</span>
+            </a>
+
+            <a href="{{ url_for('qualificadores') }}"
+                class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:text-white group"
+                title="Qualificadores">
+                <i data-lucide="tags"
+                    class="w-5 h-5 text-slate-400 group-hover:text-blue-400 transition-colors flex-shrink-0"></i>
+                <span class="sidebar-text whitespace-nowrap">Qualificadores</span>
+            </a>
+
+            <a href="{{ url_for('alertas') }}"
+                class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:text-white group"
+                title="Alertas">
+                <i data-lucide="bell"
+                    class="w-5 h-5 text-slate-400 group-hover:text-blue-400 transition-colors flex-shrink-0"></i>
+                <span class="sidebar-text whitespace-nowrap">Alertas</span>
+            </a>
+        </nav>
+
+        <div class="p-4 border-t border-slate-800 sidebar-user-container transition-all">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-medium text-white flex-shrink-0">
+                    FH
+                </div>
+                <div class="flex-1 min-w-0 sidebar-user-info">
+                    <p class="text-sm font-medium text-white truncate">Francisco Helio</p>
+                    <p class="text-xs text-slate-500 truncate">Usuário</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Wrapper -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+        <!-- Mobile Header -->
+        <header class="md:hidden bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4">
+            <div class="flex items-center gap-3">
+                <button onclick="toggleSidebar()" class="text-slate-500 hover:text-slate-700 p-1">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+                <span class="font-semibold text-slate-800">Fluxo de Caixa</span>
+            </div>
+            <div
+                class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-medium text-slate-600">
+                FH
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 overflow-y-auto bg-slate-50/50 p-4 sm:p-6 lg:p-8">
+            <div class="w-full">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
     </div>
-</header>
-<main class="container mx-auto p-4 sm:p-6 lg:p-8">
-    {% block content %}{% endblock %}
-</main>
-{% block scripts %}{% endblock %}
-<script>
-    // Initialize Lucide icons after all scripts have loaded
-    document.addEventListener('DOMContentLoaded', function () {
-        lucide.createIcons();
-    });
-</script>
+
+    <!-- Mobile Sidebar Overlay -->
+    <div id="sidebar-overlay" onclick="toggleSidebar()"
+        class="fixed inset-0 bg-slate-900/50 z-40 hidden md:hidden glass transition-opacity opacity-0"></div>
+
+    {% block scripts %}{% endblock %}
+
+    <script>
+        // Initialize Lucide icons
+        document.addEventListener('DOMContentLoaded', function () {
+            lucide.createIcons();
+
+            // Highlight active link based on current URL
+            const currentPath = window.location.pathname;
+            const links = document.querySelectorAll('.sidebar-link');
+
+            links.forEach(link => {
+                const href = link.getAttribute('href');
+                if (currentPath === href || (href !== '/' && currentPath.startsWith(href))) {
+                    link.classList.add('active', 'bg-slate-800', 'text-white');
+                    const icon = link.querySelector('i');
+                    if (icon) icon.classList.add('text-blue-400');
+                }
+            });
+
+            // Restore sidebar state
+            const sidebarState = localStorage.getItem('sidebarCollapsed');
+            if (sidebarState === 'true') {
+                const sidebar = document.getElementById('sidebar');
+                const toggleIcon = document.getElementById('sidebar-toggle-icon');
+                sidebar.classList.add('collapsed');
+                if (toggleIcon) toggleIcon.style.transform = 'rotate(180deg)';
+            }
+        });
+
+        function toggleSidebar() {
+            // Mobile Toggle
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+
+            if (sidebar.classList.contains('hidden')) {
+                // Open
+                sidebar.classList.remove('hidden');
+                sidebar.classList.add('fixed', 'inset-y-0', 'left-0', 'z-50', 'w-64', 'shadow-2xl');
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.remove('opacity-0'), 10);
+            } else {
+                // Close
+                sidebar.classList.add('hidden');
+                sidebar.classList.remove('fixed', 'inset-y-0', 'left-0', 'z-50', 'w-64', 'shadow-2xl');
+                overlay.classList.add('opacity-0');
+                setTimeout(() => overlay.classList.add('hidden'), 300);
+            }
+        }
+
+        function toggleDesktopSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const toggleIcon = document.getElementById('sidebar-toggle-icon');
+
+            sidebar.classList.toggle('collapsed');
+
+            const isCollapsed = sidebar.classList.contains('collapsed');
+            localStorage.setItem('sidebarCollapsed', isCollapsed);
+
+            if (isCollapsed) {
+                toggleIcon.style.transform = 'rotate(180deg)';
+            } else {
+                toggleIcon.style.transform = 'rotate(0deg)';
+            }
+        }
+    </script>
 </body>
+
 </html>

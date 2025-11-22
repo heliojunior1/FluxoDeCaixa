@@ -1,56 +1,81 @@
 {% extends 'base.html' %}
 {% block content %}
 
-<!-- Alertas de Gestão - Colapsável no Topo -->
-{% if alertas %}
-<div class="mb-6">
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <!-- Header Colapsável -->
+<div class="space-y-6">
+    <!-- Header Section -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-2xl font-bold text-slate-800">Dashboard</h2>
+            <p class="text-slate-500 mt-1">Visão geral e acesso rápido aos módulos</p>
+        </div>
+        <div class="text-sm text-slate-500 bg-white px-3 py-1.5 rounded-md shadow-sm border border-slate-200">
+            {{ now().strftime('%d/%m/%Y') }}
+        </div>
+    </div>
+
+    <!-- Alertas de Gestão -->
+    {% if alertas %}
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <button onclick="toggleAlertas()"
-            class="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors text-left">
-            <div class="flex items-center gap-3">
-                <i data-lucide="alert-triangle"
-                    style="color: var(--sefaz-primary-blue); width: 20px; height: 20px;"></i>
-                <span class="font-semibold text-gray-700">Alertas de Gestão</span>
-                <span class="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
-                    {{ alertas|length }} {% if alertas|length == 1 %}alerta{% else %}alertas{% endif %}
-                </span>
+            class="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors text-left group">
+            <div class="flex items-center gap-4">
+                <div class="p-2 bg-amber-50 text-amber-600 rounded-lg group-hover:bg-amber-100 transition-colors">
+                    <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-slate-800">Alertas de Gestão</h3>
+                    <p class="text-sm text-slate-500">
+                        {{ alertas|length }} {% if alertas|length == 1 %}notificação pendente{% else %}notificações
+                        pendentes{% endif %}
+                    </p>
+                </div>
             </div>
-            <i id="alertas-icon" data-lucide="chevron-down" style="color: #6b7280; width: 20px; height: 20px;"></i>
+            <i id="alertas-icon" data-lucide="chevron-down"
+                class="w-5 h-5 text-slate-400 transition-transform duration-200"></i>
         </button>
 
-        <!-- Conteúdo dos Alertas (Colapsado por padrão) -->
-        <div id="alertas-content" class="hidden border-t border-gray-200">
-            <div class="p-4 space-y-2">
+        <div id="alertas-content" class="hidden border-t border-slate-100 bg-slate-50/50">
+            <div class="p-4 space-y-3">
                 {% for alerta in alertas %}
                 <div
-                    class="alert-card alert-{{ alerta.severidade.lower() }} px-4 py-3 rounded-lg border-l-4 flex items-center justify-between gap-4 shadow-sm hover:shadow transition-shadow">
-                    <!-- Conteúdo Principal -->
-                    <div class="flex items-center gap-3 flex-grow min-w-0">
-                        <!-- Tag de Categoria -->
-                        <span
-                            class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded categoria-{{ alerta.categoria.lower().replace('_', '-') }} flex-shrink-0">
-                            {% if alerta.severidade == 'CRITICAL' %}
-                            <i data-lucide="alert-octagon" style="width: 12px; height: 12px;"></i>
-                            {% elif alerta.severidade == 'WARNING' %}
-                            <i data-lucide="alert-triangle" style="width: 12px; height: 12px;"></i>
-                            {% else %}
-                            <i data-lucide="info" style="width: 12px; height: 12px;"></i>
-                            {% endif %}
-                            {{ alerta.categoria.replace('_', ' ') }}
-                        </span>
-
-                        <!-- Mensagem -->
-                        <p class="text-gray-800 text-sm leading-tight truncate">{{ alerta.mensagem }}</p>
+                    class="bg-white p-4 rounded-lg border border-slate-200 shadow-sm flex items-start gap-4 hover:shadow-md transition-shadow">
+                    <!-- Icon based on severity -->
+                    <div class="flex-shrink-0 mt-0.5">
+                        {% if alerta.severidade == 'CRITICAL' %}
+                        <div class="p-1.5 bg-red-100 text-red-600 rounded-full">
+                            <i data-lucide="alert-octagon" class="w-4 h-4"></i>
+                        </div>
+                        {% elif alerta.severidade == 'WARNING' %}
+                        <div class="p-1.5 bg-amber-100 text-amber-600 rounded-full">
+                            <i data-lucide="alert-triangle" class="w-4 h-4"></i>
+                        </div>
+                        {% else %}
+                        <div class="p-1.5 bg-blue-100 text-blue-600 rounded-full">
+                            <i data-lucide="info" class="w-4 h-4"></i>
+                        </div>
+                        {% endif %}
                     </div>
 
-                    <!-- Ação -->
-                    <form method="post" action="{{ url_for('marcar_alerta_lido_route', seq=alerta.seq_alerta_gerado) }}"
-                        class="flex-shrink-0">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-xs font-medium px-2 py-0.5 rounded-full 
+                                {% if alerta.categoria == 'RECEITA' %}bg-green-100 text-green-700
+                                {% elif 'DESPESA' in alerta.categoria %}bg-red-100 text-red-700
+                                {% elif 'SALDO' in alerta.categoria %}bg-blue-100 text-blue-700
+                                {% else %}bg-slate-100 text-slate-700{% endif %}">
+                                {{ alerta.categoria.replace('_', ' ') }}
+                            </span>
+                            <span class="text-xs text-slate-400">{{ alerta.data_geracao }}</span>
+                        </div>
+                        <p class="text-slate-700 text-sm leading-relaxed">{{ alerta.mensagem }}</p>
+                    </div>
+
+                    <form method="post"
+                        action="{{ url_for('marcar_alerta_lido_route', seq=alerta.seq_alerta_gerado) }}">
                         <button type="submit"
-                            class="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            class="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
                             title="Marcar como lido">
-                            <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+                            <i data-lucide="check" class="w-4 h-4"></i>
                         </button>
                     </form>
                 </div>
@@ -58,148 +83,152 @@
             </div>
         </div>
     </div>
+    {% endif %}
+
+    <!-- Módulos Grid -->
+    <div>
+        <h3 class="text-lg font-semibold text-slate-800 mb-4 px-1">Acesso Rápido</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+
+            <!-- Relatórios -->
+            <a href="{{ url_for('relatorios') }}"
+                class="group relative bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-300 transition-all duration-200 overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i data-lucide="bar-chart-2"
+                        class="w-24 h-24 text-blue-600 transform rotate-12 translate-x-4 -translate-y-4"></i>
+                </div>
+                <div class="relative z-10">
+                    <div
+                        class="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 mb-4 group-hover:scale-110 transition-transform duration-200">
+                        <i data-lucide="layout-dashboard" class="w-6 h-6"></i>
+                    </div>
+                    <h4 class="text-lg font-semibold text-slate-800 mb-1">Relatórios</h4>
+                    <p class="text-sm text-slate-500">Visualize indicadores e análises detalhadas</p>
+                </div>
+            </a>
+
+            <!-- Saldos -->
+            <a href="{{ url_for('saldos') }}"
+                class="group relative bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-emerald-300 transition-all duration-200 overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i data-lucide="wallet"
+                        class="w-24 h-24 text-emerald-600 transform rotate-12 translate-x-4 -translate-y-4"></i>
+                </div>
+                <div class="relative z-10">
+                    <div
+                        class="w-12 h-12 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600 mb-4 group-hover:scale-110 transition-transform duration-200">
+                        <i data-lucide="dollar-sign" class="w-6 h-6"></i>
+                    </div>
+                    <h4 class="text-lg font-semibold text-slate-800 mb-1">Saldos</h4>
+                    <p class="text-sm text-slate-500">Controle de saldos e contas bancárias</p>
+                </div>
+            </a>
+
+            <!-- Projeções -->
+            <a href="{{ url_for('projecoes_menu') }}"
+                class="group relative bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-violet-300 transition-all duration-200 overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i data-lucide="trending-up"
+                        class="w-24 h-24 text-violet-600 transform rotate-12 translate-x-4 -translate-y-4"></i>
+                </div>
+                <div class="relative z-10">
+                    <div
+                        class="w-12 h-12 bg-violet-50 rounded-lg flex items-center justify-center text-violet-600 mb-4 group-hover:scale-110 transition-transform duration-200">
+                        <i data-lucide="line-chart" class="w-6 h-6"></i>
+                    </div>
+                    <h4 class="text-lg font-semibold text-slate-800 mb-1">Projeções</h4>
+                    <p class="text-sm text-slate-500">Cenários e previsões futuras</p>
+                </div>
+            </a>
+
+            <!-- Pagamentos -->
+            <a href="{{ url_for('pagamentos') }}"
+                class="group relative bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-rose-300 transition-all duration-200 overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i data-lucide="credit-card"
+                        class="w-24 h-24 text-rose-600 transform rotate-12 translate-x-4 -translate-y-4"></i>
+                </div>
+                <div class="relative z-10">
+                    <div
+                        class="w-12 h-12 bg-rose-50 rounded-lg flex items-center justify-center text-rose-600 mb-4 group-hover:scale-110 transition-transform duration-200">
+                        <i data-lucide="arrow-up-right" class="w-6 h-6"></i>
+                    </div>
+                    <h4 class="text-lg font-semibold text-slate-800 mb-1">Pagamentos</h4>
+                    <p class="text-sm text-slate-500">Gestão de pagamentos e saídas</p>
+                </div>
+            </a>
+
+            <!-- Conferência -->
+            <a href="{{ url_for('conferencia') }}"
+                class="group relative bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-cyan-300 transition-all duration-200 overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i data-lucide="check-circle-2"
+                        class="w-24 h-24 text-cyan-600 transform rotate-12 translate-x-4 -translate-y-4"></i>
+                </div>
+                <div class="relative z-10">
+                    <div
+                        class="w-12 h-12 bg-cyan-50 rounded-lg flex items-center justify-center text-cyan-600 mb-4 group-hover:scale-110 transition-transform duration-200">
+                        <i data-lucide="check-check" class="w-6 h-6"></i>
+                    </div>
+                    <h4 class="text-lg font-semibold text-slate-800 mb-1">Conferência</h4>
+                    <p class="text-sm text-slate-500">Validação e conciliação de dados</p>
+                </div>
+            </a>
+
+            <!-- Mapeamentos -->
+            <a href="{{ url_for('mapeamentos') }}"
+                class="group relative bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-indigo-300 transition-all duration-200 overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i data-lucide="git-branch"
+                        class="w-24 h-24 text-indigo-600 transform rotate-12 translate-x-4 -translate-y-4"></i>
+                </div>
+                <div class="relative z-10">
+                    <div
+                        class="w-12 h-12 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600 mb-4 group-hover:scale-110 transition-transform duration-200">
+                        <i data-lucide="route" class="w-6 h-6"></i>
+                    </div>
+                    <h4 class="text-lg font-semibold text-slate-800 mb-1">Mapeamentos</h4>
+                    <p class="text-sm text-slate-500">Configuração de fluxos de dados</p>
+                </div>
+            </a>
+
+            <!-- Qualificadores -->
+            <a href="{{ url_for('qualificadores') }}"
+                class="group relative bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-orange-300 transition-all duration-200 overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i data-lucide="tags"
+                        class="w-24 h-24 text-orange-600 transform rotate-12 translate-x-4 -translate-y-4"></i>
+                </div>
+                <div class="relative z-10">
+                    <div
+                        class="w-12 h-12 bg-orange-50 rounded-lg flex items-center justify-center text-orange-600 mb-4 group-hover:scale-110 transition-transform duration-200">
+                        <i data-lucide="tag" class="w-6 h-6"></i>
+                    </div>
+                    <h4 class="text-lg font-semibold text-slate-800 mb-1">Qualificadores</h4>
+                    <p class="text-sm text-slate-500">Gestão de categorias e tags</p>
+                </div>
+            </a>
+
+            <!-- Alertas Config -->
+            <a href="{{ url_for('alertas') }}"
+                class="group relative bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-slate-300 transition-all duration-200 overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i data-lucide="bell-ring"
+                        class="w-24 h-24 text-slate-600 transform rotate-12 translate-x-4 -translate-y-4"></i>
+                </div>
+                <div class="relative z-10">
+                    <div
+                        class="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center text-slate-600 mb-4 group-hover:scale-110 transition-transform duration-200">
+                        <i data-lucide="settings-2" class="w-6 h-6"></i>
+                    </div>
+                    <h4 class="text-lg font-semibold text-slate-800 mb-1">Config. Alertas</h4>
+                    <p class="text-sm text-slate-500">Definição de regras de alerta</p>
+                </div>
+            </a>
+
+        </div>
+    </div>
 </div>
-{% endif %}
-
-<!-- Menu de Navegação -->
-<h3 class="text-xl font-semibold text-gray-700 mb-4">Módulos do Sistema</h3>
-<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-    <a href="{{ url_for('relatorios') }}" class="nav-card">
-        <div
-            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
-                style="background-color: #E7F1FA;"><i data-lucide="layout-dashboard"
-                    style="color: var(--sefaz-primary-blue);"></i></div>
-            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Relatórios</p>
-        </div>
-    </a>
-    <a href="{{ url_for('saldos') }}" class="nav-card">
-        <div
-            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
-                style="background-color: #E7F1FA;"><i data-lucide="dollar-sign"
-                    style="color: var(--sefaz-primary-blue);"></i></div>
-            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Saldos</p>
-        </div>
-    </a>
-    <a href="{{ url_for('projecoes_menu') }}" class="nav-card">
-        <div
-            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
-                style="background-color: #E7F1FA;"><i data-lucide="trending-up"
-                    style="color: var(--sefaz-primary-blue);"></i></div>
-            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Projeções</p>
-        </div>
-    </a>
-    <!-- Extrato Bancário card removed: replaced by Saldos por Conta report -->
-    <a href="{{ url_for('mapeamentos') }}" class="nav-card">
-        <div
-            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
-                style="background-color: #E7F1FA;"><i data-lucide="route" style="color: var(--sefaz-primary-blue);"></i>
-            </div>
-            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Mapeamentos</p>
-        </div>
-    </a>
-    <a href="{{ url_for('qualificadores') }}" class="nav-card">
-        <div
-            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
-                style="background-color: #E7F1FA;"><i data-lucide="tags" style="color: var(--sefaz-primary-blue);"></i>
-            </div>
-            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Qualificadores</p>
-        </div>
-    </a>
-    <a href="{{ url_for('alertas') }}" class="nav-card">
-        <div
-            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
-                style="background-color: #E7F1FA;"><i data-lucide="bell" style="color: var(--sefaz-primary-blue);"></i>
-            </div>
-            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Alertas</p>
-        </div>
-    </a>
-    <!-- Moved to end: Pagamentos and Conferência -->
-    <a href="{{ url_for('pagamentos') }}" class="nav-card">
-        <div
-            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
-                style="background-color: #E7F1FA;"><i data-lucide="credit-card"
-                    style="color: var(--sefaz-primary-blue);"></i></div>
-            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Pagamentos</p>
-        </div>
-    </a>
-    <a href="{{ url_for('conferencia') }}" class="nav-card">
-        <div
-            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
-                style="background-color: #E7F1FA;"><i data-lucide="check-check"
-                    style="color: var(--sefaz-primary-blue);"></i></div>
-            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Conferência</p>
-        </div>
-    </a>
-</div>
-
-<style>
-    /* Estilos para os alertas - Design Compacto e Sutil */
-    .alert-card {
-        transition: all 0.15s ease;
-    }
-
-    /* Severidades - Cores mais sutis */
-    .alert-critical {
-        background-color: #fef2f2;
-        border-left-color: #dc2626;
-    }
-
-    .alert-warning {
-        background-color: #fffbeb;
-        border-left-color: #f59e0b;
-    }
-
-    .alert-info {
-        background-color: #eff6ff;
-        border-left-color: #3b82f6;
-    }
-
-    /* Tags de Categoria - Compactas */
-    .categoria-receita {
-        background-color: #dcfce7;
-        color: #15803d;
-    }
-
-    .categoria-despesa-pessoal {
-        background-color: #fee2e2;
-        color: #b91c1c;
-    }
-
-    .categoria-saldo {
-        background-color: #dbeafe;
-        color: #1d4ed8;
-    }
-
-    .categoria-orcamento {
-        background-color: #fef3c7;
-        color: #a16207;
-    }
-
-    /* Animação suave para expansão/colapso */
-    .alertas-expanded {
-        animation: slideDown 0.2s ease-out;
-    }
-
-    @keyframes slideDown {
-        from {
-            opacity: 0;
-            transform: translateY(-10px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-</style>
 
 <script>
     function toggleAlertas() {
@@ -208,18 +237,12 @@
 
         if (content.classList.contains('hidden')) {
             content.classList.remove('hidden');
-            content.classList.add('alertas-expanded');
-            icon.setAttribute('data-lucide', 'chevron-up');
+            icon.style.transform = 'rotate(180deg)';
         } else {
             content.classList.add('hidden');
-            content.classList.remove('alertas-expanded');
-            icon.setAttribute('data-lucide', 'chevron-down');
-        }
-
-        // Re-render lucide icons
-        if (window.lucide) {
-            lucide.createIcons();
+            icon.style.transform = 'rotate(0deg)';
         }
     }
 </script>
+
 {% endblock %}

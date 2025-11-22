@@ -1,109 +1,177 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="flex items-center mb-6">
-    <a href="{{ url_for('index') }}" class="text-gray-500 hover:text-gray-700">
-        <i data-lucide="arrow-left-circle" class="w-8 h-8"></i>
-    </a>
-    <h2 class="text-xl font-semibold text-gray-700 ml-4">Relatórios de Fluxo de Caixa</h2>
+
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="text-2xl font-bold text-slate-800">Relatórios</h2>
+            <p class="text-slate-500 mt-1">Análises detalhadas e indicadores financeiros</p>
+        </div>
+        <a href="{{ url_for('index') }}"
+            class="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm hover:shadow-md">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            Voltar ao Dashboard
+        </a>
+    </div>
+
+    <!-- Reports Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+
+        <!-- Resumo -->
+        <a href="{{ url_for('relatorio_resumo') }}"
+            class="group relative bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-blue-300 transition-all duration-200 overflow-hidden">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <i data-lucide="file-text"
+                    class="w-24 h-24 text-blue-600 transform rotate-12 translate-x-4 -translate-y-4"></i>
+            </div>
+            <div class="relative z-10">
+                <div
+                    class="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 mb-4 group-hover:scale-110 transition-transform duration-200">
+                    <i data-lucide="file-bar-chart-2" class="w-6 h-6"></i>
+                </div>
+                <h4 class="text-lg font-semibold text-slate-800 mb-1">Resumo Executivo</h4>
+                <p class="text-sm text-slate-500">Visão consolidada dos principais números</p>
+            </div>
+        </a>
+
+        <!-- DFC -->
+        <a href="{{ url_for('relatorio_dfc') }}"
+            class="group relative bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-indigo-300 transition-all duration-200 overflow-hidden">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <i data-lucide="clipboard-list"
+                    class="w-24 h-24 text-indigo-600 transform rotate-12 translate-x-4 -translate-y-4"></i>
+            </div>
+            <div class="relative z-10">
+                <div
+                    class="w-12 h-12 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600 mb-4 group-hover:scale-110 transition-transform duration-200">
+                    <i data-lucide="clipboard-check" class="w-6 h-6"></i>
+                </div>
+                <h4 class="text-lg font-semibold text-slate-800 mb-1">Análise de Fluxo (DFC)</h4>
+                <p class="text-sm text-slate-500">Detalhamento de receitas e despesas por período</p>
+            </div>
+        </a>
+
+        <!-- Indicadores -->
+        <a href="{{ url_for('relatorio_indicadores') }}"
+            class="group relative bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-emerald-300 transition-all duration-200 overflow-hidden">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <i data-lucide="pie-chart"
+                    class="w-24 h-24 text-emerald-600 transform rotate-12 translate-x-4 -translate-y-4"></i>
+            </div>
+            <div class="relative z-10">
+                <div
+                    class="w-12 h-12 bg-emerald-50 rounded-lg flex items-center justify-center text-emerald-600 mb-4 group-hover:scale-110 transition-transform duration-200">
+                    <i data-lucide="bar-chart-2" class="w-6 h-6"></i>
+                </div>
+                <h4 class="text-lg font-semibold text-slate-800 mb-1">Indicadores</h4>
+                <p class="text-sm text-slate-500">KPIs e métricas de desempenho financeiro</p>
+            </div>
+        </a>
+
+        <!-- Análise Comparativa -->
+        <a href="{{ url_for('relatorio_analise_comparativa') }}"
+            class="group relative bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-violet-300 transition-all duration-200 overflow-hidden">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <i data-lucide="git-compare"
+                    class="w-24 h-24 text-violet-600 transform rotate-12 translate-x-4 -translate-y-4"></i>
+            </div>
+            <div class="relative z-10">
+                <div
+                    class="w-12 h-12 bg-violet-50 rounded-lg flex items-center justify-center text-violet-600 mb-4 group-hover:scale-110 transition-transform duration-200">
+                    <i data-lucide="layers" class="w-6 h-6"></i>
+                </div>
+                <h4 class="text-lg font-semibold text-slate-800 mb-1">Análise Comparativa</h4>
+                <p class="text-sm text-slate-500">Comparativo de ingressos entre períodos</p>
+            </div>
+        </a>
+
+        <!-- Previsão de Receita -->
+        <a href="{{ url_for('relatorio_previsao_receita') }}"
+            class="group relative bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-cyan-300 transition-all duration-200 overflow-hidden">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <i data-lucide="trending-up"
+                    class="w-24 h-24 text-cyan-600 transform rotate-12 translate-x-4 -translate-y-4"></i>
+            </div>
+            <div class="relative z-10">
+                <div
+                    class="w-12 h-12 bg-cyan-50 rounded-lg flex items-center justify-center text-cyan-600 mb-4 group-hover:scale-110 transition-transform duration-200">
+                    <i data-lucide="line-chart" class="w-6 h-6"></i>
+                </div>
+                <h4 class="text-lg font-semibold text-slate-800 mb-1">Previsão de Receita</h4>
+                <p class="text-sm text-slate-500">Realizado vs Projetado por Cenário</p>
+            </div>
+        </a>
+
+        <!-- Controle de Despesa -->
+        <a href="{{ url_for('relatorio_controle_despesa') }}"
+            class="group relative bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-orange-300 transition-all duration-200 overflow-hidden">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <i data-lucide="wallet"
+                    class="w-24 h-24 text-orange-600 transform rotate-12 translate-x-4 -translate-y-4"></i>
+            </div>
+            <div class="relative z-10">
+                <div
+                    class="w-12 h-12 bg-orange-50 rounded-lg flex items-center justify-center text-orange-600 mb-4 group-hover:scale-110 transition-transform duration-200">
+                    <i data-lucide="wallet" class="w-6 h-6"></i>
+                </div>
+                <h4 class="text-lg font-semibold text-slate-800 mb-1">Controle de Despesa</h4>
+                <p class="text-sm text-slate-500">Execução vs Previsão Orçamentária</p>
+            </div>
+        </a>
+
+        <!-- LDO & Orçamento -->
+        <a href="{{ url_for('relatorio_ldo_orcamento') }}"
+            class="group relative bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-rose-300 transition-all duration-200 overflow-hidden">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <i data-lucide="book-open"
+                    class="w-24 h-24 text-rose-600 transform rotate-12 translate-x-4 -translate-y-4"></i>
+            </div>
+            <div class="relative z-10">
+                <div
+                    class="w-12 h-12 bg-rose-50 rounded-lg flex items-center justify-center text-rose-600 mb-4 group-hover:scale-110 transition-transform duration-200">
+                    <i data-lucide="file-text" class="w-6 h-6"></i>
+                </div>
+                <h4 class="text-lg font-semibold text-slate-800 mb-1">LDO & Orçamento</h4>
+                <p class="text-sm text-slate-500">Comparativo LDO, Orçamento e Realizado</p>
+            </div>
+        </a>
+
+        <!-- Previsão x Realizado -->
+        <a href="{{ url_for('relatorio_previsao_realizado') }}"
+            class="group relative bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-teal-300 transition-all duration-200 overflow-hidden">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <i data-lucide="target"
+                    class="w-24 h-24 text-teal-600 transform rotate-12 translate-x-4 -translate-y-4"></i>
+            </div>
+            <div class="relative z-10">
+                <div
+                    class="w-12 h-12 bg-teal-50 rounded-lg flex items-center justify-center text-teal-600 mb-4 group-hover:scale-110 transition-transform duration-200">
+                    <i data-lucide="crosshair" class="w-6 h-6"></i>
+                </div>
+                <h4 class="text-lg font-semibold text-slate-800 mb-1">Previsão x Realizado</h4>
+                <p class="text-sm text-slate-500">Análise de desvio de metas</p>
+            </div>
+        </a>
+
+        <!-- Saldos Diários -->
+        <a href="{{ url_for('relatorio_saldos_diarios') }}"
+            class="group relative bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-sky-300 transition-all duration-200 overflow-hidden">
+            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                <i data-lucide="banknote"
+                    class="w-24 h-24 text-sky-600 transform rotate-12 translate-x-4 -translate-y-4"></i>
+            </div>
+            <div class="relative z-10">
+                <div
+                    class="w-12 h-12 bg-sky-50 rounded-lg flex items-center justify-center text-sky-600 mb-4 group-hover:scale-110 transition-transform duration-200">
+                    <i data-lucide="landmark" class="w-6 h-6"></i>
+                </div>
+                <h4 class="text-lg font-semibold text-slate-800 mb-1">Saldos Diários</h4>
+                <p class="text-sm text-slate-500">Evolução diária de saldos por conta</p>
+            </div>
+        </a>
+
+    </div>
 </div>
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-    <a href="{{ url_for('relatorio_resumo') }}" class="nav-card">
-        <div
-            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
-                style="background-color: #E7F1FA;">
-                <i data-lucide="file-text" style="color: var(--sefaz-primary-blue);"></i>
-            </div>
-            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Resumo</p>
-        </div>
-    </a>
-    <a href="{{ url_for('relatorio_dfc') }}" class="nav-card">
-        <div
-            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
-                style="background-color: #E7F1FA;">
-                <i data-lucide="clipboard-check" style="color: var(--sefaz-primary-blue);"></i>
-            </div>
-            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Análise de Fluxo (DFC)</p>
-            <p class="text-xs text-gray-500 mt-1">Receitas e despesas por período</p>
-        </div>
-    </a>
-    <a href="{{ url_for('relatorio_indicadores') }}" class="nav-card">
-        <div
-            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
-                style="background-color: #E7F1FA;">
-                <i data-lucide="bar-chart-2" style="color: var(--sefaz-primary-blue);"></i>
-            </div>
-            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Indicadores</p>
-        </div>
-    </a>
-    <a href="{{ url_for('relatorio_analise_comparativa') }}" class="nav-card">
-        <div
-            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
-                style="background-color: #E7F1FA;">
-                <i data-lucide="layers" style="color: var(--sefaz-primary-blue);"></i>
-            </div>
-            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Análise Comparativa</p>
-            <p class="text-xs text-gray-500 mt-1">Compara ingressos entre diferentes períodos</p>
-        </div>
-    </a>
-    <a href="{{ url_for('relatorio_previsao_receita') }}" class="nav-card">
-        <div
-            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
-                style="background-color: #E7F1FA;">
-                <i data-lucide="trending-up" style="color: var(--sefaz-primary-blue);"></i>
-            </div>
-            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Previsão de Receita</p>
-            <p class="text-xs text-gray-500 mt-1">Realizado vs Projetado por Cenário</p>
-        </div>
-    </a>
-    <a href="{{ url_for('relatorio_controle_despesa') }}" class="nav-card">
-        <div
-            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-orange-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
-                style="background-color: #FFF7ED;">
-                <i data-lucide="wallet" style="color: #EA580C;"></i>
-            </div>
-            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Controle de Despesa</p>
-            <p class="text-xs text-gray-500 mt-1">Execução vs Previsão Orçamentária</p>
-        </div>
-    </a>
-    <a href="{{ url_for('relatorio_ldo_orcamento') }}" class="nav-card">
-        <div
-            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-indigo-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
-                style="background-color: #EEF2FF;">
-                <i data-lucide="file-text" style="color: #6366F1;"></i>
-            </div>
-            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">LDO & Orçamento</p>
-            <p class="text-xs text-gray-500 mt-1">Comparativo LDO, Orçamento e Realizado</p>
-        </div>
-    </a>
-    <a href="{{ url_for('relatorio_previsao_realizado') }}" class="nav-card">
-        <div
-            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
-                style="background-color: #E7F1FA;">
-                <i data-lucide="target" style="color: var(--sefaz-primary-blue);"></i>
-            </div>
-            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Previsão x Realizado</p>
-            <p class="text-xs text-gray-500 mt-1">Comparativo entre previsão e valores realizados</p>
-        </div>
-    </a>
-    <a href="{{ url_for('relatorio_saldos_diarios') }}" class="nav-card">
-        <div
-            class="h-full bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-lg hover:border-blue-400 transition-all text-center flex flex-col justify-center items-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full"
-                style="background-color: #E7F1FA;">
-                <i data-lucide="banknote" style="color: var(--sefaz-primary-blue);"></i>
-            </div>
-            <p class="mt-4 font-semibold text-gray-700 h-12 flex items-center justify-center">Saldos Diários por Conta
-            </p>
-            <p class="text-xs text-gray-500 mt-1">Entradas, saídas e saldo por conta</p>
-        </div>
-    </a>
-</div>
+
 {% endblock %}

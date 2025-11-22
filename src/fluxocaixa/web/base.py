@@ -33,7 +33,8 @@ async def index(request: Request):
     alertas = list_alertas_ativos()
     return templates.TemplateResponse('index.html', {
         'request': request,
-        'alertas': alertas
+        'alertas': alertas,
+        'now': datetime.now
     })
 
 
