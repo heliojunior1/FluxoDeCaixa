@@ -6,7 +6,7 @@ from sqlalchemy import extract
 from ...models import Lancamento, Qualificador
 from ...repositories.lancamento_repository import LancamentoRepository
 from ...repositories import cenario_repository, qualificador_repository
-from ...utils.constants import DAY_ABBR_PT, MONTH_ABBR_PT
+from ...utils.constants import DAY_ABBR_PT, MONTH_ABBR_PT, MONTH_NAME_PT
 
 
 def get_dfc_data(
@@ -152,7 +152,7 @@ def get_dfc_data(
     else:
         headers = ["Nome"] + [MONTH_ABBR_PT[m] for m in col_range]
         
-    meses_nomes = {i: calendar.month_name[i].capitalize() for i in range(1, 13)}
+    meses_nomes = MONTH_NAME_PT
 
     return {
         "headers": headers,

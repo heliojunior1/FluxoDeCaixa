@@ -5,6 +5,7 @@ import calendar
 from ...repositories.lancamento_repository import LancamentoRepository
 from ...repositories.pagamento_repository import PagamentoRepository
 from ...repositories.tipo_lancamento_repository import TipoLancamentoRepository
+from ...utils.constants import MONTH_NAME_PT
 
 
 def get_analise_comparativa_data(
@@ -24,7 +25,7 @@ def get_analise_comparativa_data(
     Returns:
         Dictionary with comparative data per item and totals
     """
-    meses_nomes = {i: calendar.month_name[i].capitalize() for i in range(1, 13)}
+    meses_nomes = MONTH_NAME_PT
     data = {}
     totals = {str(m): {str(ano1): 0, str(ano2): 0} for m in meses_selecionados}
     totals["total"] = {str(ano1): 0, str(ano2): 0}

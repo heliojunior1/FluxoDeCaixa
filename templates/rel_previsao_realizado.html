@@ -1,247 +1,350 @@
 {% extends 'base.html' %}
 {% block content %}
-<div class="flex items-center mb-6">
-    <a href="{{ url_for('relatorios') }}" class="text-gray-500 hover:text-gray-700">
-        <i data-lucide="arrow-left-circle" class="w-8 h-8"></i>
-    </a>
-    <h2 class="text-2xl font-bold text-gray-800 ml-4">Relatório: Previsão x Realizado</h2>
-</div>
-
-<div class="bg-white p-6 rounded-lg shadow-md border">
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
         <div>
-            <label class="text-sm font-medium">Ano</label>
-            <select id="filter-ano" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
-                {% for ano in anos_disponiveis %}
-                    <option value="{{ ano }}" {% if ano == ano_default %}selected{% endif %}>{{ ano }}</option>
-                {% endfor %}
-            </select>
+            <h2 class="text-2xl font-bold text-slate-800">Previsão x Realizado</h2>
+            <p class="text-slate-500 mt-1">Análise de desvio de metas e performance</p>
         </div>
-        <div class="relative">
-            <label class="text-sm font-medium">Mês</label>
-            <div class="mt-1">
-                <button type="button" id="mes-dropdown-btn" class="multiselect-button">
-                    <span id="mes-selected-text">{{ meses|length }} selecionados</span>
-                    <i data-lucide="chevron-down" class="h-4 w-4 opacity-50"></i>
-                </button>
-                <div id="mes-dropdown" class="multiselect-dropdown hidden shadow-lg">
-                    {% for mes in meses %}
-                    <label class="flex items-center text-sm">
-                        <input type="checkbox" class="mes-checkbox h-4 w-4 rounded border-gray-300" value="{{ mes[0] }}" checked>
-                        <span class="ml-2">{{ mes[1] }}</span>
-                    </label>
+        <a href="{{ url_for('relatorios') }}"
+            class="flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-blue-600 transition-colors bg-white px-4 py-2 rounded-lg border border-slate-200 shadow-sm hover:shadow-md">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            Voltar
+        </a>
+    </div>
+
+    <!-- Filtros -->
+    <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 items-end">
+            <!-- Ano -->
+            <div>
+                <label for="filter-ano" class="block text-sm font-medium text-slate-700 mb-1">Ano</label>
+                <select id="filter-ano"
+                    class="w-full rounded-lg border-slate-300 text-sm focus:ring-blue-500 focus:border-blue-500">
+                    {% for ano in anos_disponiveis %}
+                    <option value="{{ ano }}" {% if ano==ano_default %}selected{% endif %}>{{ ano }}</option>
                     {% endfor %}
+                </select>
+            </div>
+
+            <!-- Mês -->
+            <div class="relative">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Mês</label>
+                <div class="relative">
+                    <button type="button" id="mes-dropdown-btn"
+                        class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-left text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex justify-between items-center">
+                        <span id="mes-selected-text" class="truncate">{{ meses|length }} selecionados</span>
+                        <i data-lucide="chevron-down" class="h-4 w-4 text-slate-400"></i>
+                    </button>
+                    <div id="mes-dropdown"
+                        class="hidden absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        <div class="p-2 space-y-1">
+                            {% for mes in meses %}
+                            <label class="flex items-center p-2 hover:bg-slate-50 rounded cursor-pointer">
+                                <input type="checkbox"
+                                    class="mes-checkbox h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                    value="{{ mes[0] }}" checked>
+                                <span class="ml-2 text-sm text-slate-700">{{ mes[1] }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div>
-            <label class="text-sm font-medium">Cenário</label>
-            <select id="filter-cenario" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
-                {% for c in cenarios %}
+
+            <!-- Cenário -->
+            <div>
+                <label for="filter-cenario" class="block text-sm font-medium text-slate-700 mb-1">Cenário</label>
+                <select id="filter-cenario"
+                    class="w-full rounded-lg border-slate-300 text-sm focus:ring-blue-500 focus:border-blue-500">
+                    {% for c in cenarios %}
                     <option value="{{ c.seq_cenario }}">{{ c.nom_cenario }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="relative">
-            <label class="text-sm font-medium">Qualificadores</label>
-            <div class="mt-1">
-                <button type="button" id="qualificador-dropdown-btn" class="multiselect-button">
-                    <span id="qualificador-selected-text">{{ qualificadores|length }} selecionados</span>
-                    <i data-lucide="chevron-down" class="h-4 w-4 opacity-50"></i>
-                </button>
-                <div id="qualificador-dropdown" class="multiselect-dropdown hidden shadow-lg max-h-60 overflow-y-auto">
-                    {% for q in qualificadores %}
-                    <label class="flex items-center text-sm">
-                        <input type="checkbox" class="qualificador-checkbox h-4 w-4 rounded border-gray-300" value="{{ q.seq_qualificador }}" checked>
-                        <span class="ml-2">{{ q.dsc_qualificador }}</span>
-                    </label>
                     {% endfor %}
+                </select>
+            </div>
+
+            <!-- Qualificadores -->
+            <div class="relative">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Qualificadores</label>
+                <div class="relative">
+                    <button type="button" id="qualificador-dropdown-btn"
+                        class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-left text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 flex justify-between items-center">
+                        <span id="qualificador-selected-text" class="truncate">{{ qualificadores|length }}
+                            selecionados</span>
+                        <i data-lucide="chevron-down" class="h-4 w-4 text-slate-400"></i>
+                    </button>
+                    <div id="qualificador-dropdown"
+                        class="hidden absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        <div class="p-2 space-y-1">
+                            {% for q in qualificadores %}
+                            <label class="flex items-center p-2 hover:bg-slate-50 rounded cursor-pointer">
+                                <input type="checkbox"
+                                    class="qualificador-checkbox h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                    value="{{ q.seq_qualificador }}" checked>
+                                <span class="ml-2 text-sm text-slate-700">{{ q.dsc_qualificador }}</span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="flex items-end">
-            <button type="button" id="btn-aplicar" class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-colors">
-                <i data-lucide="filter" class="w-4 h-4 inline mr-1"></i>
-                Aplicar
-            </button>
+
+            <!-- Botão Aplicar -->
+            <div>
+                <button type="button" id="btn-aplicar"
+                    class="w-full px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:ring-4 focus:ring-blue-300 transition-all shadow-sm hover:shadow flex items-center justify-center gap-2">
+                    <i data-lucide="filter" class="w-4 h-4"></i>
+                    Aplicar Filtros
+                </button>
+            </div>
         </div>
     </div>
-</div>
 
-<div class="mt-6">
-    <h3 class="text-lg font-semibold text-gray-800 mb-4">Resultados Consolidados</h3>
-    <div class="overflow-x-auto">
-        <table class="w-full text-left table-fixed-layout">
-            <thead class="bg-gray-100">
-                <tr>
-                    <th class="p-3">Descrição</th>
-                    <th class="p-3 text-right">Previsão Inicial</th>
-                    <th class="p-3 text-right">Previsão Final</th>
-                    <th class="p-3 text-right">Realizado</th>
-                </tr>
-            </thead>
-            <tbody id="result-table-body" class="max-h-96 overflow-y-auto"></tbody>
-            <tfoot id="result-table-total" class="bg-gray-100 font-bold"></tfoot>
-        </table>
+    <!-- Resultados Consolidados -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="p-6 border-b border-slate-200">
+            <h3 class="text-lg font-semibold text-slate-800">Resultados Consolidados</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-slate-50 text-slate-600 text-xs uppercase font-semibold tracking-wider">
+                    <tr>
+                        <th class="p-4">Descrição</th>
+                        <th class="p-4 text-right">Previsão Inicial</th>
+                        <th class="p-4 text-right">Previsão Final</th>
+                        <th class="p-4 text-right">Realizado</th>
+                    </tr>
+                </thead>
+                <tbody id="result-table-body" class="divide-y divide-slate-100 text-sm text-slate-700"></tbody>
+                <tfoot id="result-table-total" class="bg-slate-50 font-bold text-slate-800 text-sm"></tfoot>
+            </table>
+        </div>
     </div>
-</div>
 
-<div class="mt-8">
-    <h3 class="text-lg font-semibold text-gray-800 mb-4">Análise Gráfica</h3>
+    <!-- Análise Gráfica -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="p-4 border rounded-lg"><canvas id="evolucao-chart"></canvas></div>
-        <div class="p-4 border rounded-lg"><canvas id="diferenca-chart"></canvas></div>
+        <!-- Gráfico Evolução -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <h3 class="text-lg font-semibold text-slate-800 mb-4">Evolução Mensal</h3>
+            <div class="relative h-80">
+                <canvas id="evolucao-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Gráfico Diferença -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+            <h3 class="text-lg font-semibold text-slate-800 mb-4">Diferença (Realizado vs Previsão)</h3>
+            <div class="relative h-80">
+                <canvas id="diferenca-chart"></canvas>
+            </div>
+        </div>
     </div>
 </div>
-
-<style>
-.multiselect-button {
-    background-color: white;
-    border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
-    padding: 0.5rem 0.75rem;
-    width: 100%;
-    text-align: left;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-.multiselect-dropdown {
-    position: absolute;
-    background-color: white;
-    border: 1px solid #d1d5db;
-    border-radius: 0.375rem;
-    width: 100%;
-    z-index: 10;
-    margin-top: 0.25rem;
-    max-height: 200px;
-    overflow-y: auto;
-}
-.multiselect-dropdown label { display: block; padding: 0.5rem 0.75rem; cursor: pointer; }
-.multiselect-dropdown label:hover { background-color: #f3f4f6; }
-
-.table-fixed-layout thead,
-.table-fixed-layout tfoot,
-.table-fixed-layout tbody tr {
-    display: table;
-    width: 100%;
-    table-layout: fixed;
-}
-.table-fixed-layout tbody {
-    display: block;
-    overflow-y: auto;
-}
-</style>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
-    function getSelected(selector) {
-        return Array.from(document.querySelectorAll(selector + ':checked')).map(cb => cb.value);
-    }
-    function updateMultiselectText(selector, textElemId) {
-        const selected = getSelected(selector);
-        const textElem = document.getElementById(textElemId);
-        if(selected.length === 0) textElem.textContent = 'Selecione';
-        else if (selected.length === 1) textElem.textContent = document.querySelector(selector + ':checked').parentElement.querySelector('span').textContent;
-        else textElem.textContent = selected.length + ' selecionados';
-    }
-    function setupDropdown(btnId, dropdownId, checkboxSelector, textElemId) {
-        const btn = document.getElementById(btnId);
-        const dropdown = document.getElementById(dropdownId);
-        btn.addEventListener('click', e => { e.stopPropagation(); dropdown.classList.toggle('hidden');});
-        document.addEventListener('click', e => { if(!dropdown.contains(e.target) && !btn.contains(e.target)) dropdown.classList.add('hidden'); });
-        document.querySelectorAll(checkboxSelector).forEach(cb => cb.addEventListener('change', () => { updateMultiselectText(checkboxSelector, textElemId); }));
-        updateMultiselectText(checkboxSelector, textElemId);
-    }
-    setupDropdown('mes-dropdown-btn', 'mes-dropdown', '.mes-checkbox', 'mes-selected-text');
-    setupDropdown('qualificador-dropdown-btn', 'qualificador-dropdown', '.qualificador-checkbox', 'qualificador-selected-text');
-
-    // Remover listeners automáticos dos filtros
-    // document.getElementById('filter-ano').addEventListener('change', fetchData);
-    // document.getElementById('filter-cenario').addEventListener('change', fetchData);
-
-    // Adicionar listener ao botão aplicar
-    document.getElementById('btn-aplicar').addEventListener('click', fetchData);
-
-    let evolucaoChart = null;
-    let diffChart = null;
-
-    function renderTable(data) {
-        const tbody = document.getElementById('result-table-body');
-        const tfoot = document.getElementById('result-table-total');
-        tbody.innerHTML = '';
-        tfoot.innerHTML = '';
-        data.forEach(row => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td class="p-3 font-semibold text-gray-700">${row.descricao}</td>` +
-                           `<td class="p-3 text-right font-mono">${row.previsao_inicial}</td>` +
-                           `<td class="p-3 text-right font-mono">${row.previsao_final}</td>` +
-                           `<td class="p-3 text-right font-mono font-bold">${row.realizado}</td>`;
-            if (row.descricao === 'Total') {
-                tr.classList.add('border-t');
-                tfoot.appendChild(tr);
-            } else {
-                tr.classList.add('border-b');
-                tbody.appendChild(tr);
-            }
-        });
-    }
-    function renderEvolucaoChart(labels, previsao, realizado) {
-        const ctx = document.getElementById('evolucao-chart').getContext('2d');
-        if (evolucaoChart) evolucaoChart.destroy();
-        evolucaoChart = new Chart(ctx, {
-            type: 'line',
-            data: { labels, datasets: [
-                { label: 'Previsão (em Bi)', data: previsao, borderColor: 'rgb(54,162,235)', tension:0.1 },
-                { label: 'Realizado (em Bi)', data: realizado, borderColor: 'rgb(75,192,192)', tension:0.1 }
-            ]},
-            options: { responsive: true, plugins: { title: { display: true, text: 'Evolução Mensal Consolidada (Valores em Bilhões)' } } }
-        });
-    }
-    function renderDiffChart(labels, diffFinal, diffInicial) {
-        const ctx = document.getElementById('diferenca-chart').getContext('2d');
-        if (diffChart) diffChart.destroy();
-        diffChart = new Chart(ctx, {
-            type: 'line',
-            data: { labels, datasets: [
-                { label:'Realizado vs Prev. Final (Bi)', data: diffFinal, borderColor:'rgb(255,99,132)', tension:0.1 },
-                { label:'Realizado vs Prev. Inicial (Bi)', data: diffInicial, borderColor:'rgb(255,159,64)', tension:0.1 }
-            ]},
-            options: { responsive:true, plugins:{ title:{ display:true, text:'Evolução Anual da Diferença (Realizado vs Previsão)' } } }
-        });
-    }
-    async function fetchData() {
-        // Mostrar indicador de carregamento
-        const btnAplicar = document.getElementById('btn-aplicar');
-        const originalText = btnAplicar.innerHTML;
-        btnAplicar.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 inline mr-1 animate-spin"></i> Carregando...';
-        btnAplicar.disabled = true;
-
-        try {
-            const ano = document.getElementById('filter-ano').value;
-            const cenario = document.getElementById('filter-cenario').value;
-            const meses = getSelected('.mes-checkbox').join(',');
-            const qualificadores = getSelected('.qualificador-checkbox').join(',');
-            const params = new URLSearchParams({ano, cenario, meses, qualificadores});
-            const response = await fetch(`{{ url_for('relatorio_previsao_realizado_data') }}?${params.toString()}`);
-            const json = await response.json();
-            renderTable(json.tabela);
-            renderEvolucaoChart(json.evolucao.labels, json.evolucao.previsao, json.evolucao.realizado);
-            renderDiffChart(json.diferenca.labels, json.diferenca.final, json.diferenca.inicial);
-        } catch (error) {
-            console.error('Erro ao carregar dados:', error);
-            alert('Erro ao carregar dados. Tente novamente.');
-        } finally {
-            // Restaurar botão
-            btnAplicar.innerHTML = originalText;
-            btnAplicar.disabled = false;
-            // Re-inicializar ícones do Lucide
-            lucide.createIcons();
+    document.addEventListener('DOMContentLoaded', () => {
+        function getSelected(selector) {
+            return Array.from(document.querySelectorAll(selector + ':checked')).map(cb => cb.value);
         }
-    }
-    
-    // Carregar dados iniciais
-    fetchData();
-});
+
+        function updateMultiselectText(selector, textElemId) {
+            const selected = getSelected(selector);
+            const textElem = document.getElementById(textElemId);
+            if (selected.length === 0) textElem.textContent = 'Selecione';
+            else if (selected.length === 1) textElem.textContent = document.querySelector(selector + ':checked').parentElement.querySelector('span').textContent;
+            else textElem.textContent = selected.length + ' selecionados';
+        }
+
+        function setupDropdown(btnId, dropdownId, checkboxSelector, textElemId) {
+            const btn = document.getElementById(btnId);
+            const dropdown = document.getElementById(dropdownId);
+
+            btn.addEventListener('click', e => {
+                e.stopPropagation();
+                dropdown.classList.toggle('hidden');
+                // Rotate chevron
+                const icon = btn.querySelector('i');
+                if (dropdown.classList.contains('hidden')) {
+                    icon.style.transform = 'rotate(0deg)';
+                } else {
+                    icon.style.transform = 'rotate(180deg)';
+                }
+            });
+
+            document.addEventListener('click', e => {
+                if (!dropdown.contains(e.target) && !btn.contains(e.target)) {
+                    dropdown.classList.add('hidden');
+                    const icon = btn.querySelector('i');
+                    icon.style.transform = 'rotate(0deg)';
+                }
+            });
+
+            document.querySelectorAll(checkboxSelector).forEach(cb => cb.addEventListener('change', () => {
+                updateMultiselectText(checkboxSelector, textElemId);
+            }));
+
+            updateMultiselectText(checkboxSelector, textElemId);
+        }
+
+        setupDropdown('mes-dropdown-btn', 'mes-dropdown', '.mes-checkbox', 'mes-selected-text');
+        setupDropdown('qualificador-dropdown-btn', 'qualificador-dropdown', '.qualificador-checkbox', 'qualificador-selected-text');
+
+        // Adicionar listener ao botão aplicar
+        document.getElementById('btn-aplicar').addEventListener('click', fetchData);
+
+        let evolucaoChart = null;
+        let diffChart = null;
+
+        function renderTable(data) {
+            const tbody = document.getElementById('result-table-body');
+            const tfoot = document.getElementById('result-table-total');
+            tbody.innerHTML = '';
+            tfoot.innerHTML = '';
+
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition-colors';
+
+                tr.innerHTML = `
+                <td class="p-4 font-medium">${row.descricao}</td>
+                <td class="p-4 text-right font-mono text-slate-600">${row.previsao_inicial}</td>
+                <td class="p-4 text-right font-mono text-slate-600">${row.previsao_final}</td>
+                <td class="p-4 text-right font-mono font-bold text-slate-800">${row.realizado}</td>
+            `;
+
+                if (row.descricao === 'Total') {
+                    tr.className = 'bg-slate-50 font-bold';
+                    tfoot.appendChild(tr);
+                } else {
+                    tbody.appendChild(tr);
+                }
+            });
+        }
+
+        function renderEvolucaoChart(labels, previsao, realizado) {
+            const ctx = document.getElementById('evolucao-chart').getContext('2d');
+            if (evolucaoChart) evolucaoChart.destroy();
+
+            evolucaoChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Previsão (em Bi)',
+                            data: previsao,
+                            borderColor: '#3b82f6', // Blue 500
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Realizado (em Bi)',
+                            data: realizado,
+                            borderColor: '#10b981', // Emerald 500
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            tension: 0.3,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            padding: 12,
+                            cornerRadius: 8,
+                        }
+                    },
+                    scales: {
+                        y: { grid: { color: '#f1f5f9' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function renderDiffChart(labels, diffFinal, diffInicial) {
+            const ctx = document.getElementById('diferenca-chart').getContext('2d');
+            if (diffChart) diffChart.destroy();
+
+            diffChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Realizado vs Prev. Final (Bi)',
+                            data: diffFinal,
+                            backgroundColor: '#f43f5e', // Rose 500
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Realizado vs Prev. Inicial (Bi)',
+                            data: diffInicial,
+                            backgroundColor: '#f97316', // Orange 500
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            padding: 12,
+                            cornerRadius: 8,
+                        }
+                    },
+                    scales: {
+                        y: { grid: { color: '#f1f5f9' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        async function fetchData() {
+            const btnAplicar = document.getElementById('btn-aplicar');
+            const originalText = btnAplicar.innerHTML;
+            btnAplicar.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Carregando...';
+            btnAplicar.disabled = true;
+
+            try {
+                const ano = document.getElementById('filter-ano').value;
+                const cenario = document.getElementById('filter-cenario').value;
+                const meses = getSelected('.mes-checkbox').join(',');
+                const qualificadores = getSelected('.qualificador-checkbox').join(',');
+                const params = new URLSearchParams({ ano, cenario, meses, qualificadores });
+
+                const response = await fetch(`{{ url_for('relatorio_previsao_realizado_data') }}?${params.toString()}`);
+                const json = await response.json();
+
+                renderTable(json.tabela);
+                renderEvolucaoChart(json.evolucao.labels, json.evolucao.previsao, json.evolucao.realizado);
+                renderDiffChart(json.diferenca.labels, json.diferenca.final, json.diferenca.inicial);
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+                // Could add a toast notification here
+            } finally {
+                btnAplicar.innerHTML = originalText;
+                btnAplicar.disabled = false;
+                lucide.createIcons();
+            }
+        }
+
+        // Carregar dados iniciais
+        fetchData();
+    });
 </script>
 {% endblock %}

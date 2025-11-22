@@ -6,6 +6,7 @@ from sqlalchemy import extract
 from ...models import db, CenarioAjusteMensal
 from ...repositories.lancamento_repository import LancamentoRepository
 from .base import get_tipo_lancamento_ids
+from ...utils.constants import MONTH_NAME_PT
 
 
 def get_resumo_data(
@@ -25,7 +26,7 @@ def get_resumo_data(
     Returns:
         Dictionary with summary data including totals and cash flow chart data
     """
-    meses_nomes = {i: calendar.month_name[i].capitalize() for i in range(1, 13)}
+    meses_nomes = MONTH_NAME_PT
     tipo_ids = get_tipo_lancamento_ids()
     id_entrada = tipo_ids['entrada']
     id_saida = tipo_ids['saida']

@@ -19,6 +19,7 @@ from ..services import (
     list_active_qualificadores,
     get_qualificador_by_name,
 )
+from ..utils.constants import MONTH_NAME_PT
 
 @router.get('/projecoes')
 @handle_exceptions
@@ -33,7 +34,7 @@ async def projecoes_cenarios(request: Request):
     cenarios = list_cenarios()
     qualificadores_receita = list_receita_qualificadores()
     qualificadores_despesa = list_despesa_qualificadores()
-    meses_nomes = {i: calendar.month_name[i].capitalize() for i in range(1, 13)}
+    meses_nomes = MONTH_NAME_PT
     return templates.TemplateResponse(
         'cenarios.html',
         {
@@ -237,7 +238,7 @@ async def edit_cenario_route(request: Request, id: int):
     if ajustes_tuple_keys:
         ano = list(ajustes_tuple_keys.keys())[0][0]
         
-    meses_nomes = {i: calendar.month_name[i].capitalize() for i in range(1, 13)}
+    meses_nomes = MONTH_NAME_PT
     return templates.TemplateResponse(
         'cenario_edit.html',
         {

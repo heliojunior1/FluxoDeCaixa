@@ -4,6 +4,7 @@ import calendar
 
 from ...repositories.lancamento_repository import LancamentoRepository
 from .base import get_tipo_lancamento_ids
+from ...utils.constants import MONTH_NAME_PT
 
 
 def get_indicadores_data(
@@ -21,7 +22,7 @@ def get_indicadores_data(
     Returns:
         Dictionary with area_chart_data, pie_chart_data, and projection_chart_data
     """
-    meses_nomes = {i: calendar.month_name[i].capitalize() for i in range(1, 13)}
+    meses_nomes = MONTH_NAME_PT
     tipo_ids = get_tipo_lancamento_ids()
     id_entrada = tipo_ids['entrada']
     id_saida = tipo_ids['saida']
