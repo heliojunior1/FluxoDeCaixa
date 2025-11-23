@@ -1,0 +1,246 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between bg-white p-6 rounded-lg shadow-md border">
+        <div class="flex items-center">
+            <a href="{{ url_for('simulador_menu') }}" class="text-blue-600 hover:text-blue-800 mr-4">
+                <i data-lucide="arrow-left-circle" class="h-6 w-6"></i>
+            </a>
+            <div>
+                <h2 class="text-2xl font-semibold text-gray-800">{{ simulador.nom_cenario }}</h2>
+                <p class="text-sm text-gray-500">{{ simulador.dsc_cenario if simulador.dsc_cenario else 'Sem descrição'
+                    }}</p>
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <a href="/simulador/{{ simulador.seq_simulador_cenario }}/editar"
+                class="px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 flex items-center gap-2">
+                <i data-lucide="edit" class="h-4 w-4"></i> Editar
+            </a>
+            <button onclick="window.print()"
+                class="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 flex items-center gap-2">
+                <i data-lucide="printer" class="h-4 w-4"></i> Imprimir
+            </button>
+        </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Receita Total -->
+        <div class="bg-white p-6 rounded-lg shadow-md border border-green-100">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-medium text-gray-500">Receita Total Projetada</h3>
+                <div class="p-2 bg-green-100 rounded-full">
+                    <i data-lucide="trending-up" class="h-5 w-5 text-green-600"></i>
+                </div>
+            </div>
+            <p class="text-2xl font-bold text-green-600">R$ {{ "{:,.2f}".format(resumo.total_receita).replace(',',
+                'X').replace('.', ',').replace('X', '.') }}</p>
+            <p class="text-xs text-gray-500 mt-1">{{ simulador.meses_projecao }} meses</p>
+        </div>
+
+        <!-- Despesa Total -->
+        <div class="bg-white p-6 rounded-lg shadow-md border border-red-100">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-medium text-gray-500">Despesa Total Projetada</h3>
+                <div class="p-2 bg-red-100 rounded-full">
+                    <i data-lucide="trending-down" class="h-5 w-5 text-red-600"></i>
+                </div>
+            </div>
+            <p class="text-2xl font-bold text-red-600">R$ {{ "{:,.2f}".format(resumo.total_despesa).replace(',',
+                'X').replace('.', ',').replace('X', '.') }}</p>
+            <p class="text-xs text-gray-500 mt-1">{{ simulador.meses_projecao }} meses</p>
+        </div>
+
+        <!-- Saldo Final -->
+        <div class="bg-white p-6 rounded-lg shadow-md border border-blue-100">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-sm font-medium text-gray-500">Saldo Acumulado</h3>
+                <div class="p-2 bg-blue-100 rounded-full">
+                    <i data-lucide="wallet" class="h-5 w-5 text-blue-600"></i>
+                </div>
+            </div>
+            <p
+                class="text-2xl font-bold {% if resumo.saldo_final >= 0 %}text-blue-600{% else %}text-red-600{% endif %}">
+                R$ {{ "{:,.2f}".format(resumo.saldo_final).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+            </p>
+            <p class="text-xs text-gray-500 mt-1">Resultado Final</p>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Gráfico de Evolução -->
+        <div class="bg-white p-6 rounded-lg shadow-md border">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Evolução Mensal</h3>
+            <div class="h-80">
+                <canvas id="evolutionChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Gráfico de Composição -->
+        <div class="bg-white p-6 rounded-lg shadow-md border">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4">Receita vs Despesa</h3>
+            <div class="h-80">
+                <canvas id="compositionChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detailed Table -->
+    <div class="bg-white rounded-lg shadow-md border overflow-hidden">
+        <div class="p-6 border-b">
+            <h3 class="text-lg font-semibold text-gray-800">Detalhamento Mensal</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mês
+                        </th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Receita</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Despesa</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Saldo</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for row in cenario_total %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ row.data }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-green-600 font-medium">
+                            R$ {{ "{:,.2f}".format(row.receita).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-red-600 font-medium">
+                            R$ {{ "{:,.2f}".format(row.despesa).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                        </td>
+                        <td
+                            class="px-6 py-4 whitespace-nowrap text-sm text-right font-bold {% if row.saldo >= 0 %}text-blue-600{% else %}text-red-600{% endif %}">
+                            R$ {{ "{:,.2f}".format(row.saldo).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Prepare data
+        const cenarioData = {{ cenario_total | tojson
+    }};
+
+    const labels = cenarioData.map(row => {
+        // Format date if needed, assuming row.data is string YYYY-MM-DD
+        const date = new Date(row.data);
+        return date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+    });
+
+    const receitas = cenarioData.map(row => row.receita);
+    const despesas = cenarioData.map(row => row.despesa);
+    const saldos = cenarioData.map(row => row.saldo);
+
+    // Evolution Chart
+    const ctxEvolution = document.getElementById('evolutionChart').getContext('2d');
+    new Chart(ctxEvolution, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Receita',
+                    data: receitas,
+                    borderColor: '#16a34a', // green-600
+                    backgroundColor: '#16a34a',
+                    tension: 0.3
+                },
+                {
+                    label: 'Despesa',
+                    data: despesas,
+                    borderColor: '#dc2626', // red-600
+                    backgroundColor: '#dc2626',
+                    tension: 0.3
+                },
+                {
+                    label: 'Saldo',
+                    data: saldos,
+                    borderColor: '#2563eb', // blue-600
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function (value) {
+                            return 'R$ ' + value.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Composition Chart (Bar)
+    const ctxComposition = document.getElementById('compositionChart').getContext('2d');
+    new Chart(ctxComposition, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Receita',
+                    data: receitas,
+                    backgroundColor: '#16a34a',
+                },
+                {
+                    label: 'Despesa',
+                    data: despesas,
+                    backgroundColor: '#dc2626',
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function (value) {
+                            return 'R$ ' + value.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+                        }
+                    }
+                }
+            }
+        }
+    });
+    });
+</script>
+{% endblock %}

@@ -12,6 +12,14 @@ from .alerta import Alerta
 from .alerta_gerado import AlertaGerado
 from .conta_bancaria import ContaBancaria
 from .saldo_conta import SaldoConta
+from .simulador_cenario import (
+    SimuladorCenario,
+    CenarioReceita,
+    CenarioReceitaAjuste,
+    CenarioDespesa,
+    CenarioDespesaAjuste,
+    ModeloEconomicoParametro,
+)
 
 __all__ = [
     'db',
@@ -31,4 +39,10 @@ __all__ = [
     'AlertaGerado',
     'ContaBancaria',
     'SaldoConta',
+    'SimuladorCenario',
+    'CenarioReceita',
+    'CenarioReceitaAjuste',
+    'CenarioDespesa',
+    'CenarioDespesaAjuste',
+    'ModeloEconomicoParametro',
 ]

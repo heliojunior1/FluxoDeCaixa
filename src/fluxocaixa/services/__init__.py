@@ -37,6 +37,16 @@ from .cenario_service import (
     delete_cenario,
     get_ajustes_dict,
 )
+from .simulador_cenario_service import (
+    list_simuladores,
+    list_active_simuladores,
+    get_simulador,
+    criar_simulador_cenario,
+    atualizar_simulador_cenario,
+    delete_simulador,
+    obter_simulador_completo,
+    executar_simulacao,
+)
 from .qualificador_service import (
     list_all_qualificadores,
     list_active_qualificadores,
@@ -103,6 +113,14 @@ __all__ = [
     'update_cenario_with_ajustes',
     'delete_cenario',
     'get_ajustes_dict',
+    'list_simuladores',
+    'list_active_simuladores',
+    'get_simulador',
+    'criar_simulador_cenario',
+    'atualizar_simulador_cenario',
+    'delete_simulador',
+    'obter_simulador_completo',
+    'executar_simulacao',
     'list_all_qualificadores',
     'list_active_qualificadores',
     'list_root_qualificadores',

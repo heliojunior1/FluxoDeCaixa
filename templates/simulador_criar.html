@@ -1,0 +1,534 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="bg-white p-6 rounded-lg shadow-md border">
+    <div class="flex items-center justify-between mb-6">
+        <div class="flex items-center">
+            <a href="{{ url_for('simulador_menu') }}" class="text-blue-600 hover:text-blue-800 mr-4">
+                <i data-lucide="arrow-left-circle" class="h-6 w-6"></i>
+            </a>
+            <h2 class="text-2xl font-semibold text-gray-700">
+                {% if modo == 'editar' %}Editar Cenário{% else %}Novo Cenário{% endif %}
+            </h2>
+        </div>
+    </div>
+
+    <form
+        action="{% if modo == 'editar' %}/simulador/{{ simulador.seq_simulador_cenario }}/atualizar{% else %}/simulador/criar{% endif %}"
+        method="POST" id="form-cenario">
+
+        <!-- 1. Dados Básicos -->
+        <div class="mb-8 p-4 bg-gray-50 rounded-lg border">
+            <h3 class="text-lg font-medium text-gray-800 mb-4 flex items-center gap-2">
+                <i data-lucide="file-text" class="h-5 w-5 text-blue-600"></i>
+                Dados Básicos
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nome do Cenário</label>
+                    <input type="text" name="nom_cenario" required
+                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                        value="{{ simulador.nom_cenario if simulador else '' }}">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                    <input type="text" name="dsc_cenario"
+                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                        value="{{ simulador.dsc_cenario if simulador else '' }}">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Ano Base</label>
+                    <input type="number" name="ano_base" required
+                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                        value="{{ simulador.ano_base if simulador else current_year }}">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Meses de Projeção</label>
+                    <input type="number" name="meses_projecao" required min="1" max="60"
+                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                        value="{{ simulador.meses_projecao if simulador else 12 }}">
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Configuração de Receita -->
+        <div class="mb-8 p-4 bg-green-50 rounded-lg border border-green-100">
+            <h3 class="text-lg font-medium text-green-800 mb-4 flex items-center gap-2">
+                <i data-lucide="trending-up" class="h-5 w-5"></i>
+                Projeção de Receita
+            </h3>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Método de Projeção</label>
+                <select name="tipo_cenario_receita" id="tipo_receita"
+                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 p-2 border"
+                    onchange="toggleReceitaFields()">
+                    <option value="MANUAL" {% if cenario_completo and
+                        cenario_completo.receita.config.cod_tipo_cenario=='MANUAL' %}selected{% endif %}>Manual (Ajustes
+                        Mensais)</option>
+                    <option value="HOLT_WINTERS" {% if cenario_completo and
+                        cenario_completo.receita.config.cod_tipo_cenario=='HOLT_WINTERS' %}selected{% endif %}>
+                        Holt-Winters (Sazonalidade + Tendência)</option>
+                    <option value="ARIMA" {% if cenario_completo and
+                        cenario_completo.receita.config.cod_tipo_cenario=='ARIMA' %}selected{% endif %}>ARIMA
+                        (Auto-Regressivo)</option>
+                    <option value="SARIMA" {% if cenario_completo and
+                        cenario_completo.receita.config.cod_tipo_cenario=='SARIMA' %}selected{% endif %}>SARIMA (ARIMA
+                        Sazonal)</option>
+                    <option value="REGRESSAO" {% if cenario_completo and
+                        cenario_completo.receita.config.cod_tipo_cenario=='REGRESSAO' %}selected{% endif %}>Regressão
+                        Linear Múltipla</option>
+                </select>
+            </div>
+
+            <!-- Campos Específicos de Modelo (Receita) -->
+            <div id="receita_model_fields" class="mb-4 hidden space-y-4 p-4 bg-white rounded border">
+                <h4 class="font-medium text-gray-700">Configuração do Modelo</h4>
+
+                <!-- Seleção de Qualificador para o Modelo (Comum) -->
+                <div id="common_model_params">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Qualificador Base para Histórico</label>
+                    <select name="receita_config_seq_qualificador" class="w-full rounded-md border-gray-300 p-2 border">
+                        {% for q in qualificadores_receita %}
+                        <option value="{{ q.seq_qualificador }}">{{ q.dsc_qualificador }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Parâmetros Holt-Winters -->
+                <div id="hw_params" class="model-params hidden">
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">Período Sazonal</label>
+                            <input type="number" name="receita_config_seasonal_periods" value="12"
+                                class="w-full border rounded p-1">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">Tendência</label>
+                            <select name="receita_config_trend" class="w-full border rounded p-1">
+                                <option value="add">Aditiva</option>
+                                <option value="mul">Multiplicativa</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">Sazonalidade</label>
+                            <select name="receita_config_seasonal" class="w-full border rounded p-1">
+                                <option value="add">Aditiva</option>
+                                <option value="mul">Multiplicativa</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Parâmetros ARIMA/SARIMA -->
+                <div id="arima_params" class="model-params hidden">
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">p (AR)</label>
+                            <input type="number" name="receita_config_p" value="1" class="w-full border rounded p-1">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">d (I)</label>
+                            <input type="number" name="receita_config_d" value="1" class="w-full border rounded p-1">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">q (MA)</label>
+                            <input type="number" name="receita_config_q" value="1" class="w-full border rounded p-1">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Parâmetros Regressão Linear -->
+                <div id="regressao_params" class="model-params hidden space-y-3">
+                    <p class="text-sm text-gray-600 font-mono bg-gray-50 p-2 rounded">Fórmula: Receita = β0 + (β1 × PIB)
+                        + (β2 × Inflação)</p>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">β0 (Intercepto)</label>
+                            <input type="number" step="0.0001" name="receita_config_beta0" id="reg_beta0"
+                                class="w-full border rounded p-1" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">β1 (PIB)</label>
+                            <input type="number" step="0.0001" name="receita_config_beta1" id="reg_beta1"
+                                class="w-full border rounded p-1" placeholder="0.00">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">β2 (Inflação)</label>
+                            <input type="number" step="0.0001" name="receita_config_beta2" id="reg_beta2"
+                                class="w-full border rounded p-1" placeholder="0.00">
+                        </div>
+                    </div>
+                    <!-- Inputs para valores projetados das variáveis -->
+                    <div class="mt-2">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Valores Projetados (Média
+                            Mensal)</label>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs text-gray-500">PIB</label>
+                                <input type="number" step="0.01" name="receita_config_val_pib" id="reg_val_pib"
+                                    class="w-full border rounded p-1" placeholder="Valor PIB">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500">Inflação</label>
+                                <input type="number" step="0.01" name="receita_config_val_inflacao"
+                                    id="reg_val_inflacao" class="w-full border rounded p-1"
+                                    placeholder="Valor Inflação">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 flex justify-end">
+                    <button type="button" onclick="aplicarModeloReceita()"
+                        class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm flex items-center gap-2">
+                        <i data-lucide="play"></i> Calcular e Preencher Tabela
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabela de Valores Receita (Sempre Visível) -->
+            <div id="receita_manual_fields">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white text-sm border">
+                        <thead>
+                            <tr class="bg-green-100">
+                                <th class="p-2 text-left border-r min-w-[200px]">Qualificador</th>
+                                <th class="p-2 text-center border-r bg-green-200 min-w-[250px]">Aplicar a Todos</th>
+                                {% for mes_num, mes_nome in meses_nomes.items() %}
+                                <th class="p-2 text-center min-w-[100px]">{{ mes_nome[:3] }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for qualificador in qualificadores_receita %}
+                            <tr class="border-b hover:bg-gray-50" data-row-id="rec-{{ qualificador.seq_qualificador }}">
+                                <td class="p-2 font-medium border-r">{{ qualificador.dsc_qualificador }}</td>
+                                <!-- Coluna Aplicar a Todos -->
+                                <td class="p-2 border-r bg-gray-50">
+                                    <div class="flex items-center gap-1">
+                                        <select class="text-xs border rounded p-1 w-12"
+                                            id="tipo_apply_rec_{{ qualificador.seq_qualificador }}">
+                                            <option value="P">%</option>
+                                            <option value="V">R$</option>
+                                        </select>
+                                        <input type="number" step="0.01" class="text-xs border rounded p-1 w-20"
+                                            id="val_apply_rec_{{ qualificador.seq_qualificador }}" placeholder="Valor">
+                                        <button type="button"
+                                            onclick="aplicarTodos('rec', {{ qualificador.seq_qualificador }})"
+                                            class="bg-blue-100 text-blue-600 p-1 rounded hover:bg-blue-200"
+                                            title="Aplicar">
+                                            <i data-lucide="arrow-right" class="h-4 w-4"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                                <!-- Meses -->
+                                {% for mes_num, mes_nome in meses_nomes.items() %}
+                                <td class="p-1 text-center">
+                                    <div class="flex flex-col gap-1">
+                                        <select name="cod_tipo_ajuste_{{ mes_num }}_{{ qualificador.seq_qualificador }}"
+                                            class="text-[10px] border rounded p-0.5 w-full bg-gray-50">
+                                            <option value="P">%</option>
+                                            <option value="V">R$</option>
+                                        </select>
+                                        <input type="number" step="0.01"
+                                            name="val_ajuste_{{ mes_num }}_{{ qualificador.seq_qualificador }}"
+                                            class="w-full text-xs p-1 border rounded text-right" placeholder="0.00">
+                                    </div>
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Configuração de Despesa -->
+        <div class="mb-8 p-4 bg-red-50 rounded-lg border border-red-100">
+            <h3 class="text-lg font-medium text-red-800 mb-4 flex items-center gap-2">
+                <i data-lucide="trending-down" class="h-5 w-5"></i>
+                Projeção de Despesa
+            </h3>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Método de Projeção</label>
+                <select name="tipo_cenario_despesa" id="tipo_despesa"
+                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 p-2 border"
+                    onchange="toggleDespesaFields()">
+                    <option value="MANUAL" {% if cenario_completo and
+                        cenario_completo.despesa.config.cod_tipo_cenario=='MANUAL' %}selected{% endif %}>Manual (Ajustes
+                        Mensais)</option>
+                    <option value="LOA" {% if cenario_completo and
+                        cenario_completo.despesa.config.cod_tipo_cenario=='LOA' %}selected{% endif %}>LOA (Lei
+                        Orçamentária Anual)</option>
+                    <option value="MEDIA_HISTORICA" {% if cenario_completo and
+                        cenario_completo.despesa.config.cod_tipo_cenario=='MEDIA_HISTORICA' %}selected{% endif %}>Média
+                        Histórica Ajustada</option>
+                </select>
+            </div>
+
+            <!-- Configuração LOA (Tabela Anual) -->
+            <div id="despesa_loa_fields" class="hidden mb-4 p-4 bg-white rounded border">
+                <h4 class="font-medium text-gray-700 mb-2">Valores Anuais (LOA)</h4>
+                <p class="text-xs text-gray-500 mb-4">Preencha o valor total anual para cada qualificador. O sistema
+                    distribuirá uniformemente pelos meses.</p>
+                <div class="overflow-x-auto max-h-60 mb-4">
+                    <table class="min-w-full text-sm">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="p-2 text-left">Qualificador</th>
+                                <th class="p-2 text-right">Valor Total Anual (R$)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for q in qualificadores_despesa %}
+                            <tr class="border-b">
+                                <td class="p-2">{{ q.dsc_qualificador }}</td>
+                                <td class="p-2">
+                                    <input type="number" step="0.01"
+                                        class="w-full border rounded p-1 text-right loa-input"
+                                        id="loa_val_{{ q.seq_qualificador }}" placeholder="0.00">
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="flex justify-end">
+                    <button type="button" onclick="aplicarLOA()"
+                        class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 text-sm flex items-center gap-2">
+                        <i data-lucide="check"></i> Aplicar Valores LOA na Tabela
+                    </button>
+                </div>
+            </div>
+
+            <!-- Configuração Média Histórica -->
+            <div id="despesa_media_fields" class="hidden mb-4 p-4 bg-white rounded border">
+                <h4 class="font-medium text-gray-700 mb-2">Configuração Média Histórica</h4>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Período Base (Meses)</label>
+                        <input type="number" name="despesa_config_periodo_meses" value="12"
+                            class="w-full border rounded p-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Fator de Ajuste (ex: 1.05 =
+                            +5%)</label>
+                        <input type="number" step="0.01" name="despesa_config_fator_ajuste" value="1.00"
+                            class="w-full border rounded p-2">
+                    </div>
+                </div>
+                <div class="mt-4 flex justify-end">
+                    <button type="button" onclick="aplicarMediaHistorica()"
+                        class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 text-sm flex items-center gap-2">
+                        <i data-lucide="play"></i> Calcular e Preencher Tabela
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabela de Valores Despesa (Sempre Visível) -->
+            <div id="despesa_manual_fields">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white text-sm border">
+                        <thead>
+                            <tr class="bg-red-100">
+                                <th class="p-2 text-left border-r min-w-[200px]">Qualificador</th>
+                                <th class="p-2 text-center border-r bg-red-200 min-w-[250px]">Aplicar a Todos</th>
+                                {% for mes_num, mes_nome in meses_nomes.items() %}
+                                <th class="p-2 text-center min-w-[100px]">{{ mes_nome[:3] }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for qualificador in qualificadores_despesa %}
+                            <tr class="border-b hover:bg-gray-50"
+                                data-row-id="desp-{{ qualificador.seq_qualificador }}">
+                                <td class="p-2 font-medium border-r">{{ qualificador.dsc_qualificador }}</td>
+                                <!-- Coluna Aplicar a Todos -->
+                                <td class="p-2 border-r bg-gray-50">
+                                    <div class="flex items-center gap-1">
+                                        <select class="text-xs border rounded p-1 w-12"
+                                            id="tipo_apply_desp_{{ qualificador.seq_qualificador }}">
+                                            <option value="P">%</option>
+                                            <option value="V">R$</option>
+                                        </select>
+                                        <input type="number" step="0.01" class="text-xs border rounded p-1 w-20"
+                                            id="val_apply_desp_{{ qualificador.seq_qualificador }}" placeholder="Valor">
+                                        <button type="button"
+                                            onclick="aplicarTodos('desp', {{ qualificador.seq_qualificador }})"
+                                            class="bg-blue-100 text-blue-600 p-1 rounded hover:bg-blue-200"
+                                            title="Aplicar">
+                                            <i data-lucide="arrow-right" class="h-4 w-4"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                                {% for mes_num, mes_nome in meses_nomes.items() %}
+                                <td class="p-1">
+                                    <div class="flex flex-col gap-1">
+                                        <select
+                                            name="cod_tipo_ajuste_desp_{{ mes_num }}_{{ qualificador.seq_qualificador }}"
+                                            class="text-[10px] border rounded p-0.5 w-full bg-gray-50">
+                                            <option value="P">%</option>
+                                            <option value="V">R$</option>
+                                        </select>
+                                        <input type="number" step="0.01"
+                                            name="val_ajuste_desp_{{ mes_num }}_{{ qualificador.seq_qualificador }}"
+                                            class="w-full text-xs p-1 border rounded text-right" placeholder="0.00">
+                                    </div>
+                                </td>
+                                {% endfor %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-4">
+            <a href="{{ url_for('simulador_menu') }}"
+                class="px-6 py-2 border rounded text-gray-600 hover:bg-gray-50">Cancelar</a>
+            <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                Salvar Cenário
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    function toggleReceitaFields() {
+        const tipo = document.getElementById('tipo_receita').value;
+        const modelFields = document.getElementById('receita_model_fields');
+        const hwParams = document.getElementById('hw_params');
+        const arimaParams = document.getElementById('arima_params');
+        const regParams = document.getElementById('regressao_params');
+        const commonParams = document.getElementById('common_model_params');
+
+        // Reset visibility
+        modelFields.classList.add('hidden');
+        hwParams.classList.add('hidden');
+        arimaParams.classList.add('hidden');
+        regParams.classList.add('hidden');
+        commonParams.classList.remove('hidden');
+
+        if (tipo !== 'MANUAL') {
+            modelFields.classList.remove('hidden');
+            if (tipo === 'HOLT_WINTERS') hwParams.classList.remove('hidden');
+            if (tipo === 'ARIMA' || tipo === 'SARIMA') arimaParams.classList.remove('hidden');
+            if (tipo === 'REGRESSAO') {
+                regParams.classList.remove('hidden');
+                commonParams.classList.add('hidden'); // Regressão não usa qualificador base da mesma forma
+            }
+        }
+    }
+
+    function toggleDespesaFields() {
+        const tipo = document.getElementById('tipo_despesa').value;
+        const loaFields = document.getElementById('despesa_loa_fields');
+        const mediaFields = document.getElementById('despesa_media_fields');
+
+        loaFields.classList.add('hidden');
+        mediaFields.classList.add('hidden');
+
+        if (tipo === 'LOA') loaFields.classList.remove('hidden');
+        if (tipo === 'MEDIA_HISTORICA') mediaFields.classList.remove('hidden');
+    }
+
+    // Função para aplicar valores a todos os meses
+    function aplicarTodos(type, seq) {
+        const prefix = type === 'rec' ? '' : 'desp_';
+        const applyType = document.getElementById(`tipo_apply_${type}_${seq}`).value;
+        const applyVal = document.getElementById(`val_apply_${type}_${seq}`).value;
+
+        if (!applyVal) return;
+
+        // Loop pelos 12 meses
+        for (let i = 1; i <= 12; i++) {
+            const typeSelect = document.querySelector(`select[name="cod_tipo_ajuste_${prefix}${i}_${seq}"]`);
+            const valInput = document.querySelector(`input[name="val_ajuste_${prefix}${i}_${seq}"]`);
+
+            if (typeSelect && valInput) {
+                typeSelect.value = applyType;
+                valInput.value = applyVal;
+            }
+        }
+    }
+
+    // Função para aplicar LOA (distribuição uniforme)
+    function aplicarLOA() {
+        const inputs = document.querySelectorAll('.loa-input');
+        inputs.forEach(input => {
+            const seq = input.dataset.seq;
+            const totalAnual = parseFloat(input.value);
+
+            if (!isNaN(totalAnual)) {
+                const mensal = (totalAnual / 12).toFixed(2);
+
+                // Preencher tabela manual de despesa
+                for (let i = 1; i <= 12; i++) {
+                    const typeSelect = document.querySelector(`select[name="cod_tipo_ajuste_desp_${i}_${seq}"]`);
+                    const valInput = document.querySelector(`input[name="val_ajuste_desp_${i}_${seq}"]`);
+
+                    if (typeSelect && valInput) {
+                        typeSelect.value = 'V'; // Valor fixo
+                        valInput.value = mensal;
+                    }
+                }
+            }
+        });
+        alert('Valores LOA aplicados na tabela!');
+    }
+
+    // Função para aplicar Regressão Linear
+    function aplicarModeloReceita() {
+        const tipo = document.getElementById('tipo_receita').value;
+
+        if (tipo === 'REGRESSAO') {
+            const beta0 = parseFloat(document.getElementById('reg_beta0').value) || 0;
+            const beta1 = parseFloat(document.getElementById('reg_beta1').value) || 0;
+            const beta2 = parseFloat(document.getElementById('reg_beta2').value) || 0;
+            const pib = parseFloat(document.getElementById('reg_val_pib').value) || 0;
+            const inflacao = parseFloat(document.getElementById('reg_val_inflacao').value) || 0;
+
+            // Fórmula: Receita = b0 + (b1 * PIB) + (b2 * Inflação)
+            const resultado = beta0 + (beta1 * pib) + (beta2 * inflacao);
+            const resultadoFormatado = resultado.toFixed(2);
+
+            // Aplicar para todos os qualificadores de receita? 
+            // O usuário disse "preencherar todos os campos automaticamente".
+            // Mas a regressão geralmente é para um item específico ou total.
+            // Vou aplicar para TODOS os qualificadores visíveis na tabela como "Valor Fixo"
+            // Isso pode não ser o ideal cientificamente, mas atende ao pedido de preenchimento.
+
+            const rows = document.querySelectorAll('tr[data-row-id^="rec-"]');
+            rows.forEach(row => {
+                const seq = row.dataset.rowId.split('-')[1];
+                for (let i = 1; i <= 12; i++) {
+                    const typeSelect = document.querySelector(`select[name="cod_tipo_ajuste_${i}_${seq}"]`);
+                    const valInput = document.querySelector(`input[name="val_ajuste_${i}_${seq}"]`);
+
+                    if (typeSelect && valInput) {
+                        typeSelect.value = 'V';
+                        valInput.value = resultadoFormatado;
+                    }
+                }
+            });
+            alert('Valores da Regressão calculados e aplicados!');
+        } else {
+            alert('Cálculo automático no navegador disponível apenas para Regressão neste momento. Para outros modelos, salve o cenário para processar.');
+        }
+    }
+
+    function aplicarMediaHistorica() {
+        alert('Para Média Histórica, o cálculo requer dados do servidor. Por favor, salve o cenário para processar.');
+    }
+
+    // Initialize on load
+    document.addEventListener('DOMContentLoaded', () => {
+        toggleReceitaFields();
+        toggleDespesaFields();
+    });
+</script>
+{% endblock %}
