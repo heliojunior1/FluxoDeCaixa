@@ -28,15 +28,7 @@ from .mapeamento_service import (
     delete_mapeamento,
     get_mapeamento_by_id,
 )
-from .cenario_service import (
-    list_cenarios,
-    list_active_cenarios,
-    get_cenario,
-    create_cenario_with_ajustes,
-    update_cenario_with_ajustes,
-    delete_cenario,
-    get_ajustes_dict,
-)
+
 from .simulador_cenario_service import (
     list_simuladores,
     list_active_simuladores,

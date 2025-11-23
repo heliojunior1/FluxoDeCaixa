@@ -6,7 +6,7 @@ from sqlalchemy import extract
 from ...models import Lancamento, Qualificador
 from ...repositories.lancamento_repository import LancamentoRepository
 from ...repositories.saldo_conta_repository import SaldoContaRepository
-from ...repositories import cenario_repository, qualificador_repository
+from ...repositories import qualificador_repository
 from ...utils.constants import DAY_ABBR_PT, MONTH_ABBR_PT, MONTH_NAME_PT
 
 
@@ -78,30 +78,10 @@ def get_dfc_data(
         valores_reais.setdefault(seq, {})[int(col)] = float(total or 0)
 
     # Get base values and adjustments for projection mode
+    # NOTE: Projection mode removed - use Simulator feature instead
     valores_base = {}
     ajustes_cenario = {}
     proj_months = set()
-    if periodo == "ano" and estrategia == "projetado" and cenario_selecionado_id:
-        proj_months = {
-            m
-            for m in meses_selecionados
-            if ano_selecionado > hoje.year
-            or (ano_selecionado == hoje.year and m >= hoje.month)
-        }
-        if proj_months:
-            query_base = lancamento_repo.get_base_values_by_month(
-                ano=ano_selecionado,
-                meses=list(proj_months)
-            )
-            
-            for seq, col, total in query_base:
-                valores_base.setdefault(seq, {})[int(col)] = float(total or 0)
-
-            ajustes = cenario_repository.get_ajustes_by_cenario_and_year(
-                cenario_id=cenario_selecionado_id,
-                ano=ano_selecionado
-            )
-            ajustes_cenario = {(a.mes, a.seq_qualificador): a for a in ajustes}
 
     # Build hierarchical tree from root qualificadores
     qualificadores_root = qualificador_repository.get_root_qualificadores()
@@ -247,42 +227,8 @@ def get_dfc_eventos(
             and (ano > hoje.year or (ano == hoje.year and col >= hoje.month))
         )
         if projetar:
+            # NOTE: Projection mode removed - use Simulator feature instead
             eventos = []
-            for qid in ids:
-                # Get the specific value by qualificador
-                rows = lancamento_repo.get_grouped_by_qualificador_year_month(
-                    qualificador_ids=[qid],
-                    anos=[ano - 1],
-                    meses=[col]
-                )
-                base = sum(r.total for r in rows) if rows else 0
-                base = float(base)
-                
-                ajuste = cenario_repository.get_ajuste_by_unique_keys(
-                    cenario_id=int(cenario_id),
-                    qualificador_id=qid,
-                    ano=ano,
-                    mes=col
-                )
-                
-                valor = base
-                if ajuste:
-                    ajuste_val = float(ajuste.val_ajuste)
-                    if ajuste.cod_tipo_ajuste == "P":
-                        valor = base * (1 + ajuste_val / 100)
-                    elif ajuste.cod_tipo_ajuste == "V":
-                        valor = base + ajuste_val
-                if valor != 0:
-                    qobj = qualificador_repository.get_qualificador_by_id(qid)
-                    eventos.append(
-                        {
-                            "data": f"{col:02d}/{ano}",
-                            "descricao": f"{qobj.num_qualificador} - {qobj.dsc_qualificador}",
-                            "valor": float(valor),
-                            "tipo": "Projetado",
-                            "origem": "Cenário",
-                        }
-                    )
         else:
             registros = lancamento_repo.get_by_qualificadores_and_month_year(
                 qualificador_ids=ids,

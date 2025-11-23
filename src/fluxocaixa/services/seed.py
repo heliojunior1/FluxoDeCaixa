@@ -9,8 +9,7 @@ from ..models import (
     Orgao,
     OrigemLancamento,
     TipoLancamento,
-    Cenario,
-    CenarioAjusteMensal,
+
     Conferencia,
     AlertaGerado,
     SaldoConta,
@@ -568,37 +567,9 @@ def seed_data(session=None):
         print(f"Erro ao criar mapeamentos: {e}")
         pass  # Continue even if mappings fail
 
-    # Cenário de exemplo com ajustes mensais
-    if not Cenario.query.first():
-        cenario_base = Cenario(
-            nom_cenario='Base',
-            dsc_cenario='Cenário inicial',
-            cod_pessoa_inclusao=1,
-        )
-        session.add(cenario_base)
-        session.flush()
-        icms_qual = encontrar_qualificador('ICMS')
-        folha_qual = encontrar_qualificador('FOLHA')
-        ano_atual = date.today().year
-        for mes in range(1, 13):
-            if icms_qual:
-                session.add(CenarioAjusteMensal(
-                    seq_cenario=cenario_base.seq_cenario,
-                    seq_qualificador=icms_qual.seq_qualificador,
-                    ano=ano_atual,
-                    mes=mes,
-                    cod_tipo_ajuste='P',
-                    val_ajuste=5,
-                ))
-            if folha_qual:
-                session.add(CenarioAjusteMensal(
-                    seq_cenario=cenario_base.seq_cenario,
-                    seq_qualificador=folha_qual.seq_qualificador,
-                    ano=ano_atual,
-                    mes=mes,
-                    cod_tipo_ajuste='P',
-                    val_ajuste=-2,
-                ))
+
+    # Old Cenario seed data removed - now using Simulador only
+
 
     # Add realistic data for Conferencia table based on the image provided
     if not Conferencia.query.first():
