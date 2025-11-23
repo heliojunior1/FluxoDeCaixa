@@ -445,6 +445,8 @@ def _executar_cenario_manual_receita(ajustes: List, ano_base: int, meses_projeca
     """Helper para executar cenário manual de receita baseado em ajustes."""
     import pandas as pd
     from dateutil.relativedelta import relativedelta
+    from datetime import date
+    from . import modelos_economicos_service as modelos
     
     # Criar lista de todos os meses e qualificadores
     data_base = date(ano_base, 1, 1)
@@ -452,22 +454,54 @@ def _executar_cenario_manual_receita(ajustes: List, ano_base: int, meses_projeca
     
     # Agrupar ajustes por (mes, qualificador)
     ajustes_map = {}
+    qualificadores = set()
+    
     for ajuste in ajustes:
-        ajustes_map[(ajuste.mes, ajuste.seq_qualificador)] = float(ajuste.val_ajuste)
+        ajustes_map[(ajuste.mes, ajuste.seq_qualificador)] = {
+            'tipo': ajuste.cod_tipo_ajuste,
+            'valor': float(ajuste.val_ajuste)
+        }
+        qualificadores.add(ajuste.seq_qualificador)
         
-    # Identificar todos os qualificadores envolvidos
-    qualificadores = set(a.seq_qualificador for a in ajustes)
+    # Buscar dados históricos do ano anterior para base de cálculo de porcentagem
+    ano_ref = ano_base - 1
+    data_inicio_ref = date(ano_ref, 1, 1)
+    data_fim_ref = date(ano_ref, 12, 31)
+    valores_ref = {} # (seq, mes) -> valor
+    
+    if qualificadores:
+        # Otimização: buscar dados apenas se houver ajustes percentuais?
+        # Por simplicidade, buscamos para todos os qualificadores envolvidos
+        for seq in qualificadores:
+            df_hist = modelos.obter_dados_historicos(seq, data_inicio_ref, data_fim_ref)
+            for _, row in df_hist.iterrows():
+                valores_ref[(seq, row['data'].month)] = row['valor']
     
     for i in range(meses_projecao):
         data_mes = data_base + relativedelta(months=i)
         mes = data_mes.month
         
         for seq_qualificador in qualificadores:
-            valor = ajustes_map.get((mes, seq_qualificador), 0)
+            ajuste = ajustes_map.get((mes, seq_qualificador))
+            
+            if not ajuste:
+                valor_projetado = 0
+            else:
+                tipo = ajuste['tipo']
+                val_ajuste = ajuste['valor']
+                
+                if tipo == 'V':
+                    # Valor fixo
+                    valor_projetado = val_ajuste
+                else:
+                    # Porcentagem sobre o ano anterior
+                    valor_ref = valores_ref.get((seq_qualificador, mes), 0)
+                    valor_projetado = valor_ref * (1 + val_ajuste / 100)
+            
             records.append({
                 'data': data_mes,
                 'seq_qualificador': seq_qualificador,
-                'valor_projetado': valor
+                'valor_projetado': valor_projetado
             })
             
     if not records:
@@ -480,6 +514,8 @@ def _executar_cenario_manual_despesa(ajustes: List, ano_base: int, meses_projeca
     """Helper para executar cenário manual de despesa baseado em ajustes."""
     import pandas as pd
     from dateutil.relativedelta import relativedelta
+    from datetime import date
+    from . import modelos_economicos_service as modelos
     
     # Criar lista de todos os meses e qualificadores
     data_base = date(ano_base, 1, 1)
@@ -487,22 +523,52 @@ def _executar_cenario_manual_despesa(ajustes: List, ano_base: int, meses_projeca
     
     # Agrupar ajustes por (mes, qualificador)
     ajustes_map = {}
+    qualificadores = set()
+    
     for ajuste in ajustes:
-        ajustes_map[(ajuste.mes, ajuste.seq_qualificador)] = float(ajuste.val_ajuste)
+        ajustes_map[(ajuste.mes, ajuste.seq_qualificador)] = {
+            'tipo': ajuste.cod_tipo_ajuste,
+            'valor': float(ajuste.val_ajuste)
+        }
+        qualificadores.add(ajuste.seq_qualificador)
         
-    # Identificar todos os qualificadores envolvidos
-    qualificadores = set(a.seq_qualificador for a in ajustes)
+    # Buscar dados históricos do ano anterior para base de cálculo de porcentagem
+    ano_ref = ano_base - 1
+    data_inicio_ref = date(ano_ref, 1, 1)
+    data_fim_ref = date(ano_ref, 12, 31)
+    valores_ref = {} # (seq, mes) -> valor
+    
+    if qualificadores:
+        for seq in qualificadores:
+            df_hist = modelos.obter_dados_historicos(seq, data_inicio_ref, data_fim_ref)
+            for _, row in df_hist.iterrows():
+                valores_ref[(seq, row['data'].month)] = row['valor']
     
     for i in range(meses_projecao):
         data_mes = data_base + relativedelta(months=i)
         mes = data_mes.month
         
         for seq_qualificador in qualificadores:
-            valor = ajustes_map.get((mes, seq_qualificador), 0)
+            ajuste = ajustes_map.get((mes, seq_qualificador))
+            
+            if not ajuste:
+                valor_projetado = 0
+            else:
+                tipo = ajuste['tipo']
+                val_ajuste = ajuste['valor']
+                
+                if tipo == 'V':
+                    # Valor fixo
+                    valor_projetado = val_ajuste
+                else:
+                    # Porcentagem sobre o ano anterior
+                    valor_ref = valores_ref.get((seq_qualificador, mes), 0)
+                    valor_projetado = valor_ref * (1 + val_ajuste / 100)
+            
             records.append({
                 'data': data_mes,
                 'seq_qualificador': seq_qualificador,
-                'valor_projetado': abs(valor)  # Despesa positiva
+                'valor_projetado': abs(valor_projetado)  # Despesa positiva
             })
             
     if not records:

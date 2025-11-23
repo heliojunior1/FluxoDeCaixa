@@ -15,7 +15,8 @@
 
     <form
         action="{% if modo == 'editar' %}/simulador/{{ simulador.seq_simulador_cenario }}/atualizar{% else %}/simulador/criar{% endif %}"
-        method="POST" id="form-cenario">
+        method="POST" id="form-cenario"
+        data-cenario='{{ cenario_completo | tojson | safe if cenario_completo else "" }}'>
 
         <!-- 1. Dados Básicos -->
         <div class="mb-8 p-4 bg-gray-50 rounded-lg border">
@@ -289,7 +290,8 @@
                                 <td class="p-2">
                                     <input type="number" step="0.01"
                                         class="w-full border rounded p-1 text-right loa-input"
-                                        id="loa_val_{{ q.seq_qualificador }}" placeholder="0.00">
+                                        id="loa_val_{{ q.seq_qualificador }}" data-seq="{{ q.seq_qualificador }}"
+                                        placeholder="0.00">
                                 </td>
                             </tr>
                             {% endfor %}
@@ -398,403 +400,226 @@
 </div>
 
 <script>
+(function () {
+    const TOTAL_MESES = 12;
+
     function toggleReceitaFields() {
-        const tipo = document.getElementById('tipo_receita').value;
+        const tipoSelect = document.getElementById('tipo_receita');
         const modelFields = document.getElementById('receita_model_fields');
         const hwParams = document.getElementById('hw_params');
         const arimaParams = document.getElementById('arima_params');
         const regParams = document.getElementById('regressao_params');
         const commonParams = document.getElementById('common_model_params');
 
-        // Reset visibility
-        modelFields.classList.add('hidden');
-        hwParams.classList.add('hidden');
-        arimaParams.classList.add('hidden');
-        regParams.classList.add('hidden');
-        commonParams.classList.remove('hidden');
-
-        if (tipo !== 'MANUAL') {
-            modelFields.classList.remove('hidden');
-            if (tipo === 'HOLT_WINTERS') hwParams.classList.remove('hidden');
-            if (tipo === 'ARIMA' || tipo === 'SARIMA') arimaParams.classList.remove('hidden');
-            if (tipo === 'REGRESSAO') {
-                regParams.classList.remove('hidden');
-                commonParams.classList.add('hidden'); // Regressão não usa qualificador base da mesma forma
-            }
-        }
-    }
-
-    function toggleDespesaFields() {
-        const tipo = document.getElementById('tipo_despesa').value;
-        const loaFields = document.getElementById('despesa_loa_fields');
-        const mediaFields = document.getElementById('despesa_media_fields');
-
-        loaFields.classList.add('hidden');
-        mediaFields.classList.add('hidden');
-
-        if (tipo === 'LOA') loaFields.classList.remove('hidden');
-        if (tipo === 'MEDIA_HISTORICA') mediaFields.classList.remove('hidden');
-    }
-
-    // Função para aplicar valores a todos os meses
-    function aplicarTodos(type, seq) {
-        const prefix = type === 'rec' ? '' : 'desp_';
-        const applyType = document.getElementById(`tipo_apply_${type}_${seq}`).value;
-        const applyVal = document.getElementById(`val_apply_${type}_${seq}`).value;
-
-        if (!applyVal) return;
-
-        // Loop pelos 12 meses
-        for (let i = 1; i <= 12; i++) {
-            const typeSelect = document.querySelector(`select[name="cod_tipo_ajuste_${prefix}${i}_${seq}"]`);
-            const valInput = document.querySelector(`input[name="val_ajuste_${prefix}${i}_${seq}"]`);
-
-            if (typeSelect && valInput) {
-                typeSelect.value = applyType;
-                valInput.value = applyVal;
-            }
-        }
-    }
-
-    // Função para aplicar LOA (distribuição uniforme)
-    function aplicarLOA() {
-        const inputs = document.querySelectorAll('.loa-input');
-        inputs.forEach(input => {
-            const seq = input.dataset.seq;
-            const totalAnual = parseFloat(input.value);
-
-            if (!isNaN(totalAnual)) {
-                const mensal = (totalAnual / 12).toFixed(2);
-
-                // Preencher tabela manual de despesa
-                for (let i = 1; i <= 12; i++) {
-                    const typeSelect = document.querySelector(`select[name="cod_tipo_ajuste_desp_${i}_${seq}"]`);
-                    const valInput = document.querySelector(`input[name="val_ajuste_desp_${i}_${seq}"]`);
-
-                    if (typeSelect && valInput) {
-                        typeSelect.value = 'V'; // Valor fixo
-                        valInput.value = mensal;
-                    }
-                }
-            }
-        });
-        alert('Valores LOA aplicados na tabela!');
-    }
-
-    // Função para aplicar Regressão Linear
-    function aplicarModeloReceita() {
-        const tipo = document.getElementById('tipo_receita').value;
-
-        if (tipo === 'REGRESSAO') {
-            const beta0 = parseFloat(document.getElementById('reg_beta0').value) || 0;
-            const beta1 = parseFloat(document.getElementById('reg_beta1').value) || 0;
-            const beta2 = parseFloat(document.getElementById('reg_beta2').value) || 0;
-            const pib = parseFloat(document.getElementById('reg_val_pib').value) || 0;
-            const inflacao = parseFloat(document.getElementById('reg_val_inflacao').value) || 0;
-
-            // Fórmula: Receita = b0 + (b1 * PIB) + (b2 * Inflação)
-            const resultado = beta0 + (beta1 * pib) + (beta2 * inflacao);
-            const resultadoFormatado = resultado.toFixed(2);
-
-            // Aplicar para todos os qualificadores de receita? 
-            // O usuário disse "preencherar todos os campos automaticamente".
-            // Mas a regressão geralmente é para um item específico ou total.
-            // Vou aplicar para TODOS os qualificadores visíveis na tabela como "Valor Fixo"
-            // Isso pode não ser o ideal cientificamente, mas atende ao pedido de preenchimento.
-
-            const rows = document.querySelectorAll('tr[data-row-id^="rec-"]');
-            rows.forEach(row => {
-                const seq = row.dataset.rowId.split('-')[1];
-                for (let i = 1; i <= 12; i++) {
-                    const typeSelect = document.querySelector(`select[name="cod_tipo_ajuste_${i}_${seq}"]`);
-                    const valInput = document.querySelector(`input[name="val_ajuste_${i}_${seq}"]`);
-
-                    if (typeSelect && valInput) {
-                        typeSelect.value = 'V';
-                        valInput.value = resultadoFormatado;
-                    }
-                }
-            });
-            alert('Valores da Regressão calculados e aplicados!');
-            ```
-                    <button type="button" onclick="aplicarMediaHistorica()"
-                        class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 text-sm flex items-center gap-2">
-                        <i data-lucide="play"></i> Calcular e Preencher Tabela
-                    </button>
-                </div>
-            </div>
-
-            <!-- Tabela de Valores Despesa (Sempre Visível) -->
-            <div id="despesa_manual_fields">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full bg-white text-sm border">
-                        <thead>
-                            <tr class="bg-red-100">
-                                <th class="p-2 text-left border-r min-w-[200px]">Qualificador</th>
-                                <th class="p-2 text-center border-r bg-red-200 min-w-[250px]">Aplicar a Todos</th>
-                                {% for mes_num, mes_nome in meses_nomes.items() %}
-                                <th class="p-2 text-center min-w-[100px]">{{ mes_nome[:3] }}</th>
-                                {% endfor %}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for qualificador in qualificadores_despesa %}
-                            <tr class="border-b hover:bg-gray-50"
-                                data-row-id="desp-{{ qualificador.seq_qualificador }}">
-                                <td class="p-2 font-medium border-r">{{ qualificador.dsc_qualificador }}</td>
-                                <!-- Coluna Aplicar a Todos -->
-                                <td class="p-2 border-r bg-gray-50">
-                                    <div class="flex items-center gap-1">
-                                        <select class="text-xs border rounded p-1 w-12"
-                                            id="tipo_apply_desp_{{ qualificador.seq_qualificador }}">
-                                            <option value="P">%</option>
-                                            <option value="V">R$</option>
-                                        </select>
-                                        <input type="number" step="0.01" class="text-xs border rounded p-1 w-20"
-                                            id="val_apply_desp_{{ qualificador.seq_qualificador }}" placeholder="Valor">
-                                        <button type="button"
-                                            onclick="aplicarTodos('desp', {{ qualificador.seq_qualificador }})"
-                                            class="bg-blue-100 text-blue-600 p-1 rounded hover:bg-blue-200"
-                                            title="Aplicar">
-                                            <i data-lucide="arrow-right" class="h-4 w-4"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                                {% for mes_num, mes_nome in meses_nomes.items() %}
-                                <td class="p-1">
-                                    <div class="flex flex-col gap-1">
-                                        <select
-                                            name="cod_tipo_ajuste_desp_{{ mes_num }}_{{ qualificador.seq_qualificador }}"
-                                            class="text-[10px] border rounded p-0.5 w-full bg-gray-50">
-                                            <option value="P">%</option>
-                                            <option value="V">R$</option>
-                                        </select>
-                                        <input type="number" step="0.01"
-                                            name="val_ajuste_desp_{{ mes_num }}_{{ qualificador.seq_qualificador }}"
-                                            class="w-full text-xs p-1 border rounded text-right" placeholder="0.00">
-                                    </div>
-                                </td>
-                                {% endfor %}
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <div class="flex justify-end gap-4">
-            <a href="{{ url_for('simulador_menu') }}"
-                class="px-6 py-2 border rounded text-gray-600 hover:bg-gray-50">Cancelar</a>
-            <button type="submit" class="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
-                Salvar Cenário
-            </button>
-        </div>
-    </form>
-</div>
-
-<script>
-    function toggleReceitaFields() {
-        const tipo = document.getElementById('tipo_receita').value;
-        const modelFields = document.getElementById('receita_model_fields');
-        const hwParams = document.getElementById('hw_params');
-        const arimaParams = document.getElementById('arima_params');
-        const regParams = document.getElementById('regressao_params');
-        const commonParams = document.getElementById('common_model_params');
-
-        // Reset visibility
-        modelFields.classList.add('hidden');
-        hwParams.classList.add('hidden');
-        arimaParams.classList.add('hidden');
-        regParams.classList.add('hidden');
-        commonParams.classList.remove('hidden');
-
-        if (tipo !== 'MANUAL') {
-            modelFields.classList.remove('hidden');
-            if (tipo === 'HOLT_WINTERS') hwParams.classList.remove('hidden');
-            if (tipo === 'ARIMA' || tipo === 'SARIMA') arimaParams.classList.remove('hidden');
-            if (tipo === 'REGRESSAO') {
-                regParams.classList.remove('hidden');
-                commonParams.classList.add('hidden'); // Regressão não usa qualificador base da mesma forma
-            }
-        }
-    }
-
-    function toggleDespesaFields() {
-        const tipo = document.getElementById('tipo_despesa').value;
-        const loaFields = document.getElementById('despesa_loa_fields');
-        const mediaFields = document.getElementById('despesa_media_fields');
-
-        loaFields.classList.add('hidden');
-        mediaFields.classList.add('hidden');
-
-        if (tipo === 'LOA') loaFields.classList.remove('hidden');
-        if (tipo === 'MEDIA_HISTORICA') mediaFields.classList.remove('hidden');
-    }
-
-    // Função para aplicar valores a todos os meses
-    function aplicarTodos(type, seq) {
-        const prefix = type === 'rec' ? '' : 'desp_';
-        const applyType = document.getElementById(`tipo_apply_${ type }_${ seq } `).value;
-        const applyVal = document.getElementById(`val_apply_${ type }_${ seq } `).value;
-
-        if (!applyVal) return;
-
-        // Loop pelos 12 meses
-        for (let i = 1; i <= 12; i++) {
-            const typeSelect = document.querySelector(`select[name = "cod_tipo_ajuste_${prefix}${i}_${seq}"]`);
-            const valInput = document.querySelector(`input[name = "val_ajuste_${prefix}${i}_${seq}"]`);
-
-            if (typeSelect && valInput) {
-                typeSelect.value = applyType;
-                valInput.value = applyVal;
-            }
-        }
-    }
-
-    // Função para aplicar LOA (distribuição uniforme)
-    function aplicarLOA() {
-        const inputs = document.querySelectorAll('.loa-input');
-        inputs.forEach(input => {
-            const seq = input.dataset.seq;
-            const totalAnual = parseFloat(input.value);
-
-            if (!isNaN(totalAnual)) {
-                const mensal = (totalAnual / 12).toFixed(2);
-
-                // Preencher tabela manual de despesa
-                for (let i = 1; i <= 12; i++) {
-                    const typeSelect = document.querySelector(`select[name = "cod_tipo_ajuste_desp_${i}_${seq}"]`);
-                    const valInput = document.querySelector(`input[name = "val_ajuste_desp_${i}_${seq}"]`);
-
-                    if (typeSelect && valInput) {
-                        typeSelect.value = 'V'; // Valor fixo
-                        valInput.value = mensal;
-                    }
-                }
-            }
-        });
-        alert('Valores LOA aplicados na tabela!');
-    }
-
-    // Função para aplicar Regressão Linear
-    function aplicarModeloReceita() {
-        const tipo = document.getElementById('tipo_receita').value;
-
-        if (tipo === 'REGRESSAO') {
-            const beta0 = parseFloat(document.getElementById('reg_beta0').value) || 0;
-            const beta1 = parseFloat(document.getElementById('reg_beta1').value) || 0;
-            const beta2 = parseFloat(document.getElementById('reg_beta2').value) || 0;
-            const pib = parseFloat(document.getElementById('reg_val_pib').value) || 0;
-            const inflacao = parseFloat(document.getElementById('reg_val_inflacao').value) || 0;
-
-            // Fórmula: Receita = b0 + (b1 * PIB) + (b2 * Inflação)
-            const resultado = beta0 + (beta1 * pib) + (beta2 * inflacao);
-            const resultadoFormatado = resultado.toFixed(2);
-
-            // Aplicar para todos os qualificadores de receita? 
-            // O usuário disse "preencherar todos os campos automaticamente".
-            // Mas a regressão geralmente é para um item específico ou total.
-            // Vou aplicar para TODOS os qualificadores visíveis na tabela como "Valor Fixo"
-            // Isso pode não ser o ideal cientificamente, mas atende ao pedido de preenchimento.
-
-            const rows = document.querySelectorAll('tr[data-row-id^="rec-"]');
-            rows.forEach(row => {
-                const seq = row.dataset.rowId.split('-')[1];
-                for (let i = 1; i <= 12; i++) {
-                    const typeSelect = document.querySelector(`select[name = "cod_tipo_ajuste_${i}_${seq}"]`);
-                    const valInput = document.querySelector(`input[name = "val_ajuste_${i}_${seq}"]`);
-
-                    if (typeSelect && valInput) {
-                        typeSelect.value = 'V';
-                        valInput.value = resultadoFormatado;
-                    }
-                }
-            alert('Valores da Regressão calculados e aplicados!');
-        } else {
-            alert('Cálculo automático no navegador disponível apenas para Regressão neste momento. Para outros modelos, salve o cenário para processar.');
-        }
-    }
-
-    // Função para carregar dados existentes do cenário em modo edição
-    function carregarDadosExistentes() {
-        console.log('Iniciando carregamento de dados...');
-        const cenarioCompleto = {{ cenario_completo | tojson | safe if cenario_completo else 'null' }};
-        
-        if (!cenarioCompleto) {
-            console.log('Nenhum dado de cenário encontrado.');
+        if (!tipoSelect || !modelFields) {
             return;
         }
 
-        let count = 0;
+        [hwParams, arimaParams, regParams].forEach(section => {
+            if (section) {
+                section.classList.add('hidden');
+            }
+        });
+        if (commonParams) {
+            commonParams.classList.remove('hidden');
+        }
 
-        // Helper para preencher campos
-        const preencherCampos = (ajustes, prefixoNome) => {
-            if (!ajustes) return;
-            
+        if (tipoSelect.value === 'MANUAL') {
+            modelFields.classList.add('hidden');
+            return;
+        }
+
+        modelFields.classList.remove('hidden');
+
+        if (tipoSelect.value === 'HOLT_WINTERS' && hwParams) {
+            hwParams.classList.remove('hidden');
+        } else if ((tipoSelect.value === 'ARIMA' || tipoSelect.value === 'SARIMA') && arimaParams) {
+            arimaParams.classList.remove('hidden');
+        } else if (tipoSelect.value === 'REGRESSAO') {
+            if (regParams) {
+                regParams.classList.remove('hidden');
+            }
+            if (commonParams) {
+                commonParams.classList.add('hidden');
+            }
+        }
+    }
+
+    function toggleDespesaFields() {
+        const tipoSelect = document.getElementById('tipo_despesa');
+        const loaFields = document.getElementById('despesa_loa_fields');
+        const mediaFields = document.getElementById('despesa_media_fields');
+
+        if (!tipoSelect) {
+            return;
+        }
+
+        if (loaFields) {
+            loaFields.classList.add('hidden');
+        }
+        if (mediaFields) {
+            mediaFields.classList.add('hidden');
+        }
+
+        if (tipoSelect.value === 'LOA' && loaFields) {
+            loaFields.classList.remove('hidden');
+        }
+        if (tipoSelect.value === 'MEDIA_HISTORICA' && mediaFields) {
+            mediaFields.classList.remove('hidden');
+        }
+    }
+
+    function aplicarTodos(type, seq) {
+        const prefix = type === 'rec' ? '' : 'desp_';
+        const tipoInput = document.getElementById(`tipo_apply_${type}_${seq}`);
+        const valorInput = document.getElementById(`val_apply_${type}_${seq}`);
+
+        if (!tipoInput || !valorInput || valorInput.value === '') {
+            return;
+        }
+
+        for (let i = 1; i <= TOTAL_MESES; i++) {
+            const tipoField = document.querySelector(`select[name="cod_tipo_ajuste_${prefix}${i}_${seq}"]`);
+            const valorField = document.querySelector(`input[name="val_ajuste_${prefix}${i}_${seq}"]`);
+
+            if (tipoField) {
+                tipoField.value = tipoInput.value;
+            }
+            if (valorField) {
+                valorField.value = valorInput.value;
+            }
+        }
+    }
+
+    function aplicarLOA() {
+        document.querySelectorAll('.loa-input').forEach(input => {
+            const seq = input.dataset.seq;
+            const total = parseFloat(input.value);
+
+            if (!seq || Number.isNaN(total)) {
+                return;
+            }
+
+            const mensal = (total / TOTAL_MESES).toFixed(2);
+            for (let i = 1; i <= TOTAL_MESES; i++) {
+                const tipoField = document.querySelector(`select[name="cod_tipo_ajuste_desp_${i}_${seq}"]`);
+                const valorField = document.querySelector(`input[name="val_ajuste_desp_${i}_${seq}"]`);
+
+                if (tipoField) {
+                    tipoField.value = 'V';
+                }
+                if (valorField) {
+                    valorField.value = mensal;
+                }
+            }
+        });
+
+        alert('Valores LOA aplicados na tabela!');
+    }
+
+    function aplicarModeloReceita() {
+        const tipoSelect = document.getElementById('tipo_receita');
+        if (!tipoSelect || tipoSelect.value !== 'REGRESSAO') {
+            alert('Cálculo automático está disponível apenas para Regressão.');
+            return;
+        }
+
+        const beta0 = parseFloat(document.getElementById('reg_beta0')?.value) || 0;
+        const beta1 = parseFloat(document.getElementById('reg_beta1')?.value) || 0;
+        const beta2 = parseFloat(document.getElementById('reg_beta2')?.value) || 0;
+        const pib = parseFloat(document.getElementById('reg_val_pib')?.value) || 0;
+        const inflacao = parseFloat(document.getElementById('reg_val_inflacao')?.value) || 0;
+
+        const resultado = beta0 + (beta1 * pib) + (beta2 * inflacao);
+        const resultadoFormatado = resultado.toFixed(2);
+
+        document.querySelectorAll('tr[data-row-id^="rec-"]').forEach(row => {
+            const [, seq] = row.dataset.rowId.split('-');
+            for (let i = 1; i <= TOTAL_MESES; i++) {
+                const tipoField = document.querySelector(`select[name="cod_tipo_ajuste_${i}_${seq}"]`);
+                const valorField = document.querySelector(`input[name="val_ajuste_${i}_${seq}"]`);
+
+                if (tipoField) {
+                    tipoField.value = 'V';
+                }
+                if (valorField) {
+                    valorField.value = resultadoFormatado;
+                }
+            }
+        });
+
+        alert('Valores da Regressão calculados e aplicados!');
+    }
+
+    function aplicarMediaHistorica() {
+        alert('Aplicação automática da média histórica ainda será implementada.');
+    }
+
+    function carregarDadosExistentes() {
+        const form = document.getElementById('form-cenario');
+        if (!form || !form.dataset.cenario) {
+            return;
+        }
+
+        let cenarioCompleto = null;
+        try {
+            cenarioCompleto = JSON.parse(form.dataset.cenario);
+        } catch (error) {
+            console.error('Erro ao interpretar dados do cenário:', error);
+            return;
+        }
+
+        if (!cenarioCompleto) {
+            return;
+        }
+
+        const preencher = (ajustes, prefixo) => {
+            if (!Array.isArray(ajustes)) {
+                return;
+            }
+
             ajustes.forEach(ajuste => {
                 const seqQual = ajuste.seq_qualificador;
                 const mes = ajuste.mes;
-                
-                // Construir nomes dos campos
-                const nomeTipo = prefixoNome ? 
-                    `cod_tipo_ajuste_${ prefixoNome }_${ mes }_${ seqQual } ` : 
-                    `cod_tipo_ajuste_${ mes }_${ seqQual } `;
-                
-                const nomeValor = prefixoNome ? 
-                    `val_ajuste_${ prefixoNome }_${ mes }_${ seqQual } ` : 
-                    `val_ajuste_${ mes }_${ seqQual } `;
+                const tipoName = prefixo ?
+                    `cod_tipo_ajuste_${prefixo}_${mes}_${seqQual}` :
+                    `cod_tipo_ajuste_${mes}_${seqQual}`;
+                const valorName = prefixo ?
+                    `val_ajuste_${prefixo}_${mes}_${seqQual}` :
+                    `val_ajuste_${mes}_${seqQual}`;
 
-                const tipoSelect = document.querySelector(`select[name = "${nomeTipo}"]`);
-                const valorInput = document.querySelector(`input[name = "${nomeValor}"]`);
+                const tipoField = document.querySelector(`select[name="${tipoName}"]`);
+                const valorField = document.querySelector(`input[name="${valorName}"]`);
 
-                if (tipoSelect && valorInput) {
-                    // Definir tipo
-                    tipoSelect.value = ajuste.cod_tipo_ajuste || 'P';
-                    
-                    // Definir valor (permitindo 0)
-                    const valor = ajuste.val_ajuste;
-                    valorInput.value = (valor !== null && valor !== undefined) ? valor : '';
-                    
-                    // Feedback visual para debug
-                    valorInput.style.backgroundColor = '#f0fdf4'; // verde claro
-                    valorInput.title = `Carregado: ${ valor } `;
-                    count++;
+                if (tipoField) {
+                    tipoField.value = ajuste.cod_tipo_ajuste || 'P';
+                }
+                if (valorField) {
+                    valorField.value = ajuste.val_ajuste ?? '';
                 }
             });
         };
 
-        // Carregar ajustes de receita
-        if (cenarioCompleto.receita) {
-            preencherCampos(cenarioCompleto.receita.ajustes, '');
+        if (cenarioCompleto.receita && cenarioCompleto.receita.ajustes) {
+            preencher(cenarioCompleto.receita.ajustes, '');
         }
-
-        // Carregar ajustes de despesa
-        if (cenarioCompleto.despesa) {
-            preencherCampos(cenarioCompleto.despesa.ajustes, 'desp');
+        if (cenarioCompleto.despesa && cenarioCompleto.despesa.ajustes) {
+            preencher(cenarioCompleto.despesa.ajustes, 'desp');
         }
-
-        console.log(`Dados do cenário carregados: ${ count } ajustes aplicados.`);
-        
-        // Adicionar mensagem de debug na tela
-        const debugDiv = document.createElement('div');
-        debugDiv.className = 'fixed bottom-4 right-4 bg-black text-white p-4 rounded shadow-lg z-50 text-xs';
-        debugDiv.innerHTML = `Debug: ${ count } ajustes carregados`;
-        document.body.appendChild(debugDiv);
-        
-        // Remover após 5 segundos
-        setTimeout(() => debugDiv.remove(), 5000);
     }
 
-    // Initialize on load
     document.addEventListener('DOMContentLoaded', () => {
         toggleReceitaFields();
         toggleDespesaFields();
-        
-        // Carregar dados existentes se estiver em modo edição
-        if (typeof carregarDadosExistentes === 'function') {
-            carregarDadosExistentes();
-        }
+        carregarDadosExistentes();
     });
+
+    window.toggleReceitaFields = toggleReceitaFields;
+    window.toggleDespesaFields = toggleDespesaFields;
+    window.aplicarTodos = aplicarTodos;
+    window.aplicarLOA = aplicarLOA;
+    window.aplicarModeloReceita = aplicarModeloReceita;
+    window.aplicarMediaHistorica = aplicarMediaHistorica;
+})();
 </script>
 {% endblock %}
