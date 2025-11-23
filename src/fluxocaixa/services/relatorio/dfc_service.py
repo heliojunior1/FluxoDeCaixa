@@ -143,19 +143,16 @@ def get_dfc_data(
     dfc_data = [build_node(r) for r in qualificadores_root]
 
     # Calculate totals from leaf nodes
+    # Calculate totals based on root nodes 1 (Receita) and 2 (Despesa)
     totals = [0] * len(col_range)
-
-    def sum_leaf(node):
-        """Sum values only from leaf nodes."""
-        if not node["children"]:
-            for i, v in enumerate(node["values"]):
-                totals[i] += v
-        else:
-            for ch in node["children"]:
-                sum_leaf(ch)
-
-    for root in dfc_data:
-        sum_leaf(root)
+    
+    receita_node = next((n for n in dfc_data if str(n["number"]) == "1"), None)
+    despesa_node = next((n for n in dfc_data if str(n["number"]) == "2"), None)
+    
+    if receita_node and despesa_node:
+        for i in range(len(col_range)):
+            # Sum values: Receita (positive) + Despesa (negative)
+            totals[i] = receita_node["values"][i] + despesa_node["values"][i]
 
     # Build headers
     if periodo == "mes":
