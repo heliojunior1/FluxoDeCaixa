@@ -158,6 +158,23 @@
                 </div>
             </a>
 
+            <!-- Simulador -->
+            <a href="{{ url_for('simulador_menu') }}"
+                class="group relative bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-purple-300 transition-all duration-200 overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i data-lucide="zap"
+                        class="w-24 h-24 text-purple-600 transform rotate-12 translate-x-4 -translate-y-4"></i>
+                </div>
+                <div class="relative z-10">
+                    <div
+                        class="w-12 h-12 bg-purple-50 rounded-lg flex items-center justify-center text-purple-600 mb-4 group-hover:scale-110 transition-transform duration-200">
+                        <i data-lucide="trending-up" class="w-6 h-6"></i>
+                    </div>
+                    <h4 class="text-lg font-semibold text-slate-800 mb-1">Simulador</h4>
+                    <p class="text-sm text-slate-500">Simulações de cenários econômicos</p>
+                </div>
+            </a>
+
             <!-- Pagamentos -->
             <a href="{{ url_for('pagamentos') }}"
                 class="group relative bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md hover:border-rose-300 transition-all duration-200 overflow-hidden">

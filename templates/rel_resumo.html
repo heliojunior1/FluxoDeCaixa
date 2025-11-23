@@ -43,8 +43,9 @@
                     class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
                     <option value="">Selecione um cenário</option>
                     {% for cenario in cenarios_disponiveis %}
-                    <option value="{{ cenario.seq_cenario }}" {% if cenario.seq_cenario==cenario_selecionado_id
-                        %}selected{% endif %}>{{ cenario.nom_cenario }}</option>
+                    <option value="{{ cenario.seq_simulador_cenario }}" {% if
+                        cenario.seq_simulador_cenario==cenario_selecionado_id %}selected{% endif %}>{{
+                        cenario.nom_cenario }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -95,7 +96,7 @@
 
         <!-- Indicador de Projeção Ativa -->
         {% if estrategia_selecionada == 'projetado' and cenario_selecionado_id %}
-        {% set cenario_nome = cenarios_disponiveis|selectattr('seq_cenario', 'equalto',
+        {% set cenario_nome = cenarios_disponiveis|selectattr('seq_simulador_cenario', 'equalto',
         cenario_selecionado_id)|map(attribute='nom_cenario')|first %}
         <div class="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg shadow-sm">
             <div class="flex items-center justify-between">

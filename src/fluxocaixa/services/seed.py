@@ -14,6 +14,11 @@ from ..models import (
     Conferencia,
     AlertaGerado,
     SaldoConta,
+    SimuladorCenario,
+    CenarioReceita,
+    CenarioDespesa,
+    CenarioReceitaAjuste,
+    CenarioDespesaAjuste,
 )
 from ..models.base import db
 from ..models import ContaBancaria
@@ -851,3 +856,187 @@ def seed_data(session=None):
             
             session.commit()
             print(f"Seeded daily balances for {len(contas)} accounts from {data_inicio} to {data_fim}")
+
+    # Seed SimuladorCenario (cenários de exemplo para o simulador)
+    if not SimuladorCenario.query.first():
+        ano_base = 2025
+        meses_projecao = 12
+        
+        # Listas de qualificadores de receita e despesa (todos os nós folha)
+        qualificadores_receita = [
+            'ICMS', 'IPVA', 'ITCMD',  # Impostos
+            'FPE',  # Transferências Federais
+            'FECOEP', 'ROYALTIES', 'APLICAÇÕES FINANCEIRAS', 'IR', 'OUTRAS RECEITAS'  # Demais Receitas
+        ]
+        
+        qualificadores_despesa = [
+            'FOLHA', 'PASEP',  # Pessoal
+            'DÍVIDAS', 'PRECATÓRIOS',  # Serviço da Dívida
+            'CUSTEIO',  # Custeio
+            'INVESTIMENTO + AUMENTO DE CAPITAL',  # Investimento
+            'REPASSE MUNICÍPIOS', 'REPASSE FUNDEB', 'SAÚDE 12%', 'EDUCAÇÃO 5%', 'PODERES',  # Encargos Gerais
+            'RESTOS A PAGAR TESOURO e DEMAIS', 'FECOEP - RESTOS A PAGAR - FONTE 761'  # Restos a Pagar
+        ]
+        
+        # ========== CENÁRIO 1: CONSERVADOR (Manual/LOA) ==========
+        cenario1 = SimuladorCenario(
+            nom_cenario='Cenário Conservador',
+            dsc_cenario='Projeção conservadora com receitas manuais e despesas baseadas na LDO',
+            ano_base=ano_base,
+            meses_projecao=meses_projecao,
+            ind_status='A',
+            cod_pessoa_inclusao=1
+        )
+        session.add(cenario1)
+        session.flush()
+        
+        # Configurar receita manual para cenário 1
+        cenario1_receita = CenarioReceita(
+            seq_simulador_cenario=cenario1.seq_simulador_cenario,
+            cod_tipo_cenario='MANUAL'
+        )
+        session.add(cenario1_receita)
+        session.flush()
+        
+        # Configurar despesa LOA para cenário 1
+        cenario1_despesa = CenarioDespesa(
+            seq_simulador_cenario=cenario1.seq_simulador_cenario,
+            cod_tipo_cenario='LOA'
+        )
+        session.add(cenario1_despesa)
+        session.flush()
+        
+        # Adicionar ajustes conservadores para TODAS as receitas (crescimento gradual)
+        ajustes_conservadores_receita = {
+            'ICMS': 2.0,  # 2% constante
+            'IPVA': 1.5,  # 1.5% constante
+            'ITCMD': 1.0,  # 1% constante
+            'FPE': 2.5,  # 2.5% constante
+            'FECOEP': 1.8,  # 1.8% constante
+            'ROYALTIES': 0.5,  # 0.5% constante (receita volátil)
+            'APLICAÇÕES FINANCEIRAS': 3.0,  # 3% constante
+            'IR': 1.2,  # 1.2% constante
+            'OUTRAS RECEITAS': 1.0,  # 1% constante
+        }
+        
+        for qual_nome, percentual in ajustes_conservadores_receita.items():
+            qual = encontrar_qualificador(qual_nome)
+            if qual:
+                for mes in range(1, 13):
+                    session.add(CenarioReceitaAjuste(
+                        seq_cenario_receita=cenario1_receita.seq_cenario_receita,
+                        seq_qualificador=qual.seq_qualificador,
+                        ano=ano_base,
+                        mes=mes,
+                        cod_tipo_ajuste='P',
+                        val_ajuste=percentual
+                    ))
+        
+        # ========== CENÁRIO 2: REALISTA (Manual/Manual) ==========
+        cenario2 = SimuladorCenario(
+            nom_cenario='Cenário Realista',
+            dsc_cenario='Projeção realista com ajustes manuais variáveis em receitas e despesas',
+            ano_base=ano_base,
+            meses_projecao=meses_projecao,
+            ind_status='A',
+            cod_pessoa_inclusao=1
+        )
+        session.add(cenario2)
+        session.flush()
+        
+        # Configurar receita manual para cenário 2
+        cenario2_receita = CenarioReceita(
+            seq_simulador_cenario=cenario2.seq_simulador_cenario,
+            cod_tipo_cenario='MANUAL'
+        )
+        session.add(cenario2_receita)
+        session.flush()
+        
+        # Configurar despesa manual para cenário 2
+        cenario2_despesa = CenarioDespesa(
+            seq_simulador_cenario=cenario2.seq_simulador_cenario,
+            cod_tipo_cenario='MANUAL'
+        )
+        session.add(cenario2_despesa)
+        session.flush()
+        
+        # Ajustes REALISTAS para receitas (variações mensais)
+        ajustes_realistas_receita = {
+            # ICMS: alta no começo do ano, estabiliza meio do ano
+            'ICMS': [3.0, 2.8, 2.5, 2.2, 2.0, 2.0, 2.0, 2.1, 2.2, 2.3, 2.5, 2.8],
+            # IPVA: pico em jan-mar (pagamento anual), depois cai
+            'IPVA': [5.0, 4.0, 3.0, 1.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 1.0, 1.5],
+            # ITCMD: variação moderada
+            'ITCMD': [1.0, 1.2, 1.5, 1.3, 1.0, 1.2, 1.4, 1.6, 1.5, 1.3, 1.2, 1.5],
+            # FPE: crescimento gradual conforme repasses federais
+            'FPE': [1.5, 1.8, 2.0, 2.2, 2.5, 2.3, 2.1, 2.0, 1.8, 1.6, 1.5, 1.4],
+            # FECOEP: variação sazonal
+            'FECOEP': [2.0, 1.8, 1.5, 1.3, 1.5, 1.8, 2.0, 2.2, 2.0, 1.8, 2.0, 2.5],
+            # Royalties: volátil (depende preço petróleo)
+            'ROYALTIES': [-1.0, 0.5, 1.0, 0.0, -0.5, 1.5, 2.0, 1.0, 0.5, 1.5, 2.5, 2.0],
+            # Aplicações Financeiras: acompanha SELIC
+            'APLICAÇÕES FINANCEIRAS': [4.0, 4.2, 4.5, 4.3, 4.0, 3.8, 3.5, 3.3, 3.0, 3.2, 3.5, 3.8],
+            # IR: pico em abril (declaração), menor em dezembro
+            'IR': [1.0, 1.2, 1.5, 3.5, 2.0, 1.5, 1.2, 1.0, 1.0, 1.2, 1.5, 0.8],
+            # Outras receitas: crescimento moderado
+            'OUTRAS RECEITAS': [1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.5, 1.4, 1.3, 1.4, 1.5],
+        }
+        
+        for qual_nome, percentuais_mensais in ajustes_realistas_receita.items():
+            qual = encontrar_qualificador(qual_nome)
+            if qual:
+                for mes, percentual in enumerate(percentuais_mensais, 1):
+                    session.add(CenarioReceitaAjuste(
+                        seq_cenario_receita=cenario2_receita.seq_cenario_receita,
+                        seq_qualificador=qual.seq_qualificador,
+                        ano=ano_base,
+                        mes=mes,
+                        cod_tipo_ajuste='P',
+                        val_ajuste=percentual
+                    ))
+        
+        # Ajustes REALISTAS para despesas (variações mensais)
+        ajustes_realistas_despesa = {
+            # FOLHA: reajuste salarial gradual + 13º em dez
+            'FOLHA': [1.5, 1.5, 1.5, 1.5, 1.8, 1.8, 1.8, 1.8, 1.8, 1.8, 1.8, 3.5],
+            # PASEP: pago principalmente em julho
+            'PASEP': [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 5.0, 0.5, 0.5, 0.5, 0.5, 0.5],
+            # DÍVIDAS: pagamento constante (juros + principal)
+            'DÍVIDAS': [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0],
+            # PRECATÓRIOS: variável conforme judicial
+            'PRECATÓRIOS': [1.0, 0.5, 0.5, 1.5, 1.0, 0.5, 0.5, 2.0, 1.5, 1.0, 0.5, 3.0],
+            # CUSTEIO: maior no início do ano, reduz meio do ano
+            'CUSTEIO': [3.0, 2.5, 2.0, 1.5, 1.2, 1.0, 1.0, 1.2, 1.5, 2.0, 2.5, 3.0],
+            # INVESTIMENTO: maior execução segundo semestre
+            'INVESTIMENTO + AUMENTO DE CAPITAL': [0.5, 0.8, 1.0, 1.2, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0],
+            # REPASSE MUNICÍPIOS: constante
+            'REPASSE MUNICÍPIOS': [1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5],
+            # REPASSE FUNDEB: acompanha arrecadação
+            'REPASSE FUNDEB': [2.0, 1.8, 1.6, 1.5, 1.5, 1.5, 1.5, 1.6, 1.7, 1.8, 2.0, 2.2],
+            # SAÚDE 12%: vinculado à receita
+            'SAÚDE 12%': [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0],
+            # EDUCAÇÃO 5%: vinculado à receita
+            'EDUCAÇÃO 5%': [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0],
+            # PODERES: duodécimo regular
+            'PODERES': [1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2, 1.2],
+            # RESTOS A PAGAR: liquidação ao longo do ano
+            'RESTOS A PAGAR TESOURO e DEMAIS': [5.0, 4.0, 3.0, 2.5, 2.0, 1.5, 1.0, 0.8, 0.6, 0.5, 0.3, 0.2],
+            # FECOEP Restos: similar
+            'FECOEP - RESTOS A PAGAR - FONTE 761': [4.0, 3.5, 3.0, 2.5, 2.0, 1.5, 1.2, 1.0, 0.8, 0.6, 0.4, 0.2],
+        }
+        
+        for qual_nome, percentuais_mensais in ajustes_realistas_despesa.items():
+            qual = encontrar_qualificador(qual_nome)
+            if qual:
+                for mes, percentual in enumerate(percentuais_mensais, 1):
+                    session.add(CenarioDespesaAjuste(
+                        seq_cenario_despesa=cenario2_despesa.seq_cenario_despesa,
+                        seq_qualificador=qual.seq_qualificador,
+                        ano=ano_base,
+                        mes=mes,
+                        cod_tipo_ajuste='P',
+                        val_ajuste=percentual
+                    ))
+        
+        session.commit()
+        print(f"Seeded 2 complete simulador scenarios with adjustments for ALL qualifiers across 12 months")

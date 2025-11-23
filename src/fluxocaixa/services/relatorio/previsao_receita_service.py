@@ -1,11 +1,13 @@
 """Previsão de Receita service - Refatorado para usar Repository Pattern."""
 from datetime import date
 import calendar
+import pandas as pd
 
-from ...models import CenarioAjusteMensal, Qualificador
+from ...models import Qualificador
 from ...repositories.lancamento_repository import LancamentoRepository
 from .base import get_tipo_lancamento_ids
 from ...utils.constants import MONTH_NAME_PT
+from ..simulador_cenario_service import executar_simulacao
 
 
 def get_previsao_receita_data(
@@ -61,15 +63,16 @@ def get_previsao_receita_data(
     # Inicializar repository
     lancamento_repo = LancamentoRepository()
     
-    # Carregar ajustes do cenário se fornecido
-    ajustes_cenario = {}
+    # Carregar simulação se cenário fornecido
+    simulacao_resultado = None
+    df_detalhado = None
+    
     if cenario_id:
-        ajustes = CenarioAjusteMensal.query.filter_by(
-            seq_cenario=cenario_id, ano=ano
-        ).filter(
-            CenarioAjusteMensal.seq_qualificador.in_(qualificadores_ids)
-        ).all()
-        ajustes_cenario = {(a.mes, a.seq_qualificador): a for a in ajustes}
+        simulacao_resultado = executar_simulacao(cenario_id)
+        if simulacao_resultado and 'projecao_receita_detalhada' in simulacao_resultado:
+            df_detalhado = simulacao_resultado['projecao_receita_detalhada']
+            if df_detalhado is not None and not df_detalhado.empty:
+                df_detalhado['data'] = pd.to_datetime(df_detalhado['data'])
     
     # --- 1. EVOLUÇÃO MENSAL ---
     evolucao_mensal = []
@@ -92,26 +95,14 @@ def get_previsao_receita_data(
         if cenario_id and (is_futuro or mes >= mes_atual):
             previsao_mes = 0
             
-            # Buscar valores base do ano anterior usando repository
-            ano_base = ano - 1
-            for qual_id in qualificadores_ids:
-                valor_base = lancamento_repo.get_sum_by_qualificadores_and_month(
-                    qualificadores_ids=[qual_id],
-                    cod_tipo=id_entrada,
-                    ano=ano_base,
-                    mes=mes
+            if df_detalhado is not None and not df_detalhado.empty:
+                # Filtrar por ano, mês e qualificadores selecionados
+                mask = (
+                    (df_detalhado['data'].dt.year == ano) & 
+                    (df_detalhado['data'].dt.month == mes) &
+                    (df_detalhado['seq_qualificador'].isin(qualificadores_ids))
                 )
-                
-                # Aplicar ajuste do cenário se existir
-                key = (mes, qual_id)
-                if key in ajustes_cenario:
-                    ajuste = ajustes_cenario[key]
-                    if ajuste.cod_tipo_ajuste == 'P':
-                        valor_base = valor_base * (1 + float(ajuste.val_ajuste) / 100)
-                    elif ajuste.cod_tipo_ajuste == 'V':
-                        valor_base = valor_base + float(ajuste.val_ajuste)
-                
-                previsao_mes += valor_base
+                previsao_mes = float(df_detalhado.loc[mask, 'valor_projetado'].sum())
         
         evolucao_mensal.append({
             'mes': meses_nomes[mes][:3],  # Jan, Fev, Mar...
@@ -139,27 +130,13 @@ def get_previsao_receita_data(
         
         # Total previsto no cenário (todos os 12 meses)
         previsao_total = 0
-        if cenario_id:
-            ano_base = ano - 1
-            for mes in range(1, 13):
-                # Buscar valor base do ano anterior usando repository
-                valor_base = lancamento_repo.get_sum_by_qualificadores_and_month(
-                    qualificadores_ids=[qual_id],
-                    cod_tipo=id_entrada,
-                    ano=ano_base,
-                    mes=mes
-                )
-                
-                # Aplicar ajuste do cenário
-                key = (mes, qual_id)
-                if key in ajustes_cenario:
-                    ajuste = ajustes_cenario[key]
-                    if ajuste.cod_tipo_ajuste == 'P':
-                        valor_base = valor_base * (1 + float(ajuste.val_ajuste) / 100)
-                    elif ajuste.cod_tipo_ajuste == 'V':
-                        valor_base = valor_base + float(ajuste.val_ajuste)
-                
-                previsao_total += valor_base
+        if cenario_id and df_detalhado is not None and not df_detalhado.empty:
+            # Filtrar por ano e qualificador específico
+            mask = (
+                (df_detalhado['data'].dt.year == ano) & 
+                (df_detalhado['seq_qualificador'] == qual_id)
+            )
+            previsao_total = float(df_detalhado.loc[mask, 'valor_projetado'].sum())
         
         # Percentual de execução
         percentual_execucao = 0

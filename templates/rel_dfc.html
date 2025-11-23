@@ -115,8 +115,9 @@
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
                         <option value="">Selecione um cenário</option>
                         {% for c in cenarios_disponiveis %}
-                        <option value="{{ c.seq_cenario }}" {% if c.seq_cenario==cenario_selecionado_id %}selected{%
-                            endif %}>{{ c.nom_cenario }}</option>
+                        <option value="{{ c.seq_simulador_cenario }}" {% if
+                            c.seq_simulador_cenario==cenario_selecionado_id %}selected{% endif %}>{{ c.nom_cenario }}
+                        </option>
                         {% endfor %}
                     </select>
                 </div>

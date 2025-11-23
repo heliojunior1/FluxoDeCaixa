@@ -154,12 +154,52 @@ async def simulador_editar_get(request: Request, id: int):
     qualificadores_receita = list_receita_qualificadores()
     qualificadores_despesa = list_despesa_qualificadores()
     
+    # Converter cenario_completo para formato JSON-serializável
+    cenario_json = None
+    if cenario_completo:
+        # Extrair config de receita se existir
+        receita_config = cenario_completo.get('receita', {}).get('config')
+        despesa_config = cenario_completo.get('despesa', {}).get('config')
+        
+        cenario_json = {
+            'receita': {
+                'config': {
+                    'cod_tipo_cenario': receita_config.cod_tipo_cenario if receita_config else 'MANUAL'
+                },
+                'ajustes': [
+                    {
+                        'seq_qualificador': a.seq_qualificador,
+                        'ano': a.ano,
+                        'mes': a.mes,
+                        'cod_tipo_ajuste': a.cod_tipo_ajuste,
+                        'val_ajuste': float(a.val_ajuste) if a.val_ajuste else 0
+                    }
+                    for a in (cenario_completo.get('receita', {}).get('ajustes', []))
+                ]
+            },
+            'despesa': {
+                'config': {
+                    'cod_tipo_cenario': despesa_config.cod_tipo_cenario if despesa_config else 'MANUAL'
+                },
+                'ajustes': [
+                    {
+                        'seq_qualificador': a.seq_qualificador,
+                        'ano': a.ano,
+                        'mes': a.mes,
+                        'cod_tipo_ajuste': a.cod_tipo_ajuste,
+                        'val_ajuste': float(a.val_ajuste) if a.val_ajuste else 0
+                    }
+                    for a in (cenario_completo.get('despesa', {}).get('ajustes', []))
+                ]
+            }
+        }
+    
     return templates.TemplateResponse(
         'simulador_criar.html',
         {
             'request': request,
             'simulador': simulador,
-            'cenario_completo': cenario_completo,
+            'cenario_completo': cenario_json,
             'qualificadores_receita': qualificadores_receita,
             'qualificadores_despesa': qualificadores_despesa,
             'meses_nomes': MONTH_NAME_PT,

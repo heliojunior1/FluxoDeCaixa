@@ -432,8 +432,10 @@ def executar_simulacao(seq_simulador_cenario: int) -> Optional[Dict]:
     
     return {
         'simulador': simulador,
-        'projecao_receita': projecao_receita,
-        'projecao_despesa': projecao_despesa,
+        'projecao_receita': projecao_receita,  # Agregado por data
+        'projecao_despesa': projecao_despesa,  # Agregado por data
+        'projecao_receita_detalhada': projecao_receita_detalhada if 'projecao_receita_detalhada' in locals() else None,
+        'projecao_despesa_detalhada': projecao_despesa_detalhada if 'projecao_despesa_detalhada' in locals() else None,
         'cenario_total': cenario_total,
         'resumo': resumo,
     }
@@ -444,31 +446,34 @@ def _executar_cenario_manual_receita(ajustes: List, ano_base: int, meses_projeca
     import pandas as pd
     from dateutil.relativedelta import relativedelta
     
-    # Agrupar ajustes por mês
-    valores_por_mes = {}
-    for ajuste in ajustes:
-        mes = ajuste.mes
-        if mes not in valores_por_mes:
-            valores_por_mes[mes] = 0
-        valores_por_mes[mes] += float(ajuste.val_ajuste)
-    
-    # Criar projeção
+    # Criar lista de todos os meses e qualificadores
     data_base = date(ano_base, 1, 1)
-    datas = []
-    valores = []
+    records = []
+    
+    # Agrupar ajustes por (mes, qualificador)
+    ajustes_map = {}
+    for ajuste in ajustes:
+        ajustes_map[(ajuste.mes, ajuste.seq_qualificador)] = float(ajuste.val_ajuste)
+        
+    # Identificar todos os qualificadores envolvidos
+    qualificadores = set(a.seq_qualificador for a in ajustes)
     
     for i in range(meses_projecao):
         data_mes = data_base + relativedelta(months=i)
         mes = data_mes.month
-        valor = valores_por_mes.get(mes, 0)
         
-        datas.append(data_mes)
-        valores.append(valor)
-    
-    return pd.DataFrame({
-        'data': datas,
-        'valor_projetado': valores
-    })
+        for seq_qualificador in qualificadores:
+            valor = ajustes_map.get((mes, seq_qualificador), 0)
+            records.append({
+                'data': data_mes,
+                'seq_qualificador': seq_qualificador,
+                'valor_projetado': valor
+            })
+            
+    if not records:
+        return pd.DataFrame(columns=['data', 'seq_qualificador', 'valor_projetado'])
+        
+    return pd.DataFrame(records)
 
 
 def _executar_cenario_manual_despesa(ajustes: List, ano_base: int, meses_projecao: int) -> 'pd.DataFrame':
@@ -476,50 +481,59 @@ def _executar_cenario_manual_despesa(ajustes: List, ano_base: int, meses_projeca
     import pandas as pd
     from dateutil.relativedelta import relativedelta
     
-    # Agrupar ajustes por mês
-    valores_por_mes = {}
-    for ajuste in ajustes:
-        mes = ajuste.mes
-        if mes not in valores_por_mes:
-            valores_por_mes[mes] = 0
-        valores_por_mes[mes] += float(ajuste.val_ajuste)
-    
-    # Criar projeção
+    # Criar lista de todos os meses e qualificadores
     data_base = date(ano_base, 1, 1)
-    datas = []
-    valores = []
+    records = []
+    
+    # Agrupar ajustes por (mes, qualificador)
+    ajustes_map = {}
+    for ajuste in ajustes:
+        ajustes_map[(ajuste.mes, ajuste.seq_qualificador)] = float(ajuste.val_ajuste)
+        
+    # Identificar todos os qualificadores envolvidos
+    qualificadores = set(a.seq_qualificador for a in ajustes)
     
     for i in range(meses_projecao):
         data_mes = data_base + relativedelta(months=i)
         mes = data_mes.month
-        valor = valores_por_mes.get(mes, 0)
         
-        datas.append(data_mes)
-        valores.append(abs(valor))  # Despesa é sempre positiva
-    
-    return pd.DataFrame({
-        'data': datas,
-        'valor_projetado': valores
-    })
+        for seq_qualificador in qualificadores:
+            valor = ajustes_map.get((mes, seq_qualificador), 0)
+            records.append({
+                'data': data_mes,
+                'seq_qualificador': seq_qualificador,
+                'valor_projetado': abs(valor)  # Despesa positiva
+            })
+            
+    if not records:
+        return pd.DataFrame(columns=['data', 'seq_qualificador', 'valor_projetado'])
+        
+    return pd.DataFrame(records)
 
 
 def _calcular_cenario_total(projecao_receita: 'pd.DataFrame', projecao_despesa: 'pd.DataFrame') -> 'pd.DataFrame':
     """Combina projeções de receita e despesa em um cenário total."""
     import pandas as pd
     
-    # Merge por data
-    if len(projecao_receita) == 0 and len(projecao_despesa) == 0:
-        return pd.DataFrame(columns=['data', 'receita', 'despesa', 'saldo'])
-    
-    # Garantir que ambos têm dados
-    df_receita = projecao_receita.copy() if len(projecao_receita) > 0 else pd.DataFrame({'data': [], 'valor_projetado': []})
-    df_despesa = projecao_despesa.copy() if len(projecao_despesa) > 0 else pd.DataFrame({'data': [], 'valor_projetado': []})
+    # Agregar por data se houver detalhamento por qualificador
+    if 'seq_qualificador' in projecao_receita.columns:
+        df_receita = projecao_receita.groupby('data')['valor_projetado'].sum().reset_index()
+    else:
+        df_receita = projecao_receita.copy() if len(projecao_receita) > 0 else pd.DataFrame({'data': [], 'valor_projetado': []})
+        
+    if 'seq_qualificador' in projecao_despesa.columns:
+        df_despesa = projecao_despesa.groupby('data')['valor_projetado'].sum().reset_index()
+    else:
+        df_despesa = projecao_despesa.copy() if len(projecao_despesa) > 0 else pd.DataFrame({'data': [], 'valor_projetado': []})
     
     # Renomear colunas
     df_receita = df_receita.rename(columns={'valor_projetado': 'receita'})
     df_despesa = df_despesa.rename(columns={'valor_projetado': 'despesa'})
     
     # Merge
+    if len(df_receita) == 0 and len(df_despesa) == 0:
+        return pd.DataFrame(columns=['data', 'receita', 'despesa', 'saldo'])
+        
     cenario_total = pd.merge(df_receita, df_despesa, on='data', how='outer').fillna(0)
     
     # Calcular saldo

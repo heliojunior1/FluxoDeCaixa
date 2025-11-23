@@ -45,7 +45,7 @@
                 class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
                 <option value="">Sem Projeção (Apenas Realizado)</option>
                 {% for cenario in cenarios %}
-                <option value="{{ cenario.seq_cenario }}">{{ cenario.nom_cenario }}</option>
+                <option value="{{ cenario.seq_simulador_cenario }}">{{ cenario.nom_cenario }}</option>
                 {% endfor %}
             </select>
         </div>

@@ -163,12 +163,20 @@
                 class="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 mt-6 sidebar-section-title whitespace-nowrap">
                 Gestão</p>
 
-            <a href="{{ url_for('saldos') }}"
+            <a href="{{ url_for ('saldos') }}"
                 class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:text-white group"
-                title="Saldos">
-                <i data-lucide="wallet"
+                title="Lançamentos">
+                <i data-lucide="dollar-sign"
                     class="w-5 h-5 text-slate-400 group-hover:text-blue-400 transition-colors flex-shrink-0"></i>
-                <span class="sidebar-text whitespace-nowrap">Saldos</span>
+                <span class="sidebar-text whitespace-nowrap">Lançamentos</span>
+            </a>
+
+            <a href="{{ url_for('saldos_bancarios') }}"
+                class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:text-white group"
+                title="Saldos Bancários">
+                <i data-lucide="landmark"
+                    class="w-5 h-5 text-slate-400 group-hover:text-blue-400 transition-colors flex-shrink-0"></i>
+                <span class="sidebar-text whitespace-nowrap">Saldos Bancários</span>
             </a>
 
             <a href="{{ url_for('simulador_menu') }}"

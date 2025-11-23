@@ -1,13 +1,15 @@
 """Resumo (Cash Flow Summary) service."""
 from datetime import date, timedelta
 import calendar
+import pandas as pd
 from sqlalchemy import extract
 
-from ...models import db, CenarioAjusteMensal
+from ...models import db
 from ...repositories.lancamento_repository import LancamentoRepository
 from ...repositories.saldo_conta_repository import SaldoContaRepository
 from .base import get_tipo_lancamento_ids
 from ...utils.constants import MONTH_NAME_PT
+from ..simulador_cenario_service import executar_simulacao
 
 
 def get_resumo_data(
@@ -64,18 +66,27 @@ def get_resumo_data(
     # Calculate final bank balance
     saldo_final_conta = saldo_inicial_conta + total_entradas_periodo - total_saidas_periodo
 
-    # Load scenario adjustments if in projection mode
-    ajustes_cenario = {}
+    # Load simulation results if in projection mode
+    simulacao_resultado = None
+    df_receita_proj = None
+    df_despesa_proj = None
+    
     if estrategia == "projetado" and cenario_selecionado_id:
-        ajustes = CenarioAjusteMensal.query.filter_by(
-            seq_cenario=cenario_selecionado_id, ano=ano_selecionado
-        ).all()
-        ajustes_cenario = {(a.ano, a.mes, a.seq_qualificador): a for a in ajustes}
+        simulacao_resultado = executar_simulacao(cenario_selecionado_id)
+        if simulacao_resultado:
+            df_receita_proj = simulacao_resultado['projecao_receita']
+            df_despesa_proj = simulacao_resultado['projecao_despesa']
+            
+            # Ensure date column is datetime
+            if df_receita_proj is not None and not df_receita_proj.empty:
+                df_receita_proj['data'] = pd.to_datetime(df_receita_proj['data'])
+            if df_despesa_proj is not None and not df_despesa_proj.empty:
+                df_despesa_proj['data'] = pd.to_datetime(df_despesa_proj['data'])
 
     # Build cash flow data month by month
     cash_flow_data = {
         "labels": [],
-        "saldo_inicial_mensal": [],  # NEW: Monthly initial balances
+        "saldo_inicial_mensal": [],
         "receitas": [],
         "despesas": [],
         "saldos": [],
@@ -91,7 +102,7 @@ def get_resumo_data(
     for mes in sorted(meses_selecionados):
         projetar_mes = (
             estrategia == "projetado"
-            and ajustes_cenario
+            and simulacao_resultado is not None
             and (
                 ano_selecionado > hoje.year
                 or (ano_selecionado == hoje.year and mes >= hoje.month)
@@ -101,28 +112,17 @@ def get_resumo_data(
         despesas_mes = 0
         
         if projetar_mes:
-            # Use base data from previous year and apply adjustments
-            base_query = lancamento_repo.get_base_values_for_projection(
-                ano=ano_selecionado,
-                mes=mes
-            )
-            
-            for seq_qualificador, cod_tipo_lancamento, total_base in base_query:
-                total_base = float(total_base or 0)
-                valor_ajustado = total_base
-                key = (ano_selecionado, mes, seq_qualificador)
-                if key in ajustes_cenario:
-                    ajuste = ajustes_cenario[key]
-                    if ajuste.cod_tipo_ajuste == "P":
-                        valor_ajustado = total_base * (
-                            1 + float(ajuste.val_ajuste) / 100
-                        )
-                    elif ajuste.cod_tipo_ajuste == "V":
-                        valor_ajustado = total_base + float(ajuste.val_ajuste)
-                if cod_tipo_lancamento == id_entrada:
-                    receitas_mes += valor_ajustado
-                elif cod_tipo_lancamento == id_saida:
-                    despesas_mes += abs(valor_ajustado)
+            # Extract projected values from DataFrame
+            # Filter for specific year and month
+            if df_receita_proj is not None and not df_receita_proj.empty:
+                mask = (df_receita_proj['data'].dt.year == ano_selecionado) & (df_receita_proj['data'].dt.month == mes)
+                val = df_receita_proj.loc[mask, 'valor_projetado'].sum()
+                receitas_mes = float(val)
+                
+            if df_despesa_proj is not None and not df_despesa_proj.empty:
+                mask = (df_despesa_proj['data'].dt.year == ano_selecionado) & (df_despesa_proj['data'].dt.month == mes)
+                val = df_despesa_proj.loc[mask, 'valor_projetado'].sum()
+                despesas_mes = float(val)
         else:
             # Use actual data from repository
             receitas_mes = lancamento_repo.get_monthly_summary(
@@ -151,7 +151,7 @@ def get_resumo_data(
         cash_flow_data["saldos"].append(saldo_mes)
         cash_flow_data["saldo_final"].append(saldo_acumulado_banco)
 
-    if estrategia == "projetado" and ajustes_cenario:
+    if estrategia == "projetado" and simulacao_resultado:
         total_entradas_periodo = total_entradas_recalc
         total_saidas_periodo = total_saidas_recalc
         disponibilidade_periodo = total_entradas_periodo - total_saidas_periodo

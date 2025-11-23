@@ -12,7 +12,7 @@ from ..services import (
     get_saldos_diarios_data,
     get_dfc_data,
     get_dfc_eventos,
-    list_active_cenarios,
+    list_active_simuladores,
     list_active_qualificadores,
     get_previsao_receita_data,
     get_controle_despesa_data,
@@ -33,7 +33,7 @@ async def relatorio_previsao_receita(request: Request):
     """Página do relatório de Previsão de Receita."""
     anos_disponiveis = get_available_years()
     ano_default = anos_disponiveis[0] if anos_disponiveis else date.today().year
-    cenarios = list_active_cenarios()
+    cenarios = list_active_simuladores()
     
     # Buscar apenas qualificadores de receita (folha + tipo receita)
     todos_qualificadores = list_active_qualificadores()
@@ -76,7 +76,7 @@ async def relatorio_controle_despesa(request: Request):
     """Página do relatório de Controle de Despesa."""
     anos_disponiveis = get_available_years()
     ano_default = anos_disponiveis[0] if anos_disponiveis else date.today().year
-    cenarios = list_active_cenarios()
+    cenarios = list_active_simuladores()
     
     # Buscar apenas qualificadores de despesa (folha + tipo despesa)
     todos_qualificadores = list_active_qualificadores()
@@ -160,7 +160,7 @@ async def relatorio_ldo_orcamento_data(request: Request):
 async def relatorio_previsao_realizado(request: Request):
     anos_disponiveis = get_available_years()
     ano_default = anos_disponiveis[0] if anos_disponiveis else date.today().year
-    cenarios = list_active_cenarios()
+    cenarios = list_active_simuladores()
     meses = [(i, MONTH_NAME_PT[i]) for i in range(1, 13)]
     qualificadores = [
         q for q in list_active_qualificadores() if q.is_folha()
@@ -207,7 +207,7 @@ async def relatorio_resumo(request: Request):
     ano_selecionado = int(form.get("ano", ano_default))
     estrategia = form.get("estrategia", "realizado")
     cenario_id = form.get("cenario_id")
-    cenarios_disponiveis = list_active_cenarios()
+    cenarios_disponiveis = list_active_simuladores()
     cenario_selecionado_id = int(cenario_id) if cenario_id else None
     meses_selecionados_str = form.getlist("meses") if hasattr(form, "getlist") else []
     meses_selecionados = (
@@ -371,7 +371,7 @@ async def relatorio_dfc(request: Request):
         else list(range(1, 13))
     )
 
-    cenarios_disponiveis = list_active_cenarios()
+    cenarios_disponiveis = list_active_simuladores()
 
     data = get_dfc_data(
         periodo,
