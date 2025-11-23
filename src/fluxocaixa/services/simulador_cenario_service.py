@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 import json
 
 from ..repositories import simulador_cenario_repository as repo
+from ..repositories.simulador_cenario_historico_repository import SimuladorCenarioHistoricoRepository
 from ..models import (
     SimuladorCenario,
     CenarioReceita,
@@ -12,6 +13,7 @@ from ..models import (
     CenarioDespesa,
     CenarioDespesaAjuste,
     ModeloEconomicoParametro,
+    SimuladorCenarioHistorico,
 )
 
 
@@ -209,6 +211,13 @@ def atualizar_simulador_cenario(
     if not simulador:
         return None
     
+    # Criar snapshot do estado atual ANTES de atualizar
+    try:
+        criar_snapshot_cenario(seq_simulador_cenario, user_id)
+    except Exception as e:
+        # Log error but continue with update
+        print(f"Erro ao criar snapshot: {e}")
+    
     # Atualizar dados principais
     simulador.nom_cenario = nom_cenario
     simulador.dsc_cenario = dsc_cenario
@@ -295,6 +304,121 @@ def obter_simulador_completo(seq_simulador_cenario: int) -> Optional[Dict]:
     return resultado
 
 
+# ==================== Histórico de Cenários ====================
+
+def criar_snapshot_cenario(seq_simulador_cenario: int, user_id: int = 1) -> SimuladorCenarioHistorico:
+    """
+    Cria um snapshot do estado atual do cenário.
+    
+    Args:
+        seq_simulador_cenario: ID do cenário
+        user_id: ID do usuário criando o snapshot
+    
+    Returns:
+        SimuladorCenarioHistorico criado
+    """
+    # Obter estado completo do cenário
+    cenario_completo = obter_simulador_completo(seq_simulador_cenario)
+    
+    if not cenario_completo:
+        raise ValueError(f"Cenário {seq_simulador_cenario} não encontrado")
+    
+    # Serializar para JSON
+    snapshot_data = {
+        'simulador': {
+            'seq_simulador_cenario': cenario_completo['simulador'].seq_simulador_cenario,
+            'nom_cenario': cenario_completo['simulador'].nom_cenario,
+            'dsc_cenario': cenario_completo['simulador'].dsc_cenario,
+            'ano_base': cenario_completo['simulador'].ano_base,
+            'meses_projecao': cenario_completo['simulador'].meses_projecao,
+        },
+        'receita': {
+            'config': {
+                'cod_tipo_cenario': cenario_completo['receita']['config'].cod_tipo_cenario if cenario_completo['receita'].get('config') else None,
+                'json_configuracao': cenario_completo['receita']['config'].json_configuracao if cenario_completo['receita'].get('config') else None,
+            },
+            'ajustes': [
+                {
+                    'seq_qualificador': a.seq_qualificador,
+                    'ano': a.ano,
+                    'mes': a.mes,
+                    'cod_tipo_ajuste': a.cod_tipo_ajuste,
+                    'val_ajuste': float(a.val_ajuste) if a.val_ajuste else 0
+                }
+                for a in cenario_completo['receita'].get('ajustes', [])
+            ]
+        },
+        'despesa': {
+            'config': {
+                'cod_tipo_cenario': cenario_completo['despesa']['config'].cod_tipo_cenario if cenario_completo['despesa'].get('config') else None,
+                'json_configuracao': cenario_completo['despesa']['config'].json_configuracao if cenario_completo['despesa'].get('config') else None,
+            },
+            'ajustes': [
+                {
+                    'seq_qualificador': a.seq_qualificador,
+                    'ano': a.ano,
+                    'mes': a.mes,
+                    'cod_tipo_ajuste': a.cod_tipo_ajuste,
+                    'val_ajuste': float(a.val_ajuste) if a.val_ajuste else 0
+                }
+                for a in cenario_completo['despesa'].get('ajustes', [])
+            ]
+        }
+    }
+    
+    # Criar snapshot
+    historico_repo = SimuladorCenarioHistoricoRepository()
+    snapshot = SimuladorCenarioHistorico(
+        seq_simulador_cenario=seq_simulador_cenario,
+        cod_pessoa_snapshot=user_id,
+        json_snapshot=json.dumps(snapshot_data)
+    )
+    
+    return historico_repo.create_snapshot(snapshot)
+
+
+def get_versao_inicial_cenario(seq_simulador_cenario: int, ano: Optional[int] = None) -> Optional[Dict]:
+    """
+    Retorna a primeira versão do cenário (do histórico ou atual).
+    
+    Args:
+        seq_simulador_cenario: ID do cenário
+        ano: Ano para filtrar snapshots (opcional)
+    
+    Returns:
+        Dicionário com dados do cenário ou None
+    """
+    historico_repo = SimuladorCenarioHistoricoRepository()
+    primeiro_snapshot = historico_repo.get_primeiro_snapshot(seq_simulador_cenario, ano)
+    
+    if primeiro_snapshot:
+        return json.loads(primeiro_snapshot.json_snapshot)
+    
+    # Fallback: usar cenário atual
+    return obter_simulador_completo(seq_simulador_cenario)
+
+
+def get_versao_final_cenario(seq_simulador_cenario: int, ano: Optional[int] = None) -> Optional[Dict]:
+    """
+    Retorna a última versão do cenário (do histórico ou atual).
+    
+    Args:
+        seq_simulador_cenario: ID do cenário
+        ano: Ano para filtrar snapshots (opcional)
+    
+    Returns:
+        Dicionário com dados do cenário ou None
+    """
+    historico_repo = SimuladorCenarioHistoricoRepository()
+    ultimo_snapshot = historico_repo.get_ultimo_snapshot(seq_simulador_cenario, ano)
+    
+    if ultimo_snapshot:
+        return json.loads(ultimo_snapshot.json_snapshot)
+    
+    # Fallback: usar cenário atual
+    return obter_simulador_completo(seq_simulador_cenario)
+
+
 # ==================== Executar Simulação ====================
 
 def executar_simulacao(seq_simulador_cenario: int) -> Optional[Dict]:
@@ -344,6 +468,7 @@ def executar_simulacao(seq_simulador_cenario: int) -> Optional[Dict]:
             ano_base,
             meses_projecao
         )
+        projecao_receita_detalhada = projecao_receita.copy()  # Guardar versão detalhada
     elif tipo_receita == 'HOLT_WINTERS':
         config = json.loads(config_receita.json_configuracao or '{}')
         seq_qualificador = config.get('seq_qualificador')
@@ -354,6 +479,7 @@ def executar_simulacao(seq_simulador_cenario: int) -> Optional[Dict]:
         dados_hist = modelos.obter_dados_historicos(seq_qualificador, data_inicio, data_fim)
         
         projecao_receita = modelos.projetar_holt_winters(dados_hist, meses_projecao, config)
+        projecao_receita_detalhada = None
         
     elif tipo_receita == 'ARIMA':
         config = json.loads(config_receita.json_configuracao or '{}')
@@ -364,6 +490,7 @@ def executar_simulacao(seq_simulador_cenario: int) -> Optional[Dict]:
         dados_hist = modelos.obter_dados_historicos(seq_qualificador, data_inicio, data_fim)
         
         projecao_receita = modelos.projetar_arima(dados_hist, meses_projecao, config)
+        projecao_receita_detalhada = None
         
     elif tipo_receita == 'SARIMA':
         config = json.loads(config_receita.json_configuracao or '{}')
@@ -374,16 +501,19 @@ def executar_simulacao(seq_simulador_cenario: int) -> Optional[Dict]:
         dados_hist = modelos.obter_dados_historicos(seq_qualificador, data_inicio, data_fim)
         
         projecao_receita = modelos.projetar_sarima(dados_hist, meses_projecao, config)
+        projecao_receita_detalhada = None
         
     elif tipo_receita == 'REGRESSAO':
         config = json.loads(config_receita.json_configuracao or '{}')
         projecao_receita = modelos.projetar_regressao_multipla(meses_projecao, config)
+        projecao_receita_detalhada = None
     else:
         # Fallback: cenário vazio
         projecao_receita = pd.DataFrame({
             'data': [],
             'valor_projetado': []
         })
+        projecao_receita_detalhada = None
     
     # ==================== Projeção de Despesa ====================
     
@@ -397,9 +527,11 @@ def executar_simulacao(seq_simulador_cenario: int) -> Optional[Dict]:
             ano_base,
             meses_projecao
         )
+        projecao_despesa_detalhada = projecao_despesa.copy()  # Guardar versão detalhada
     elif tipo_despesa == 'LOA':
         config = json.loads(config_despesa.json_configuracao or '{}')
         projecao_despesa = modelos.projetar_loa(meses_projecao, config)
+        projecao_despesa_detalhada = None
         
     elif tipo_despesa == 'MEDIA_HISTORICA':
         config = json.loads(config_despesa.json_configuracao or '{}')
@@ -410,12 +542,14 @@ def executar_simulacao(seq_simulador_cenario: int) -> Optional[Dict]:
         dados_hist = modelos.obter_dados_historicos(seq_qualificador, data_inicio, data_fim)
         
         projecao_despesa = modelos.projetar_media_historica(dados_hist, meses_projecao, config)
+        projecao_despesa_detalhada = None
     else:
         # Fallback
         projecao_despesa = pd.DataFrame({
             'data': [],
             'valor_projetado': []
         })
+        projecao_despesa_detalhada = None
     
     # ==================== Cenário Total ====================
     
@@ -434,8 +568,8 @@ def executar_simulacao(seq_simulador_cenario: int) -> Optional[Dict]:
         'simulador': simulador,
         'projecao_receita': projecao_receita,  # Agregado por data
         'projecao_despesa': projecao_despesa,  # Agregado por data
-        'projecao_receita_detalhada': projecao_receita_detalhada if 'projecao_receita_detalhada' in locals() else None,
-        'projecao_despesa_detalhada': projecao_despesa_detalhada if 'projecao_despesa_detalhada' in locals() else None,
+        'projecao_receita_detalhada': projecao_receita_detalhada,
+        'projecao_despesa_detalhada': projecao_despesa_detalhada,
         'cenario_total': cenario_total,
         'resumo': resumo,
     }

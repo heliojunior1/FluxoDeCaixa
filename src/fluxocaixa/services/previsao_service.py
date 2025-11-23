@@ -3,6 +3,7 @@ from datetime import date
 from ..repositories.lancamento_repository import LancamentoRepository
 from ..repositories.tipo_lancamento_repository import TipoLancamentoRepository
 from ..repositories import cenario_repository, qualificador_repository
+from ..services.simulador_cenario_service import get_versao_inicial_cenario, get_versao_final_cenario
 from ..utils import format_currency
 from ..utils.constants import MONTH_ABBR_PT
 
@@ -52,56 +53,49 @@ def get_previsao_realizado_data(
     def lanc_val(q_id, ano_ref, mes, cod_tipo):
         return lanc_map.get((q_id, ano_ref, mes, cod_tipo), 0.0)
 
-    cenario_base = cenario_repository.get_cenario_by_id(cenario_id) if cenario_id else None
-    cenario_cache = {}
-
-    def get_cenario_ids_for_year(year):
-        if not cenario_base:
-            return None, None
-        if year in cenario_cache:
-            return cenario_cache[year]
-        
-        cenarios_year = cenario_repository.get_cenarios_by_name_and_year(
-            cenario_base.nom_cenario, year
-        )
-
-        if not cenarios_year:
-            cenario_cache[year] = (None, None)
-        else:
-            cenario_cache[year] = (
-                cenarios_year[0].seq_cenario,
-                cenarios_year[-1].seq_cenario,
-            )
-        return cenario_cache[year]
-
-    for yr in anos_range:
-        get_cenario_ids_for_year(yr)
-    cenario_ini_id, cenario_fin_id = cenario_cache.get(ano, (None, None))
-    cenario_ids_needed = {
-        cid
-        for pair in cenario_cache.values()
-        for cid in pair
-        if cid is not None
-    }
+    # Obter versões inicial e final do cenário usando o novo sistema de histórico
+    versao_inicial = None
+    versao_final = None
     
-    ajustes = []
-    if cenario_ids_needed:
-        ajustes = cenario_repository.get_ajustes_by_filters(
-            list(cenario_ids_needed), anos_range, qualificadores_ids
-        )
+    if cenario_id:
+        versao_inicial = get_versao_inicial_cenario(cenario_id, ano)
+        versao_final = get_versao_final_cenario(cenario_id, ano)
+    
+    def get_ajustes_from_versao(versao, tipo='receita'):
+        """Extrai ajustes de uma versão do cenário."""
+        if not versao:
+            return {}
+        
+        ajustes_list = versao.get(tipo, {}).get('ajustes', [])
+        ajustes_map = {}
+        
+        for ajuste in ajustes_list:
+            key = (
+                ajuste['seq_qualificador'],
+                ajuste['ano'],
+                ajuste['mes']
+            )
+            ajustes_map[key] = {
+                'cod_tipo_ajuste': ajuste['cod_tipo_ajuste'],
+                'val_ajuste': ajuste['val_ajuste']
+            }
+        
+        return ajustes_map
+    
+    # Criar mapas de ajustes para versão inicial e final
+    ajustes_ini_receita = get_ajustes_from_versao(versao_inicial, 'receita')
+    ajustes_ini_despesa = get_ajustes_from_versao(versao_inicial, 'despesa')
+    ajustes_fin_receita = get_ajustes_from_versao(versao_final, 'receita')
+    ajustes_fin_despesa = get_ajustes_from_versao(versao_final, 'despesa')
 
-    ajuste_map = {
-        (a.seq_cenario, a.seq_qualificador, a.ano, a.mes): a for a in ajustes
-    }
-
-    def previsao_val_for_year(cenario_ref_id, q_id, mes, ano_ref):
+    def previsao_val_for_year(ajustes_map, q_id, mes, ano_ref):
         base = lanc_val(q_id, ano_ref - 1, mes, qual_tipo_map.get(q_id, cod_entrada))
-        if cenario_ref_id:
-            ajuste = ajuste_map.get((cenario_ref_id, q_id, ano_ref, mes))
-            if ajuste:
-                if ajuste.cod_tipo_ajuste == "P":
-                    return base * (1 + float(ajuste.val_ajuste) / 100)
-                return base + float(ajuste.val_ajuste)
+        
+        ajuste = ajustes_map.get((q_id, ano_ref, mes))
+        if ajuste:
+            if ajuste['cod_tipo_ajuste'] == "P":
+                return base * (1 + float(ajuste['val_ajuste']) / 100)
+            return base + float(ajuste['val_ajuste'])
         return base
 
     def real_val(q_id, ano_ref, meses_ref):
@@ -110,13 +104,19 @@ def get_previsao_realizado_data(
 
     tabela = []
     total_prev_ini = total_prev_fin = total_real = 0
+    
+    # Determinar qual mapa de ajustes usar baseado no tipo de qualificador
     for q in qs:
+        # Selecionar mapa de ajustes correto (receita ou despesa)
+        ajustes_ini = ajustes_ini_despesa if q.tipo_fluxo == "despesa" else ajustes_ini_receita
+        ajustes_fin = ajustes_fin_despesa if q.tipo_fluxo == "despesa" else ajustes_fin_receita
+        
         prev_ini = sum(
-            previsao_val_for_year(cenario_ini_id, q.seq_qualificador, m, ano)
+            previsao_val_for_year(ajustes_ini, q.seq_qualificador, m, ano)
             for m in meses
         )
         prev_fin = sum(
-            previsao_val_for_year(cenario_fin_id, q.seq_qualificador, m, ano)
+            previsao_val_for_year(ajustes_fin, q.seq_qualificador, m, ano)
             for m in meses
         )
         real = real_val(q.seq_qualificador, ano, meses)
@@ -146,10 +146,13 @@ def get_previsao_realizado_data(
     previsao_series = []
     realizado_series = []
     for m in meses:
-        prev_total = sum(
-            previsao_val_for_year(cenario_fin_id, q_id, m, ano)
-            for q_id in qualificadores_ids
-        )
+        prev_total = 0
+        for q_id in qualificadores_ids:
+            q = next((qual for qual in qs if qual.seq_qualificador == q_id), None)
+            if q:
+                ajustes_fin = ajustes_fin_despesa if q.tipo_fluxo == "despesa" else ajustes_fin_receita
+                prev_total += previsao_val_for_year(ajustes_fin, q_id, m, ano)
+        
         real_total = sum(
             real_val(q_id, ano, [m]) for q_id in qualificadores_ids
         )
@@ -159,17 +162,17 @@ def get_previsao_realizado_data(
     diff_final = []
     diff_inicial = []
     for a in anos_range:
-        c_ini_id, c_fin_id = cenario_cache.get(a, (None, None))
-        inicial_sum = sum(
-            previsao_val_for_year(c_ini_id, q_id, m, a)
-            for q_id in qualificadores_ids
-            for m in range(1, 13)
-        )
-        final_sum = sum(
-            previsao_val_for_year(c_fin_id, q_id, m, a)
-            for q_id in qualificadores_ids
-            for m in range(1, 13)
-        )
+        inicial_sum = 0
+        final_sum = 0
+        
+        for q in qs:
+            ajustes_ini = ajustes_ini_despesa if q.tipo_fluxo == "despesa" else ajustes_ini_receita
+            ajustes_fin = ajustes_fin_despesa if q.tipo_fluxo == "despesa" else ajustes_fin_receita
+            
+            for m in range(1, 13):
+                inicial_sum += previsao_val_for_year(ajustes_ini, q.seq_qualificador, m, a)
+                final_sum += previsao_val_for_year(ajustes_fin, q.seq_qualificador, m, a)
+        
         real_year = sum(
             real_val(q_id, a, list(range(1, 13))) for q_id in qualificadores_ids
         )

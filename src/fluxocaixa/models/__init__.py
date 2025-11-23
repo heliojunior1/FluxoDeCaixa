@@ -20,6 +20,7 @@ from .simulador_cenario import (
     CenarioDespesaAjuste,
     ModeloEconomicoParametro,
 )
+from .simulador_cenario_historico import SimuladorCenarioHistorico
 
 __all__ = [
     'db',
@@ -45,4 +46,5 @@ __all__ = [
     'CenarioDespesa',
     'CenarioDespesaAjuste',
     'ModeloEconomicoParametro',
+    'SimuladorCenarioHistorico',
 ]
