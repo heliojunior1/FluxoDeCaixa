@@ -171,9 +171,9 @@ FluxoCaixaCodex/
 
 ## 🗄️ Modelo de Banco de Dados
 
-O sistema utiliza **SQLite** como banco de dados padrão e **SQLAlchemy** como ORM. A estrutura é composta por 12 tabelas principais que gerenciam todo o fluxo de caixa.
+O sistema utiliza **SQLite** como banco de dados padrão e **SQLAlchemy** como ORM. A estrutura foi expandida para suportar simulações complexas, histórico de saldos e alertas gerados.
 
-### 📊 Diagrama de Relacionamentos
+### 📊 Diagrama de Relacionamentos Simplificado
 
 ```
 ┌─────────────────────┐
@@ -181,11 +181,7 @@ O sistema utiliza **SQLite** como banco de dados padrão e **SQLAlchemy** como O
 │  (Hierárquico)      │          │
 ├─────────────────────┤          │
 │ seq_qualificador PK │          │
-│ num_qualificador    │          │
-│ dsc_qualificador    │          │
-│ cod_qualificador_pai│──────────┘ (Auto-relacionamento)
-│ dat_inclusao        │
-│ ind_status          │
+│ cod_qualificador_pai│──────────┘
 └─────────────────────┘
          △  △  △
          │  │  │
@@ -197,326 +193,107 @@ O sistema utiliza **SQLite** como banco de dados padrão e **SQLAlchemy** como O
 │  flc_lancamento   │ │  flc_mapeamento   │
 ├───────────────────┤ ├───────────────────┤
 │ seq_lancamento PK │ │ seq_mapeamento PK │
-│ dat_lancamento    │ │ seq_qualificador  │FK
-│ seq_qualificador  │FK│ dsc_mapeamento   │
-│ val_lancamento    │ │ txt_condicao      │
-│ cod_tipo_lanc.    │FK│ ind_status       │
-│ cod_origem_lanc.  │FK│ dat_inclusao     │
-│ seq_conta         │FK└───────────────────┘
-│ ind_origem        │           △
-│ dat_inclusao      │           │
-│ cod_pessoa_incl.  │  ┌────────┴────────┐
-│ dat_alteracao     │  │   flc_alerta    │
-│ cod_pessoa_alter. │  ├─────────────────┤
-│ ind_status        │  │ seq_alerta   PK │
-└───────────────────┘  │ nom_alerta      │
-    │    │             │ metric          │
-    │    │             │ seq_qualificador│FK
-    │    │             │ logic           │
-    │    │             │ valor           │
-    │    └──────┐      │ period          │
-    │           │      │ emails          │
-    │           │      │ notif_system    │
-    ▼           ▼      │ notif_email     │
-┌─────────┐ ┌─────────┐│ ind_status      │
-│flc_tipo_│ │flc_origem│ dat_inclusao    │
-│lancament│ │lancament││ cod_pessoa_incl.│
-├─────────┤ ├─────────┤│ dat_alteracao   │
-│cod PK   │ │cod PK   ││ cod_pessoa_alter│
-│dsc_tipo │ │dsc_orig.││ └─────────────────┘
-└─────────┘ └─────────┘
-                       ┌──────────────────┐
-    ┌──────────────────┤ flc_conta_banc.  │
-    │                  ├──────────────────┤
-    │                  │ seq_conta     PK │
-    │                  │ cod_banco        │
-    │                  │ num_agencia      │
-    │                  │ num_conta        │
-    │                  │ dsc_conta        │
-    │                  │ ind_status       │
-    │                  │ dat_cadastro     │
-    │                  └──────────────────┘
-    │
-    │  ┌──────────────────────┐
-    └──│  flc_pagamento       │
-       ├──────────────────────┤
-       │ seq_pagamento     PK │
-       │ dat_pagamento        │
-       │ cod_orgao           │FK───┐
-       │ val_pagamento        │    │
-       │ dsc_pagamento        │    │
-       │ dat_inclusao         │    │
-       └──────────────────────┘    │
-                                   ▼
-                          ┌────────────────┐
-                          │  flc_orgao     │
-                          ├────────────────┤
-                          │ cod_orgao   PK │
-                          │ nom_orgao      │
-                          └────────────────┘
+│ seq_qualificadorFK│ │ seq_qualificadorFK│
+└───────────────────┘ └───────────────────┘
+                                    △
+                                    │
+                           ┌────────┴────────┐      ┌───────────────────┐
+                           │   flc_alerta    │◄─────┤ flc_alerta_gerado │
+                           ├─────────────────┤      ├───────────────────┤
+                           │ seq_alerta   PK │      │ seq_gerado     PK │
+                           │ seq_qualif.  FK │      │ seq_alerta     FK │
+                           └─────────────────┘      └───────────────────┘
 
-┌───────────────────────┐
-│  flc_conferencia      │
-├───────────────────────┤
-│ dat_conferencia    PK │
-│ val_saldo_anterior    │
-│ val_liberacoes        │
-│ val_conf_liberacoes   │
-│ val_soma_anter_liber. │
-│ val_pagamentos        │
-│ val_conf_pagamentos   │
-│ val_saldo_final       │
-└───────────────────────┘
+┌──────────────────┐       ┌─────────────────┐
+│ flc_conta_banc.  │◄──────┤ flc_saldo_conta │
+├──────────────────┤       ├─────────────────┤
+│ seq_conta     PK │       │ seq_saldo    PK │
+│ ...              │       │ seq_conta    FK │
+└──────────────────┘       └─────────────────┘
 
-┌────────────────────────────┐
-│  flc_cenario               │
-├────────────────────────────┤
-│ seq_cenario             PK │
-│ nom_cenario                │
-│ dsc_cenario                │
-│ dat_criacao                │
-│ ind_status                 │
-│ dat_inclusao               │
-│ cod_pessoa_inclusao        │
-│ dat_alteracao              │
-│ cod_pessoa_alteracao       │
-└────────────────────────────┘
-         △
-         │
-         │
-┌────────┴───────────────────────────┐
-│ flc_cenario_ajuste_mensal          │
-├────────────────────────────────────┤
-│ seq_cenario_ajuste              PK │
-│ seq_cenario                     FK │
-│ seq_qualificador                FK │
-│ ano                                │
-│ mes                                │
-│ cod_tipo_ajuste (P=%, V=valor)     │
-│ val_ajuste                         │
-│ dsc_ajuste                         │
-│ dat_inclusao                       │
-└────────────────────────────────────┘
-UNIQUE: (seq_cenario, seq_qualificador, ano, mes)
+      ┌───────────────────────┐
+      │ flc_simulador_cenario │◄──────────────┐
+      ├───────────────────────┤               │
+      │ seq_simulador      PK │               │
+      │ ...                   │               │
+      └───────────────────────┘               │
+          │             │                     │
+          ▼             ▼                     │
+┌─────────────────┐ ┌─────────────────┐ ┌─────┴───────────────┐
+│flc_cenario_rec. │ │flc_cenario_desp.│ │flc_simulador_hist.  │
+├─────────────────┤ ├─────────────────┤ ├─────────────────────┤
+│seq_cenario_recPK│ │seq_cenario_desPK│ │seq_historico     PK │
+│seq_simulador  FK│ │seq_simulador  FK│ │seq_simulador     FK │
+└─────────────────┘ └─────────────────┘ └─────────────────────┘
+        │                     │
+        ▼                     ▼
+┌─────────────────┐ ┌─────────────────┐
+│flc_cen_rec_ajust│ │flc_cen_des_ajust│
+├─────────────────┤ ├─────────────────┤
+│seq_ajuste     PK│ │seq_ajuste     PK│
+│seq_cenario_recFK│ │seq_cenario_desFK│
+└─────────────────┘ └─────────────────┘
 ```
 
 ### 📋 Descrição das Tabelas
 
-#### 1. **flc_qualificador** - Classificação Hierárquica dos Lançamentos
-Estrutura hierárquica em árvore para classificação de receitas e despesas.
-
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| seq_qualificador | INTEGER (PK) | Identificador único |
-| num_qualificador | VARCHAR(20) | Código/número do qualificador (único) |
-| dsc_qualificador | VARCHAR(255) | Descrição/nome do qualificador |
-| cod_qualificador_pai | INTEGER (FK) | Referência ao qualificador pai (auto-relacionamento) |
-| dat_inclusao | DATE | Data de cadastro |
-| ind_status | CHAR(1) | Status (A=Ativo, I=Inativo) |
-
-**Características:**
-- Suporta múltiplos níveis hierárquicos
-- Qualificadores iniciados com "1" = Receitas
-- Qualificadores iniciados com "2" = Despesas
-- Possui métodos para navegação na árvore (pai, filhos, raiz)
+#### 1. **flc_qualificador** - Classificação Hierárquica
+Estrutura em árvore para classificação de receitas e despesas.
+- **PK**: `seq_qualificador`
+- **Campos**: `num_qualificador`, `dsc_qualificador`, `cod_qualificador_pai` (FK)
 
 #### 2. **flc_lancamento** - Lançamentos Financeiros
-Registro de todas as movimentações financeiras (receitas e despesas).
+Registro de todas as movimentações financeiras.
+- **PK**: `seq_lancamento`
+- **FKs**: `seq_qualificador`, `cod_tipo_lancamento`, `cod_origem_lancamento`, `seq_conta`
+- **Campos**: `dat_lancamento`, `val_lancamento`, `ind_origem`
 
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| seq_lancamento | INTEGER (PK) | Identificador único |
-| dat_lancamento | DATE | Data do lançamento |
-| seq_qualificador | INTEGER (FK) | Classificação do lançamento |
-| val_lancamento | NUMERIC(18,2) | Valor (positivo=receita, negativo=despesa) |
-| cod_tipo_lancamento | INTEGER (FK) | Tipo do lançamento |
-| cod_origem_lancamento | INTEGER (FK) | Origem do lançamento |
-| seq_conta | INTEGER (FK) | Conta bancária (opcional) |
-| ind_origem | CHAR(1) | Indicador de origem |
-| dat_inclusao | DATE | Data de cadastro |
-| cod_pessoa_inclusao | INTEGER | Usuário que incluiu |
-| dat_alteracao | DATE | Data da última alteração |
-| cod_pessoa_alteracao | INTEGER | Usuário que alterou |
-| ind_status | CHAR(1) | Status (A=Ativo, I=Inativo) |
+#### 3. **flc_saldo_conta** - Saldos Diários [NOVO]
+Armazena o saldo final de cada conta bancária por dia.
+- **PK**: `seq_saldo_conta`
+- **FK**: `seq_conta`
+- **Campos**: `dat_saldo`, `val_saldo`
+- **Constraint**: Único por conta e data.
 
-#### 3. **flc_tipo_lancamento** - Tipos de Lançamento
-Tabela auxiliar com os tipos de lançamento (ex: Realizado, Previsto).
+#### 4. **flc_alerta** e **flc_alerta_gerado** - Sistema de Alertas [ATUALIZADO]
+Configuração de regras de alerta e histórico de alertas disparados.
+- **flc_alerta**: Regras (ex: "Saldo abaixo de X").
+- **flc_alerta_gerado**: Ocorrências (ex: "Alerta disparado em 23/11/2025").
 
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| cod_tipo_lancamento | INTEGER (PK) | Código do tipo |
-| dsc_tipo_lancamento | VARCHAR(50) | Descrição do tipo |
+#### 5. **flc_simulador_cenario** - Motor de Simulação [NOVO]
+Tabela principal para cenários de projeção avançada.
+- **PK**: `seq_simulador_cenario`
+- **Campos**: `nom_cenario`, `ano_base`, `meses_projecao`
 
-#### 4. **flc_origem_lancamento** - Origens de Lançamento
-Tabela auxiliar com as origens dos lançamentos (ex: Manual, Importação).
+#### 6. **flc_cenario_receita** e **flc_cenario_despesa** [NOVO]
+Configurações específicas para projeção de receitas e despesas dentro de um cenário.
+- **Campos**: `cod_tipo_cenario` (ex: 'MANUAL', 'REGRESSAO', 'MEDIA_HISTORICA'), `json_configuracao` (parâmetros do modelo).
 
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| cod_origem_lancamento | INTEGER (PK) | Código da origem |
-| dsc_origem_lancamento | VARCHAR(50) | Descrição da origem |
+#### 7. **flc_cenario_receita_ajuste** e **flc_cenario_despesa_ajuste** [NOVO]
+Ajustes manuais (overrides) aplicados sobre as projeções calculadas.
+- **Campos**: `ano`, `mes`, `val_ajuste`, `cod_tipo_ajuste` (Valor ou Percentual).
 
-#### 5. **flc_conta_bancaria** - Contas Bancárias
-Cadastro de contas bancárias do órgão.
+#### 8. **flc_modelo_economico_parametro** [NOVO]
+Parâmetros para modelos econométricos (ex: coeficientes para PIB, Inflação).
+- **FK**: `seq_cenario_receita`
+- **Campos**: `nom_variavel`, `val_coeficiente`, `json_valores_historicos`.
 
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| seq_conta | INTEGER (PK) | Identificador único |
-| cod_banco | VARCHAR(10) | Código do banco |
-| num_agencia | VARCHAR(20) | Número da agência |
-| num_conta | VARCHAR(30) | Número da conta |
-| dsc_conta | VARCHAR(100) | Descrição/apelido da conta |
-| ind_status | CHAR(1) | Status (A=Ativo, I=Inativo) |
-| dat_cadastro | DATE | Data de cadastro |
+#### 9. **flc_simulador_cenario_historico** [NOVO]
+Snapshots (fotografias) de resultados de simulações passadas.
+- **FK**: `seq_simulador_cenario`
+- **Campos**: `dat_snapshot`, `json_snapshot` (resultado completo serializado).
 
-#### 6. **flc_mapeamento** - Mapeamento de Qualificadores
-Regras para classificação automática de lançamentos.
+#### Outras Tabelas Auxiliares
+- **flc_tipo_lancamento**, **flc_origem_lancamento**: Domínios fixos.
+- **flc_conta_bancaria**: Cadastro de contas.
+- **flc_mapeamento**: Regras de classificação automática (De/Para).
+- **flc_pagamento**, **flc_orgao**: Controle de pagamentos por órgão.
+- **flc_conferencia**: Conferência diária de caixa.
 
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| seq_mapeamento | INTEGER (PK) | Identificador único |
-| seq_qualificador | INTEGER (FK) | Qualificador associado |
-| dsc_mapeamento | VARCHAR(255) | Descrição do mapeamento |
-| txt_condicao | VARCHAR(500) | Condição/regra de mapeamento |
-| ind_status | CHAR(1) | Status (A=Ativo, I=Inativo) |
-| dat_inclusao | DATE | Data de cadastro |
-
-#### 7. **flc_alerta** - Sistema de Alertas
-Configuração de alertas para monitoramento de saldos e projeções.
-
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| seq_alerta | INTEGER (PK) | Identificador único |
-| nom_alerta | VARCHAR(255) | Nome do alerta |
-| metric | VARCHAR(20) | Métrica monitorada (saldo, projecao_vs_realizado) |
-| seq_qualificador | INTEGER (FK) | Qualificador monitorado (opcional) |
-| logic | VARCHAR(20) | Lógica de comparação (maior_que, menor_que, etc) |
-| valor | NUMERIC(18,2) | Valor de referência |
-| period | VARCHAR(20) | Período de análise |
-| emails | VARCHAR(255) | E-mails para notificação |
-| notif_system | CHAR(1) | Notificação no sistema (S/N) |
-| notif_email | CHAR(1) | Notificação por e-mail (S/N) |
-| ind_status | CHAR(1) | Status (A=Ativo, I=Inativo) |
-| dat_inclusao | DATE | Data de cadastro |
-| cod_pessoa_inclusao | INTEGER | Usuário que incluiu |
-| dat_alteracao | DATE | Data da última alteração |
-| cod_pessoa_alteracao | INTEGER | Usuário que alterou |
-
-#### 8. **flc_pagamento** - Pagamentos
-Registro de pagamentos realizados por órgãos.
-
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| seq_pagamento | INTEGER (PK) | Identificador único |
-| dat_pagamento | DATE | Data do pagamento |
-| cod_orgao | INTEGER (FK) | Órgão responsável pelo pagamento |
-| val_pagamento | NUMERIC(18,2) | Valor do pagamento |
-| dsc_pagamento | VARCHAR(255) | Descrição do pagamento |
-| dat_inclusao | DATE | Data de cadastro |
-
-#### 9. **flc_orgao** - Órgãos
-Cadastro de órgãos públicos.
-
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| cod_orgao | INTEGER (PK) | Código do órgão |
-| nom_orgao | VARCHAR(100) | Nome do órgão |
-
-#### 10. **flc_conferencia** - Conferência de Saldos
-Registro de conferências diárias de saldos.
-
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| dat_conferencia | DATE (PK) | Data da conferência |
-| val_saldo_anterior | NUMERIC(18,2) | Saldo do dia anterior |
-| val_liberacoes | NUMERIC(18,2) | Valor das liberações |
-| val_conf_liberacoes | NUMERIC(18,2) | Conferência das liberações |
-| val_soma_anter_liberacoes | NUMERIC(18,2) | Soma anterior + liberações |
-| val_pagamentos | NUMERIC(18,2) | Valor dos pagamentos |
-| val_conf_pagamentos | NUMERIC(18,2) | Conferência dos pagamentos |
-| val_saldo_final | NUMERIC(18,2) | Saldo final do dia |
-
-#### 11. **flc_cenario** - Cenários de Projeção
-Cenários para projeções financeiras futuras.
-
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| seq_cenario | INTEGER (PK) | Identificador único |
-| nom_cenario | VARCHAR(100) | Nome do cenário |
-| dsc_cenario | VARCHAR(255) | Descrição do cenário |
-| dat_criacao | DATE | Data de criação |
-| ind_status | CHAR(1) | Status (A=Ativo, I=Inativo) |
-| dat_inclusao | DATE | Data de cadastro |
-| cod_pessoa_inclusao | INTEGER | Usuário que incluiu |
-| dat_alteracao | DATE | Data da última alteração |
-| cod_pessoa_alteracao | INTEGER | Usuário que alterou |
-
-#### 12. **flc_cenario_ajuste_mensal** - Ajustes Mensais de Cenário
-Ajustes mensais aplicados aos cenários de projeção.
-
-| Campo | Tipo | Descrição |
-|-------|------|-----------|
-| seq_cenario_ajuste | INTEGER (PK) | Identificador único |
-| seq_cenario | INTEGER (FK) | Cenário associado |
-| seq_qualificador | INTEGER (FK) | Qualificador afetado |
-| ano | INTEGER | Ano do ajuste |
-| mes | INTEGER | Mês do ajuste (1-12) |
-| cod_tipo_ajuste | CHAR(1) | Tipo: P=Percentual, V=Valor fixo |
-| val_ajuste | NUMERIC(18,2) | Valor ou percentual do ajuste |
-| dsc_ajuste | VARCHAR(100) | Descrição do ajuste |
-| dat_inclusao | DATE | Data de cadastro |
-
-**Constraint:** UNIQUE (seq_cenario, seq_qualificador, ano, mes)
-
-### 🔗 Relacionamentos Principais
-
-1. **flc_qualificador** (auto-relacionamento)
-   - Um qualificador pai pode ter vários qualificadores filhos
-   - Estrutura hierárquica em árvore
-
-2. **flc_lancamento** → **flc_qualificador**
-   - Cada lançamento pertence a um qualificador
-   - Relacionamento N:1
-
-3. **flc_lancamento** → **flc_tipo_lancamento**
-   - Cada lançamento tem um tipo
-   - Relacionamento N:1
-
-4. **flc_lancamento** → **flc_origem_lancamento**
-   - Cada lançamento tem uma origem
-   - Relacionamento N:1
-
-5. **flc_lancamento** → **flc_conta_bancaria**
-   - Lançamento pode estar vinculado a uma conta (opcional)
-   - Relacionamento N:1
-
-6. **flc_mapeamento** → **flc_qualificador**
-   - Cada mapeamento está associado a um qualificador
-   - Relacionamento N:1
-
-7. **flc_alerta** → **flc_qualificador**
-   - Alerta pode monitorar um qualificador específico (opcional)
-   - Relacionamento N:1
-
-8. **flc_pagamento** → **flc_orgao**
-   - Cada pagamento pertence a um órgão
-   - Relacionamento N:1
-
-9. **flc_cenario_ajuste_mensal** → **flc_cenario**
-   - Ajustes pertencem a um cenário
-   - Relacionamento N:1 com cascade delete
-
-10. **flc_cenario_ajuste_mensal** → **flc_qualificador**
-    - Ajustes aplicados a qualificadores específicos
-    - Relacionamento N:1
-
-### 📝 Observações Importantes
-
-- **Banco de Dados:** SQLite (padrão) - facilmente migrável para PostgreSQL/MySQL
-- **ORM:** SQLAlchemy 2.0+
-- **Convenção de Nomenclatura:** Prefixo "flc_" em todas as tabelas
-- **Campos de Auditoria:** Presente em tabelas principais (dat_inclusao, cod_pessoa_inclusao, dat_alteracao, cod_pessoa_alteracao)
-- **Soft Delete:** Utiliza ind_status (A/I) em vez de exclusão física
-- **Precision Decimal:** NUMERIC(18,2) para todos os valores monetários
+### 📝 Observações
+- **Soft Delete**: A maioria das tabelas usa `ind_status` ('A'/'I').
+- **Auditoria**: Campos `dat_inclusao`, `cod_pessoa_inclusao`, etc.
+- **Precisão**: Valores monetários usam `NUMERIC(18,2)`.
 
 ## 🔧 Comandos Úteis
 
