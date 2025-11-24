@@ -517,38 +517,132 @@
         alert('Valores LOA aplicados na tabela!');
     }
 
-    function aplicarModeloReceita() {
+    async function aplicarModeloReceita() {
         const tipoSelect = document.getElementById('tipo_receita');
-        if (!tipoSelect || tipoSelect.value !== 'REGRESSAO') {
-            alert('Cálculo automático está disponível apenas para Regressão.');
+        if (!tipoSelect) return;
+
+        const tipoModelo = tipoSelect.value;
+
+        if (tipoModelo === 'REGRESSAO') {
+            const beta0 = parseFloat(document.getElementById('reg_beta0')?.value) || 0;
+            const beta1 = parseFloat(document.getElementById('reg_beta1')?.value) || 0;
+            const beta2 = parseFloat(document.getElementById('reg_beta2')?.value) || 0;
+            const pib = parseFloat(document.getElementById('reg_val_pib')?.value) || 0;
+            const inflacao = parseFloat(document.getElementById('reg_val_inflacao')?.value) || 0;
+
+            const resultado = beta0 + (beta1 * pib) + (beta2 * inflacao);
+            const resultadoFormatado = resultado.toFixed(2);
+
+            preencherTabelaReceita(resultadoFormatado);
+            alert('Valores da Regressão calculados e aplicados!');
             return;
         }
 
-        const beta0 = parseFloat(document.getElementById('reg_beta0')?.value) || 0;
-        const beta1 = parseFloat(document.getElementById('reg_beta1')?.value) || 0;
-        const beta2 = parseFloat(document.getElementById('reg_beta2')?.value) || 0;
-        const pib = parseFloat(document.getElementById('reg_val_pib')?.value) || 0;
-        const inflacao = parseFloat(document.getElementById('reg_val_inflacao')?.value) || 0;
+        if (['HOLT_WINTERS', 'ARIMA', 'SARIMA'].includes(tipoModelo)) {
+            const btn = document.querySelector('button[onclick="aplicarModeloReceita()"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i data-lucide="loader" class="animate-spin"></i> Calculando...';
+            btn.disabled = true;
+            lucide.createIcons();
 
-        const resultado = beta0 + (beta1 * pib) + (beta2 * inflacao);
-        const resultadoFormatado = resultado.toFixed(2);
+            try {
+                const seqQualificador = document.querySelector('select[name="receita_config_seq_qualificador"]').value;
+                const mesesProjecao = document.querySelector('input[name="meses_projecao"]').value;
+                const anoBase = document.querySelector('input[name="ano_base"]').value;
+                
+                let config = {};
+                
+                if (tipoModelo === 'HOLT_WINTERS') {
+                    config = {
+                        seasonal_periods: parseInt(document.querySelector('input[name="receita_config_seasonal_periods"]').value),
+                        trend: document.querySelector('select[name="receita_config_trend"]').value,
+                        seasonal: document.querySelector('select[name="receita_config_seasonal"]').value
+                    };
+                } else if (tipoModelo === 'ARIMA' || tipoModelo === 'SARIMA') {
+                    config = {
+                        p: parseInt(document.querySelector('input[name="receita_config_p"]').value),
+                        d: parseInt(document.querySelector('input[name="receita_config_d"]').value),
+                        q: parseInt(document.querySelector('input[name="receita_config_q"]').value)
+                    };
+                }
 
+                const response = await fetch('/simulador/calcular-projecao', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        tipo_modelo: tipoModelo,
+                        seq_qualificador: seqQualificador,
+                        meses_projecao: mesesProjecao,
+                        ano_base: anoBase,
+                        config: config
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Erro ao calcular projeção');
+                }
+
+                // Preencher tabela com os valores retornados
+                preencherTabelaReceitaComArray(data.projecao);
+                alert('Projeção calculada com sucesso!');
+
+            } catch (error) {
+                console.error(error);
+                alert('Erro: ' + error.message);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                lucide.createIcons();
+            }
+            return;
+        }
+
+        alert('Cálculo automático não disponível para este método.');
+    }
+
+    function preencherTabelaReceita(valorFixo) {
+        const TOTAL_MESES = 12;
         document.querySelectorAll('tr[data-row-id^="rec-"]').forEach(row => {
             const [, seq] = row.dataset.rowId.split('-');
             for (let i = 1; i <= TOTAL_MESES; i++) {
                 const tipoField = document.querySelector(`select[name="cod_tipo_ajuste_${i}_${seq}"]`);
                 const valorField = document.querySelector(`input[name="val_ajuste_${i}_${seq}"]`);
 
-                if (tipoField) {
-                    tipoField.value = 'V';
-                }
-                if (valorField) {
-                    valorField.value = resultadoFormatado;
-                }
+                if (tipoField) tipoField.value = 'V';
+                if (valorField) valorField.value = valorFixo;
+            }
+        });
+    }
+
+    function preencherTabelaReceitaComArray(projecao) {
+        // projecao é array de {data: 'YYYY-MM-DD', valor_projetado: 123.45}
+        // Assumindo que a projeção começa no mês 1 do ano base
+        
+        // Agrupar valores por mês (1 a 12)
+        const valoresPorMes = {};
+        projecao.forEach((p, index) => {
+            if (index < 12) {
+                valoresPorMes[index + 1] = p.valor_projetado.toFixed(2);
             }
         });
 
-        alert('Valores da Regressão calculados e aplicados!');
+        document.querySelectorAll('tr[data-row-id^="rec-"]').forEach(row => {
+            const [, seq] = row.dataset.rowId.split('-');
+            for (let i = 1; i <= 12; i++) {
+                const valor = valoresPorMes[i];
+                if (valor !== undefined) {
+                    const tipoField = document.querySelector(`select[name="cod_tipo_ajuste_${i}_${seq}"]`);
+                    const valorField = document.querySelector(`input[name="val_ajuste_${i}_${seq}"]`);
+
+                    if (tipoField) tipoField.value = 'V';
+                    if (valorField) valorField.value = valor;
+                }
+            }
+        });
     }
 
     function aplicarMediaHistorica() {

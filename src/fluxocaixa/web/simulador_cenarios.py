@@ -276,6 +276,63 @@ async def simulador_executar_api(id: int):
     })
 
 
+@router.post('/simulador/calcular-projecao')
+@handle_exceptions
+async def simulador_calcular_projecao(request: Request):
+    """
+    Calcula projeção sob demanda (sem salvar cenário).
+    Usado para preencher a tabela no frontend.
+    """
+    from ..services import modelos_economicos_service as modelos
+    from dateutil.relativedelta import relativedelta
+    
+    data = await request.json()
+    
+    tipo_modelo = data.get('tipo_modelo')
+    seq_qualificador = int(data.get('seq_qualificador'))
+    meses_projecao = int(data.get('meses_projecao', 12))
+    ano_base = int(data.get('ano_base', date.today().year))
+    config = data.get('config', {})
+    
+    # Definir período histórico necessário
+    data_fim = date(ano_base, 12, 31)
+    
+    if tipo_modelo == 'HOLT_WINTERS':
+        # Holt-Winters precisa de pelo menos 24 meses (2 anos)
+        data_inicio = data_fim - relativedelta(years=3) # Pegar 3 anos para garantir
+        dados_hist = modelos.obter_dados_historicos(seq_qualificador, data_inicio, data_fim)
+        
+        try:
+            resultado = modelos.projetar_holt_winters(dados_hist, meses_projecao, config)
+        except ValueError as e:
+            return JSONResponse({'error': str(e)}, status_code=400)
+            
+    elif tipo_modelo == 'ARIMA':
+        data_inicio = data_fim - relativedelta(years=3)
+        dados_hist = modelos.obter_dados_historicos(seq_qualificador, data_inicio, data_fim)
+        
+        try:
+            resultado = modelos.projetar_arima(dados_hist, meses_projecao, config)
+        except ValueError as e:
+            return JSONResponse({'error': str(e)}, status_code=400)
+            
+    elif tipo_modelo == 'SARIMA':
+        data_inicio = data_fim - relativedelta(years=4)
+        dados_hist = modelos.obter_dados_historicos(seq_qualificador, data_inicio, data_fim)
+        
+        try:
+            resultado = modelos.projetar_sarima(dados_hist, meses_projecao, config)
+        except ValueError as e:
+            return JSONResponse({'error': str(e)}, status_code=400)
+            
+    else:
+        return JSONResponse({'error': 'Modelo não suportado para cálculo automático'}, status_code=400)
+    
+    return JSONResponse({
+        'projecao': _dataframe_to_json(resultado)
+    })
+
+
 # ==================== Helper Functions ====================
 
 def _parse_model_config_from_form(form, tipo: str) -> dict:
@@ -283,11 +340,49 @@ def _parse_model_config_from_form(form, tipo: str) -> dict:
     config = {}
     
     # Extrair parâmetros específicos do formulário
-    # TODO: Implementar parsing completo de cada tipo de modelo
     for key, value in form.items():
         if key.startswith(f'{tipo}_config_'):
             param_name = key.replace(f'{tipo}_config_', '')
             config[param_name] = value
+            
+    # Tratamento especial para REGRESSAO
+    tipo_cenario = form.get(f'tipo_cenario_{tipo}')
+    if tipo_cenario == 'REGRESSAO':
+        parametros = []
+        
+        # Beta 0 = Intercepto
+        if f'{tipo}_config_beta0' in form:
+            try:
+                config['alpha'] = float(form.get(f'{tipo}_config_beta0', 0))
+            except ValueError:
+                config['alpha'] = 0.0
+            
+        # Beta 1 + PIB
+        if f'{tipo}_config_beta1' in form and f'{tipo}_config_val_pib' in form:
+            try:
+                parametros.append({
+                    'nome': 'PIB',
+                    'coeficiente': float(form.get(f'{tipo}_config_beta1', 0)),
+                    'valores_projetados': [float(form.get(f'{tipo}_config_val_pib', 0))],
+                    'valores_historicos': []
+                })
+            except ValueError:
+                pass
+            
+        # Beta 2 + Inflação
+        if f'{tipo}_config_beta2' in form and f'{tipo}_config_val_inflacao' in form:
+            try:
+                parametros.append({
+                    'nome': 'Inflação',
+                    'coeficiente': float(form.get(f'{tipo}_config_beta2', 0)),
+                    'valores_projetados': [float(form.get(f'{tipo}_config_val_inflacao', 0))],
+                    'valores_historicos': []
+                })
+            except ValueError:
+                pass
+            
+        if parametros:
+            config['parametros'] = parametros
     
     return config
 
