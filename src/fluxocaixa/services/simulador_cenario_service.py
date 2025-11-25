@@ -472,40 +472,70 @@ def executar_simulacao(seq_simulador_cenario: int) -> Optional[Dict]:
     elif tipo_receita == 'HOLT_WINTERS':
         config = json.loads(config_receita.json_configuracao or '{}')
         seq_qualificador = config.get('seq_qualificador')
+        seq_qualificadores = config.get('seq_qualificadores', [])
         
         # Obter dados históricos
-        data_fim = date(ano_base, 12, 31)
-        data_inicio = data_fim - relativedelta(years=2)  # 2 anos de histórico
-        dados_hist = modelos.obter_dados_historicos(seq_qualificador, data_inicio, data_fim)
+        data_fim = date(ano_base - 1, 12, 31)  # Dados até o ano anterior
+        data_inicio = data_fim - relativedelta(years=3)  # 3 anos de histórico
         
-        projecao_receita = modelos.projetar_holt_winters(dados_hist, meses_projecao, config)
+        if seq_qualificadores and len(seq_qualificadores) > 1:
+            dados_hist = modelos.obter_dados_historicos_agregados(seq_qualificadores, data_inicio, data_fim)
+        elif seq_qualificador:
+            dados_hist = modelos.obter_dados_historicos(seq_qualificador, data_inicio, data_fim)
+        else:
+            dados_hist = pd.DataFrame(columns=['data', 'valor'])
+        
+        if len(dados_hist) >= 12:
+            projecao_receita = modelos.projetar_holt_winters(dados_hist, meses_projecao, config, ano_base)
+        else:
+            projecao_receita = pd.DataFrame({'data': [], 'valor_projetado': []})
         projecao_receita_detalhada = None
         
     elif tipo_receita == 'ARIMA':
         config = json.loads(config_receita.json_configuracao or '{}')
         seq_qualificador = config.get('seq_qualificador')
+        seq_qualificadores = config.get('seq_qualificadores', [])
         
-        data_fim = date(ano_base, 12, 31)
-        data_inicio = data_fim - relativedelta(years=2)
-        dados_hist = modelos.obter_dados_historicos(seq_qualificador, data_inicio, data_fim)
+        data_fim = date(ano_base - 1, 12, 31)
+        data_inicio = data_fim - relativedelta(years=3)
         
-        projecao_receita = modelos.projetar_arima(dados_hist, meses_projecao, config)
+        if seq_qualificadores and len(seq_qualificadores) > 1:
+            dados_hist = modelos.obter_dados_historicos_agregados(seq_qualificadores, data_inicio, data_fim)
+        elif seq_qualificador:
+            dados_hist = modelos.obter_dados_historicos(seq_qualificador, data_inicio, data_fim)
+        else:
+            dados_hist = pd.DataFrame(columns=['data', 'valor'])
+        
+        if len(dados_hist) >= 12:
+            projecao_receita = modelos.projetar_arima(dados_hist, meses_projecao, config, ano_base)
+        else:
+            projecao_receita = pd.DataFrame({'data': [], 'valor_projetado': []})
         projecao_receita_detalhada = None
         
     elif tipo_receita == 'SARIMA':
         config = json.loads(config_receita.json_configuracao or '{}')
         seq_qualificador = config.get('seq_qualificador')
+        seq_qualificadores = config.get('seq_qualificadores', [])
         
-        data_fim = date(ano_base, 12, 31)
-        data_inicio = data_fim - relativedelta(years=3)  # 3 anos para SARIMA
-        dados_hist = modelos.obter_dados_historicos(seq_qualificador, data_inicio, data_fim)
+        data_fim = date(ano_base - 1, 12, 31)
+        data_inicio = data_fim - relativedelta(years=4)  # 4 anos para SARIMA
         
-        projecao_receita = modelos.projetar_sarima(dados_hist, meses_projecao, config)
+        if seq_qualificadores and len(seq_qualificadores) > 1:
+            dados_hist = modelos.obter_dados_historicos_agregados(seq_qualificadores, data_inicio, data_fim)
+        elif seq_qualificador:
+            dados_hist = modelos.obter_dados_historicos(seq_qualificador, data_inicio, data_fim)
+        else:
+            dados_hist = pd.DataFrame(columns=['data', 'valor'])
+        
+        if len(dados_hist) >= 12:
+            projecao_receita = modelos.projetar_sarima(dados_hist, meses_projecao, config, ano_base)
+        else:
+            projecao_receita = pd.DataFrame({'data': [], 'valor_projetado': []})
         projecao_receita_detalhada = None
         
     elif tipo_receita == 'REGRESSAO':
         config = json.loads(config_receita.json_configuracao or '{}')
-        projecao_receita = modelos.projetar_regressao_multipla(meses_projecao, config)
+        projecao_receita = modelos.projetar_regressao_multipla(meses_projecao, config, ano_base)
         projecao_receita_detalhada = None
     else:
         # Fallback: cenário vazio
@@ -536,12 +566,22 @@ def executar_simulacao(seq_simulador_cenario: int) -> Optional[Dict]:
     elif tipo_despesa == 'MEDIA_HISTORICA':
         config = json.loads(config_despesa.json_configuracao or '{}')
         seq_qualificador = config.get('seq_qualificador')
+        seq_qualificadores = config.get('seq_qualificadores', [])
         
-        data_fim = date(ano_base, 12, 31)
-        data_inicio = data_fim - relativedelta(years=2)
-        dados_hist = modelos.obter_dados_historicos(seq_qualificador, data_inicio, data_fim)
+        data_fim = date(ano_base - 1, 12, 31)
+        data_inicio = data_fim - relativedelta(years=3)
         
-        projecao_despesa = modelos.projetar_media_historica(dados_hist, meses_projecao, config)
+        if seq_qualificadores and len(seq_qualificadores) > 1:
+            dados_hist = modelos.obter_dados_historicos_agregados(seq_qualificadores, data_inicio, data_fim)
+        elif seq_qualificador:
+            dados_hist = modelos.obter_dados_historicos(seq_qualificador, data_inicio, data_fim)
+        else:
+            dados_hist = pd.DataFrame(columns=['data', 'valor'])
+        
+        if len(dados_hist) > 0:
+            projecao_despesa = modelos.projetar_media_historica(dados_hist, meses_projecao, config, ano_base)
+        else:
+            projecao_despesa = pd.DataFrame({'data': [], 'valor_projetado': []})
         projecao_despesa_detalhada = None
     else:
         # Fallback

@@ -33,6 +33,41 @@ def get_despesa_qualificadores():
         Qualificador.ind_status == 'A',
     ).order_by(Qualificador.num_qualificador).all()
 
+def get_receita_qualificadores_folha():
+    """Retorna apenas qualificadores de receita que não têm filhos (folhas da árvore)."""
+    from sqlalchemy import not_, exists, select
+    
+    # Subquery para verificar se existe algum filho
+    subquery = select(Qualificador.seq_qualificador).where(
+        Qualificador.cod_qualificador_pai == Qualificador.seq_qualificador
+    ).correlate(Qualificador)
+    
+    # Buscar todos os qualificadores de receita
+    todos = Qualificador.query.filter(
+        Qualificador.num_qualificador.startswith('1'),
+        Qualificador.ind_status == 'A',
+    ).order_by(Qualificador.num_qualificador).all()
+    
+    # Filtrar apenas os que não têm filhos
+    ids_pais = set(q.cod_qualificador_pai for q in todos if q.cod_qualificador_pai)
+    folhas = [q for q in todos if q.seq_qualificador not in ids_pais]
+    
+    return folhas
+
+def get_despesa_qualificadores_folha():
+    """Retorna apenas qualificadores de despesa que não têm filhos (folhas da árvore)."""
+    # Buscar todos os qualificadores de despesa
+    todos = Qualificador.query.filter(
+        Qualificador.num_qualificador.startswith('2'),
+        Qualificador.ind_status == 'A',
+    ).order_by(Qualificador.num_qualificador).all()
+    
+    # Filtrar apenas os que não têm filhos
+    ids_pais = set(q.cod_qualificador_pai for q in todos if q.cod_qualificador_pai)
+    folhas = [q for q in todos if q.seq_qualificador not in ids_pais]
+    
+    return folhas
+
 def create_qualificador(qualificador: Qualificador):
     db.session.add(qualificador)
     db.session.commit()

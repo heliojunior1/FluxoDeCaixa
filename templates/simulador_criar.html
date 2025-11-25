@@ -86,23 +86,52 @@
             <div id="receita_model_fields" class="mb-4 hidden space-y-4 p-4 bg-white rounded border">
                 <h4 class="font-medium text-gray-700">Configuração do Modelo</h4>
 
-                <!-- Seleção de Qualificador para o Modelo (Comum) -->
+                <!-- Seleção de Qualificadores para aplicar o Modelo -->
                 <div id="common_model_params">
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Qualificador Base para Histórico</label>
-                    <select name="receita_config_seq_qualificador" class="w-full rounded-md border-gray-300 p-2 border">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Selecione os Qualificadores para Projeção
+                        <span class="text-xs text-gray-500 ml-2">(cada um será calculado com seus próprios dados históricos)</span>
+                    </label>
+                    
+                    <!-- Botões de seleção rápida -->
+                    <div class="flex gap-2 mb-2">
+                        <button type="button" onclick="toggleTodosQualificadores(true)" 
+                            class="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200">
+                            Selecionar Todos
+                        </button>
+                        <button type="button" onclick="toggleTodosQualificadores(false)" 
+                            class="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200">
+                            Desmarcar Todos
+                        </button>
+                    </div>
+                    
+                    <!-- Lista de qualificadores com checkboxes -->
+                    <div id="qualificadores_list" class="max-h-48 overflow-y-auto border rounded p-2 bg-gray-50 grid grid-cols-2 md:grid-cols-3 gap-1">
                         {% for q in qualificadores_receita %}
-                        <option value="{{ q.seq_qualificador }}">{{ q.dsc_qualificador }}</option>
+                        <label class="flex items-center gap-2 p-1 hover:bg-gray-100 rounded cursor-pointer text-sm">
+                            <input type="checkbox" class="qualificador-checkbox" value="{{ q.seq_qualificador }}" 
+                                data-nome="{{ q.dsc_qualificador }}">
+                            <span class="truncate" title="{{ q.dsc_qualificador }}">{{ q.dsc_qualificador }}</span>
+                        </label>
                         {% endfor %}
-                    </select>
+                    </div>
+                    
+                    <p class="text-xs text-gray-500 mt-1">
+                        <span id="qualificadores_count">0</span> qualificador(es) selecionado(s)
+                    </p>
+                    
+                    <!-- Hidden input para seq_qualificadores -->
+                    <input type="hidden" name="receita_config_seq_qualificadores" id="receita_seq_qualificadores_hidden">
                 </div>
 
                 <!-- Parâmetros Holt-Winters -->
                 <div id="hw_params" class="model-params hidden">
-                    <div class="grid grid-cols-3 gap-4">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
                             <label class="block text-xs font-medium text-gray-600">Período Sazonal</label>
                             <input type="number" name="receita_config_seasonal_periods" value="12"
-                                class="w-full border rounded p-1">
+                                class="w-full border rounded p-1" min="2" max="24">
+                            <p class="text-xs text-gray-400 mt-1">Normalmente 12 para dados mensais</p>
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-600">Tendência</label>
@@ -118,23 +147,86 @@
                                 <option value="mul">Multiplicativa</option>
                             </select>
                         </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">Amortecimento</label>
+                            <select name="receita_config_damped_trend" class="w-full border rounded p-1">
+                                <option value="false">Não</option>
+                                <option value="true">Sim</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Parâmetros ARIMA/SARIMA -->
+                <!-- Parâmetros ARIMA -->
                 <div id="arima_params" class="model-params hidden">
-                    <div class="grid grid-cols-3 gap-4">
+                    <p class="text-xs text-gray-500 mb-2">ARIMA(p,d,q) - Modelo Auto-Regressivo Integrado de Média Móvel</p>
+                    <div class="grid grid-cols-3 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">p (Auto-Regressivo)</label>
+                            <input type="number" name="receita_config_p" value="1" min="0" max="5"
+                                class="w-full border rounded p-1">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">d (Diferenciação)</label>
+                            <input type="number" name="receita_config_d" value="1" min="0" max="2"
+                                class="w-full border rounded p-1">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">q (Média Móvel)</label>
+                            <input type="number" name="receita_config_q" value="1" min="0" max="5"
+                                class="w-full border rounded p-1">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">Auto-seleção</label>
+                            <select name="receita_config_auto_order" class="w-full border rounded p-1">
+                                <option value="false">Manual</option>
+                                <option value="true">Automático</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Parâmetros SARIMA -->
+                <div id="sarima_params" class="model-params hidden">
+                    <p class="text-xs text-gray-500 mb-2">SARIMA(p,d,q)(P,D,Q,s) - ARIMA Sazonal</p>
+                    <div class="grid grid-cols-3 md:grid-cols-4 gap-4 mb-3">
                         <div>
                             <label class="block text-xs font-medium text-gray-600">p (AR)</label>
-                            <input type="number" name="receita_config_p" value="1" class="w-full border rounded p-1">
+                            <input type="number" name="receita_config_p" value="1" min="0" max="3"
+                                class="w-full border rounded p-1">
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-600">d (I)</label>
-                            <input type="number" name="receita_config_d" value="1" class="w-full border rounded p-1">
+                            <input type="number" name="receita_config_d" value="1" min="0" max="2"
+                                class="w-full border rounded p-1">
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-gray-600">q (MA)</label>
-                            <input type="number" name="receita_config_q" value="1" class="w-full border rounded p-1">
+                            <input type="number" name="receita_config_q" value="1" min="0" max="3"
+                                class="w-full border rounded p-1">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">s (Período)</label>
+                            <input type="number" name="receita_config_s" value="12" min="2" max="24"
+                                class="w-full border rounded p-1">
+                        </div>
+                    </div>
+                    <p class="text-xs text-gray-500 mb-2">Parâmetros Sazonais:</p>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">P (AR Sazonal)</label>
+                            <input type="number" name="receita_config_P" value="1" min="0" max="2"
+                                class="w-full border rounded p-1">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">D (I Sazonal)</label>
+                            <input type="number" name="receita_config_D" value="1" min="0" max="1"
+                                class="w-full border rounded p-1">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">Q (MA Sazonal)</label>
+                            <input type="number" name="receita_config_Q" value="1" min="0" max="2"
+                                class="w-full border rounded p-1">
                         </div>
                     </div>
                 </div>
@@ -180,7 +272,8 @@
                     </div>
                 </div>
 
-                <div class="mt-4 flex justify-end">
+                <div class="mt-4 flex justify-end gap-2">
+                    <span id="projecao_status" class="text-sm text-gray-500 self-center"></span>
                     <button type="button" onclick="aplicarModeloReceita()"
                         class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm flex items-center gap-2">
                         <i data-lucide="play"></i> Calcular e Preencher Tabela
@@ -402,26 +495,33 @@
 <script>
 (function () {
     const TOTAL_MESES = 12;
+    let qualificadoresFilhos = [];  // Cache dos qualificadores filhos carregados
 
     function toggleReceitaFields() {
         const tipoSelect = document.getElementById('tipo_receita');
         const modelFields = document.getElementById('receita_model_fields');
         const hwParams = document.getElementById('hw_params');
         const arimaParams = document.getElementById('arima_params');
+        const sarimaParams = document.getElementById('sarima_params');
         const regParams = document.getElementById('regressao_params');
         const commonParams = document.getElementById('common_model_params');
+        const filhosContainer = document.getElementById('qualificador_filhos_container');
 
         if (!tipoSelect || !modelFields) {
             return;
         }
 
-        [hwParams, arimaParams, regParams].forEach(section => {
+        // Esconder todos os parâmetros específicos
+        [hwParams, arimaParams, sarimaParams, regParams].forEach(section => {
             if (section) {
                 section.classList.add('hidden');
             }
         });
         if (commonParams) {
             commonParams.classList.remove('hidden');
+        }
+        if (filhosContainer) {
+            filhosContainer.classList.add('hidden');
         }
 
         if (tipoSelect.value === 'MANUAL') {
@@ -433,8 +533,13 @@
 
         if (tipoSelect.value === 'HOLT_WINTERS' && hwParams) {
             hwParams.classList.remove('hidden');
-        } else if ((tipoSelect.value === 'ARIMA' || tipoSelect.value === 'SARIMA') && arimaParams) {
+            if (filhosContainer) filhosContainer.classList.remove('hidden');
+        } else if (tipoSelect.value === 'ARIMA' && arimaParams) {
             arimaParams.classList.remove('hidden');
+            if (filhosContainer) filhosContainer.classList.remove('hidden');
+        } else if (tipoSelect.value === 'SARIMA' && sarimaParams) {
+            sarimaParams.classList.remove('hidden');
+            if (filhosContainer) filhosContainer.classList.remove('hidden');
         } else if (tipoSelect.value === 'REGRESSAO') {
             if (regParams) {
                 regParams.classList.remove('hidden');
@@ -443,6 +548,9 @@
                 commonParams.classList.add('hidden');
             }
         }
+        
+        // Atualizar lista de filhos se necessário
+        onQualificadorChange();
     }
 
     function toggleDespesaFields() {
@@ -467,6 +575,122 @@
         if (tipoSelect.value === 'MEDIA_HISTORICA' && mediaFields) {
             mediaFields.classList.remove('hidden');
         }
+    }
+
+    async function onQualificadorChange() {
+        const select = document.getElementById('receita_qualificador_select');
+        const filhosContainer = document.getElementById('qualificador_filhos_container');
+        const filhosList = document.getElementById('qualificador_filhos_list');
+        const tipoReceita = document.getElementById('tipo_receita')?.value;
+        
+        if (!select || !filhosContainer || !filhosList) return;
+        
+        // Verificar se o modelo atual suporta qualificadores filhos
+        const modelosComFilhos = ['HOLT_WINTERS', 'ARIMA', 'SARIMA', 'MEDIA_HISTORICA'];
+        if (!modelosComFilhos.includes(tipoReceita)) {
+            filhosContainer.classList.add('hidden');
+            return;
+        }
+        
+        const seqQualificador = select.value;
+        const option = select.options[select.selectedIndex];
+        const hasFilhos = option.dataset.hasFilhos === 'true';
+        
+        if (!hasFilhos) {
+            filhosContainer.classList.add('hidden');
+            return;
+        }
+        
+        filhosContainer.classList.remove('hidden');
+        
+        try {
+            const response = await fetch(`/simulador/qualificador/${seqQualificador}/filhos`);
+            const data = await response.json();
+            
+            if (data.filhos && data.filhos.length > 0) {
+                qualificadoresFilhos = data.filhos;
+                renderFilhosList(data.filhos);
+            } else {
+                filhosContainer.classList.add('hidden');
+            }
+        } catch (error) {
+            console.error('Erro ao carregar qualificadores filhos:', error);
+            filhosContainer.classList.add('hidden');
+        }
+    }
+
+    function renderFilhosList(filhos) {
+        const filhosList = document.getElementById('qualificador_filhos_list');
+        if (!filhosList) return;
+        
+        filhosList.innerHTML = `
+            <p class="text-xs text-gray-500 mb-2">Selecione os qualificadores filhos para agregar:</p>
+            <div class="space-y-1">
+                <label class="flex items-center text-xs">
+                    <input type="checkbox" id="selecionar_todos_filhos" onchange="toggleTodosFilhos(this.checked)" class="mr-2">
+                    <strong>Selecionar todos</strong>
+                </label>
+                <hr class="my-1">
+                ${filhos.map(f => `
+                    <label class="flex items-center text-xs" style="padding-left: ${(f.nivel - 1) * 12}px">
+                        <input type="checkbox" name="qualificador_filho[]" value="${f.seq_qualificador}" 
+                            class="mr-2 filho-checkbox" ${f.is_folha ? 'checked' : ''}>
+                        ${f.dsc_qualificador}
+                    </label>
+                `).join('')}
+            </div>
+        `;
+    }
+
+    function toggleFilhosSelection() {
+        const checkbox = document.getElementById('usar_qualificadores_filhos');
+        const filhosList = document.getElementById('qualificador_filhos_list');
+        
+        if (filhosList) {
+            filhosList.classList.toggle('hidden', !checkbox.checked);
+        }
+    }
+
+    function toggleTodosFilhos(checked) {
+        document.querySelectorAll('.filho-checkbox').forEach(cb => {
+            cb.checked = checked;
+        });
+    }
+
+    function toggleTodosQualificadores(checked) {
+        document.querySelectorAll('.qualificador-checkbox').forEach(cb => {
+            cb.checked = checked;
+        });
+        atualizarContadorQualificadores();
+    }
+    
+    function atualizarContadorQualificadores() {
+        const count = document.querySelectorAll('.qualificador-checkbox:checked').length;
+        const countEl = document.getElementById('qualificadores_count');
+        if (countEl) {
+            countEl.textContent = count;
+        }
+    }
+
+    function getQualificadoresSelecionados() {
+        return Array.from(document.querySelectorAll('.qualificador-checkbox:checked'))
+            .map(cb => parseInt(cb.value));
+    }
+    
+    function preencherLinhaQualificador(seqQualificador, projecao) {
+        // Preenche APENAS a linha do qualificador especificado
+        if (!projecao || !Array.isArray(projecao)) return;
+        
+        projecao.forEach((p, index) => {
+            if (index < 12) {
+                const mes = index + 1;
+                const tipoField = document.querySelector(`select[name="cod_tipo_ajuste_${mes}_${seqQualificador}"]`);
+                const valorField = document.querySelector(`input[name="val_ajuste_${mes}_${seqQualificador}"]`);
+
+                if (tipoField) tipoField.value = 'V';
+                if (valorField) valorField.value = p.valor_projetado.toFixed(2);
+            }
+        });
     }
 
     function aplicarTodos(type, seq) {
@@ -522,6 +746,7 @@
         if (!tipoSelect) return;
 
         const tipoModelo = tipoSelect.value;
+        const statusEl = document.getElementById('projecao_status');
 
         if (tipoModelo === 'REGRESSAO') {
             const beta0 = parseFloat(document.getElementById('reg_beta0')?.value) || 0;
@@ -543,10 +768,16 @@
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i data-lucide="loader" class="animate-spin"></i> Calculando...';
             btn.disabled = true;
+            if (statusEl) statusEl.textContent = 'Processando modelo...';
             lucide.createIcons();
 
             try {
-                const seqQualificador = document.querySelector('select[name="receita_config_seq_qualificador"]').value;
+                const qualificadoresSelecionados = getQualificadoresSelecionados();
+                
+                if (qualificadoresSelecionados.length === 0) {
+                    throw new Error('Selecione pelo menos um qualificador para projeção');
+                }
+                
                 const mesesProjecao = document.querySelector('input[name="meses_projecao"]').value;
                 const anoBase = document.querySelector('input[name="ano_base"]').value;
                 
@@ -554,44 +785,84 @@
                 
                 if (tipoModelo === 'HOLT_WINTERS') {
                     config = {
-                        seasonal_periods: parseInt(document.querySelector('input[name="receita_config_seasonal_periods"]').value),
-                        trend: document.querySelector('select[name="receita_config_trend"]').value,
-                        seasonal: document.querySelector('select[name="receita_config_seasonal"]').value
+                        seasonal_periods: parseInt(document.querySelector('input[name="receita_config_seasonal_periods"]')?.value || 12),
+                        trend: document.querySelector('select[name="receita_config_trend"]')?.value || 'add',
+                        seasonal: document.querySelector('select[name="receita_config_seasonal"]')?.value || 'add',
+                        damped_trend: document.querySelector('select[name="receita_config_damped_trend"]')?.value === 'true'
                     };
-                } else if (tipoModelo === 'ARIMA' || tipoModelo === 'SARIMA') {
+                } else if (tipoModelo === 'ARIMA') {
                     config = {
-                        p: parseInt(document.querySelector('input[name="receita_config_p"]').value),
-                        d: parseInt(document.querySelector('input[name="receita_config_d"]').value),
-                        q: parseInt(document.querySelector('input[name="receita_config_q"]').value)
+                        p: parseInt(document.querySelector('input[name="receita_config_p"]')?.value || 1),
+                        d: parseInt(document.querySelector('input[name="receita_config_d"]')?.value || 1),
+                        q: parseInt(document.querySelector('input[name="receita_config_q"]')?.value || 1),
+                        auto_order: document.querySelector('select[name="receita_config_auto_order"]')?.value === 'true'
+                    };
+                } else if (tipoModelo === 'SARIMA') {
+                    config = {
+                        p: parseInt(document.querySelector('input[name="receita_config_p"]')?.value || 1),
+                        d: parseInt(document.querySelector('input[name="receita_config_d"]')?.value || 1),
+                        q: parseInt(document.querySelector('input[name="receita_config_q"]')?.value || 1),
+                        P: parseInt(document.querySelector('input[name="receita_config_P"]')?.value || 1),
+                        D: parseInt(document.querySelector('input[name="receita_config_D"]')?.value || 1),
+                        Q: parseInt(document.querySelector('input[name="receita_config_Q"]')?.value || 1),
+                        s: parseInt(document.querySelector('input[name="receita_config_s"]')?.value || 12)
                     };
                 }
 
-                const response = await fetch('/simulador/calcular-projecao', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        tipo_modelo: tipoModelo,
-                        seq_qualificador: seqQualificador,
-                        meses_projecao: mesesProjecao,
-                        ano_base: anoBase,
-                        config: config
-                    })
-                });
+                // Processar cada qualificador individualmente
+                let sucessos = 0;
+                let erros = [];
+                
+                for (const seqQualificador of qualificadoresSelecionados) {
+                    try {
+                        if (statusEl) {
+                            const nomeQual = document.querySelector(`.qualificador-checkbox[value="${seqQualificador}"]`)?.dataset.nome || seqQualificador;
+                            statusEl.textContent = `Calculando ${tipoModelo} para ${nomeQual}...`;
+                        }
+                        
+                        const response = await fetch('/simulador/calcular-projecao', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                tipo_modelo: tipoModelo,
+                                seq_qualificador: seqQualificador,  // Um qualificador por vez
+                                meses_projecao: mesesProjecao,
+                                ano_base: anoBase,
+                                config: config
+                            })
+                        });
 
-                const data = await response.json();
+                        const data = await response.json();
 
-                if (!response.ok) {
-                    throw new Error(data.error || 'Erro ao calcular projeção');
+                        if (!response.ok) {
+                            throw new Error(data.error || 'Erro ao calcular projeção');
+                        }
+
+                        // Preencher APENAS a linha do qualificador atual
+                        preencherLinhaQualificador(seqQualificador, data.projecao);
+                        sucessos++;
+                        
+                    } catch (error) {
+                        const nomeQual = document.querySelector(`.qualificador-checkbox[value="${seqQualificador}"]`)?.dataset.nome || seqQualificador;
+                        erros.push(`${nomeQual}: ${error.message}`);
+                        console.error(`Erro no qualificador ${seqQualificador}:`, error);
+                    }
                 }
 
-                // Preencher tabela com os valores retornados
-                preencherTabelaReceitaComArray(data.projecao);
-                alert('Projeção calculada com sucesso!');
+                // Mostrar resultado
+                if (erros.length > 0) {
+                    if (statusEl) statusEl.textContent = `✓ ${sucessos} calculado(s), ✗ ${erros.length} erro(s)`;
+                    alert(`Projeção calculada!\n\nSucessos: ${sucessos}\nErros: ${erros.length}\n\nErros:\n${erros.join('\n')}`);
+                } else {
+                    if (statusEl) statusEl.textContent = `✓ ${tipoModelo} calculado com sucesso para ${sucessos} qualificador(es)`;
+                    alert(`Projeção calculada com sucesso para ${sucessos} qualificador(es)!`);
+                }
 
             } catch (error) {
                 console.error(error);
+                if (statusEl) statusEl.textContent = `✗ Erro: ${error.message}`;
                 alert('Erro: ' + error.message);
             } finally {
                 btn.innerHTML = originalText;
@@ -645,8 +916,55 @@
         });
     }
 
-    function aplicarMediaHistorica() {
-        alert('Aplicação automática da média histórica ainda será implementada.');
+    async function aplicarMediaHistorica() {
+        const periodoMeses = document.querySelector('input[name="despesa_config_periodo_meses"]')?.value || 12;
+        const fatorAjuste = document.querySelector('input[name="despesa_config_fator_ajuste"]')?.value || 1.0;
+        const anoBase = document.querySelector('input[name="ano_base"]')?.value;
+        const mesesProjecao = document.querySelector('input[name="meses_projecao"]')?.value || 12;
+
+        // Para cada qualificador de despesa, calcular a média histórica
+        const qualificadores = document.querySelectorAll('tr[data-row-id^="desp-"]');
+        
+        for (const row of qualificadores) {
+            const [, seq] = row.dataset.rowId.split('-');
+            
+            try {
+                const response = await fetch('/simulador/calcular-projecao', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tipo_modelo: 'MEDIA_HISTORICA',
+                        seq_qualificador: seq,
+                        meses_projecao: parseInt(mesesProjecao),
+                        ano_base: parseInt(anoBase),
+                        config: {
+                            periodo_meses: parseInt(periodoMeses),
+                            fator_ajuste: parseFloat(fatorAjuste),
+                            considerar_sazonalidade: true
+                        }
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.projecao) {
+                    data.projecao.forEach((p, index) => {
+                        if (index < 12) {
+                            const mes = index + 1;
+                            const tipoField = document.querySelector(`select[name="cod_tipo_ajuste_desp_${mes}_${seq}"]`);
+                            const valorField = document.querySelector(`input[name="val_ajuste_desp_${mes}_${seq}"]`);
+
+                            if (tipoField) tipoField.value = 'V';
+                            if (valorField) valorField.value = p.valor_projetado.toFixed(2);
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error(`Erro ao calcular média histórica para qualificador ${seq}:`, error);
+            }
+        }
+
+        alert('Média histórica calculada e aplicada!');
     }
 
     function carregarDadosExistentes() {
@@ -665,6 +983,35 @@
 
         if (!cenarioCompleto) {
             return;
+        }
+
+        // Carregar configuração do modelo de receita
+        if (cenarioCompleto.receita && cenarioCompleto.receita.config) {
+            const tipoReceita = cenarioCompleto.receita.config.cod_tipo_cenario;
+            const tipoSelect = document.getElementById('tipo_receita');
+            if (tipoSelect) {
+                tipoSelect.value = tipoReceita;
+            }
+
+            // Carregar parâmetros do modelo se existirem
+            const jsonConfig = cenarioCompleto.receita.config.json_configuracao;
+            if (jsonConfig && typeof jsonConfig === 'object') {
+                carregarParametrosModelo(jsonConfig, 'receita');
+            }
+        }
+
+        // Carregar configuração do modelo de despesa
+        if (cenarioCompleto.despesa && cenarioCompleto.despesa.config) {
+            const tipoDespesa = cenarioCompleto.despesa.config.cod_tipo_cenario;
+            const tipoSelect = document.getElementById('tipo_despesa');
+            if (tipoSelect) {
+                tipoSelect.value = tipoDespesa;
+            }
+
+            const jsonConfig = cenarioCompleto.despesa.config.json_configuracao;
+            if (jsonConfig && typeof jsonConfig === 'object') {
+                carregarParametrosModelo(jsonConfig, 'despesa');
+            }
         }
 
         const preencher = (ajustes, prefixo) => {
@@ -702,18 +1049,70 @@
         }
     }
 
+    function carregarParametrosModelo(config, tipo) {
+        // Carregar parâmetros específicos do modelo
+        for (const [key, value] of Object.entries(config)) {
+            const input = document.querySelector(`[name="${tipo}_config_${key}"]`);
+            if (input) {
+                if (input.type === 'checkbox') {
+                    input.checked = value === true || value === 'true';
+                } else {
+                    input.value = value;
+                }
+            }
+        }
+
+        // Carregar qualificadores selecionados se existirem
+        if (config.seq_qualificadores && Array.isArray(config.seq_qualificadores)) {
+            config.seq_qualificadores.forEach(seq => {
+                const checkbox = document.querySelector(`.qualificador-checkbox[value="${seq}"]`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                }
+            });
+            atualizarContadorQualificadores();
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         toggleReceitaFields();
         toggleDespesaFields();
         carregarDadosExistentes();
+        
+        // Reativar os toggles após carregar dados
+        setTimeout(() => {
+            toggleReceitaFields();
+            toggleDespesaFields();
+        }, 100);
+        
+        // Adicionar listener para atualizar contador de qualificadores
+        document.querySelectorAll('.qualificador-checkbox').forEach(cb => {
+            cb.addEventListener('change', atualizarContadorQualificadores);
+        });
+        
+        // Adicionar handler para o submit do formulário
+        const form = document.getElementById('form-cenario');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                // Atualizar o hidden input com os qualificadores selecionados
+                const seqQualificadores = getQualificadoresSelecionados();
+                const hiddenInput = document.getElementById('receita_seq_qualificadores_hidden');
+                if (hiddenInput) {
+                    hiddenInput.value = JSON.stringify(seqQualificadores);
+                }
+            });
+        }
     });
 
+    // Expor funções globalmente
     window.toggleReceitaFields = toggleReceitaFields;
     window.toggleDespesaFields = toggleDespesaFields;
     window.aplicarTodos = aplicarTodos;
     window.aplicarLOA = aplicarLOA;
     window.aplicarModeloReceita = aplicarModeloReceita;
     window.aplicarMediaHistorica = aplicarMediaHistorica;
+    window.toggleTodosQualificadores = toggleTodosQualificadores;
+    window.atualizarContadorQualificadores = atualizarContadorQualificadores;
 })();
 </script>
 {% endblock %}

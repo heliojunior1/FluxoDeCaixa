@@ -22,6 +22,14 @@ def list_receita_qualificadores():
 def list_despesa_qualificadores():
     return qualificador_repository.get_despesa_qualificadores()
 
+def list_receita_qualificadores_folha():
+    """Retorna apenas qualificadores de receita que não têm filhos."""
+    return qualificador_repository.get_receita_qualificadores_folha()
+
+def list_despesa_qualificadores_folha():
+    """Retorna apenas qualificadores de despesa que não têm filhos."""
+    return qualificador_repository.get_despesa_qualificadores_folha()
+
 def create_qualificador(num_qualificador: str, dsc_qualificador: str, cod_qualificador_pai: int = None):
     qualificador = Qualificador(
         num_qualificador=num_qualificador,
