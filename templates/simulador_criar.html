@@ -970,12 +970,14 @@
     function carregarDadosExistentes() {
         const form = document.getElementById('form-cenario');
         if (!form || !form.dataset.cenario) {
+            console.log('carregarDadosExistentes: Sem dados de cenário');
             return;
         }
 
         let cenarioCompleto = null;
         try {
             cenarioCompleto = JSON.parse(form.dataset.cenario);
+            console.log('carregarDadosExistentes: Dados carregados:', cenarioCompleto);
         } catch (error) {
             console.error('Erro ao interpretar dados do cenário:', error);
             return;
@@ -991,6 +993,7 @@
             const tipoSelect = document.getElementById('tipo_receita');
             if (tipoSelect) {
                 tipoSelect.value = tipoReceita;
+                console.log('Tipo receita definido:', tipoReceita);
             }
 
             // Carregar parâmetros do modelo se existirem
@@ -1016,8 +1019,11 @@
 
         const preencher = (ajustes, prefixo) => {
             if (!Array.isArray(ajustes)) {
+                console.log('preencher: ajustes não é array', ajustes);
                 return;
             }
+            
+            console.log(`preencher: ${ajustes.length} ajustes para prefixo "${prefixo}"`);
 
             ajustes.forEach(ajuste => {
                 const seqQual = ajuste.seq_qualificador;
@@ -1034,9 +1040,13 @@
 
                 if (tipoField) {
                     tipoField.value = ajuste.cod_tipo_ajuste || 'P';
+                } else {
+                    console.log(`Campo tipo não encontrado: ${tipoName}`);
                 }
                 if (valorField) {
                     valorField.value = ajuste.val_ajuste ?? '';
+                } else {
+                    console.log(`Campo valor não encontrado: ${valorName}`);
                 }
             });
         };

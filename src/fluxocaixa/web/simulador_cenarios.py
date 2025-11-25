@@ -70,26 +70,17 @@ async def simulador_criar(request: Request):
     
     # Configuração de receita
     tipo_cenario_receita = form.get('tipo_cenario_receita', 'MANUAL')
-    config_receita = {}
-    ajustes_receita = None
+    config_receita = _parse_model_config_from_form(form, 'receita')
     
-    if tipo_cenario_receita == 'MANUAL':
-        # Processar ajustes manuais (similar ao cenario.py existente)
-        ajustes_receita = dict(form)
-    else:
-        # Processar parâmetros do modelo econômico
-        # TODO: Parse model-specific parameters from form
-        config_receita = _parse_model_config_from_form(form, 'receita')
+    # Sempre processar ajustes (valores da tabela) - independente do modelo
+    ajustes_receita = dict(form)
     
     # Configuração de despesa
     tipo_cenario_despesa = form.get('tipo_cenario_despesa', 'MANUAL')
-    config_despesa = {}
-    ajustes_despesa = None
+    config_despesa = _parse_model_config_from_form(form, 'despesa')
     
-    if tipo_cenario_despesa == 'MANUAL':
-        ajustes_despesa = dict(form)
-    else:
-        config_despesa = _parse_model_config_from_form(form, 'despesa')
+    # Sempre processar ajustes de despesa
+    ajustes_despesa = dict(form)
     
     # Criar cenário
     simulador = criar_simulador_cenario(
@@ -246,9 +237,9 @@ async def simulador_atualizar(request: Request, id: int):
     config_receita = _parse_model_config_from_form(form, 'receita')
     config_despesa = _parse_model_config_from_form(form, 'despesa')
     
-    # Para cenário manual, incluir ajustes
-    ajustes_receita = dict(form) if tipo_cenario_receita == 'MANUAL' else None
-    ajustes_despesa = dict(form) if tipo_cenario_despesa == 'MANUAL' else None
+    # Sempre incluir ajustes (valores da tabela) - independente do modelo
+    ajustes_receita = dict(form)
+    ajustes_despesa = dict(form)
     
     # Atualizar
     atualizar_simulador_cenario(

@@ -92,8 +92,8 @@ def criar_simulador_cenario(
     )
     repo.create_cenario_receita(cenario_receita)
     
-    # Criar ajustes de receita se for manual
-    if tipo_cenario_receita == 'MANUAL' and ajustes_receita:
+    # Criar ajustes de receita (para todos os tipos de cenário, não apenas MANUAL)
+    if ajustes_receita:
         _criar_ajustes_receita(
             cenario_receita.seq_cenario_receita,
             ajustes_receita,
@@ -115,8 +115,8 @@ def criar_simulador_cenario(
     )
     repo.create_cenario_despesa(cenario_despesa)
     
-    # Criar ajustes de despesa se for manual
-    if tipo_cenario_despesa == 'MANUAL' and ajustes_despesa:
+    # Criar ajustes de despesa (para todos os tipos de cenário, não apenas MANUAL)
+    if ajustes_despesa:
         _criar_ajustes_despesa(
             cenario_despesa.seq_cenario_despesa,
             ajustes_despesa,
@@ -232,9 +232,9 @@ def atualizar_simulador_cenario(
         cenario_receita.cod_tipo_cenario = tipo_cenario_receita
         cenario_receita.json_configuracao = json.dumps(config_receita) if config_receita else None
         
-        # Remover ajustes antigos e criar novos
+        # Remover ajustes antigos e criar novos (para todos os tipos, não apenas MANUAL)
         repo.delete_ajustes_receita_by_cenario_ano(cenario_receita.seq_cenario_receita, ano_base)
-        if tipo_cenario_receita == 'MANUAL' and ajustes_receita:
+        if ajustes_receita:
             _criar_ajustes_receita(cenario_receita.seq_cenario_receita, ajustes_receita, ano_base)
         
         # Atualizar parâmetros econômicos
@@ -248,9 +248,9 @@ def atualizar_simulador_cenario(
         cenario_despesa.cod_tipo_cenario = tipo_cenario_despesa
         cenario_despesa.json_configuracao = json.dumps(config_despesa) if config_despesa else None
         
-        # Remover ajustes antigos e criar novos
+        # Remover ajustes antigos e criar novos (para todos os tipos, não apenas MANUAL)
         repo.delete_ajustes_despesa_by_cenario_ano(cenario_despesa.seq_cenario_despesa, ano_base)
-        if tipo_cenario_despesa == 'MANUAL' and ajustes_despesa:
+        if ajustes_despesa:
             _criar_ajustes_despesa(cenario_despesa.seq_cenario_despesa, ajustes_despesa, ano_base)
     
     repo.commit()
