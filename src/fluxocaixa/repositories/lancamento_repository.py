@@ -19,16 +19,22 @@ class LancamentoRepository:
         self,
         start_date: date | None = None,
         end_date: date | None = None,
-        descricao: str | None = None,
         tipo: int | None = None,
         qualificador_folha: int | None = None,
-    ):
+        seq_conta: int | None = None,
+        cod_origem: int | None = None,
+        page: int = 1,
+        per_page: int = 50,
+        sort_by: str = 'dat_lancamento',
+        sort_order: str = 'desc',
+    ) -> tuple[list, int]:
         query = (
             self.session.query(Lancamento)
             .options(
                 joinedload(Lancamento.qualificador),
                 joinedload(Lancamento.tipo),
-                joinedload(Lancamento.origem)
+                joinedload(Lancamento.origem),
+                joinedload(Lancamento.conta)
             )
             .filter_by(ind_status='A')
         )
@@ -36,16 +42,42 @@ class LancamentoRepository:
         if start_date and end_date:
             query = query.filter(Lancamento.dat_lancamento.between(start_date, end_date))
 
-        if descricao:
-            query = query.join(Qualificador).filter(Qualificador.dsc_qualificador.ilike(f"%{descricao}%"))
-
         if tipo:
             query = query.filter(Lancamento.cod_tipo_lancamento == tipo)
 
         if qualificador_folha:
             query = query.filter(Lancamento.seq_qualificador == qualificador_folha)
 
-        return query.order_by(Lancamento.dat_lancamento.desc()).all()
+        if seq_conta:
+            query = query.filter(Lancamento.seq_conta == seq_conta)
+
+        if cod_origem:
+            query = query.filter(Lancamento.cod_origem_lancamento == cod_origem)
+
+        # Ordenação dinâmica
+        sort_column_map = {
+            'dat_lancamento': Lancamento.dat_lancamento,
+            'val_lancamento': Lancamento.val_lancamento,
+            'cod_tipo_lancamento': Lancamento.cod_tipo_lancamento,
+            'cod_origem_lancamento': Lancamento.cod_origem_lancamento,
+            'seq_qualificador': Lancamento.seq_qualificador,
+            'seq_conta': Lancamento.seq_conta,
+        }
+        sort_column = sort_column_map.get(sort_by, Lancamento.dat_lancamento)
+        
+        if sort_order == 'asc':
+            query = query.order_by(sort_column.asc())
+        else:
+            query = query.order_by(sort_column.desc())
+
+        # Contagem total para paginação
+        total_count = query.count()
+
+        # Aplicar paginação
+        offset = (page - 1) * per_page
+        lancamentos = query.offset(offset).limit(per_page).all()
+
+        return lancamentos, total_count
 
     def get_total_by_tipo_and_period(
         self,

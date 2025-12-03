@@ -21,13 +21,29 @@ from ..models import (
 def list_lancamentos(
     start_date: date | None = None,
     end_date: date | None = None,
-    descricao: str | None = None,
     tipo: int | None = None,
     qualificador_folha: int | None = None,
+    seq_conta: int | None = None,
+    cod_origem: int | None = None,
+    page: int = 1,
+    per_page: int = 50,
+    sort_by: str = 'dat_lancamento',
+    sort_order: str = 'desc',
     repo: LancamentoRepository | None = None
-):
+) -> tuple[list, int]:
     repo = repo or LancamentoRepository()
-    return repo.list(start_date, end_date, descricao, tipo, qualificador_folha)
+    return repo.list(
+        start_date=start_date,
+        end_date=end_date,
+        tipo=tipo,
+        qualificador_folha=qualificador_folha,
+        seq_conta=seq_conta,
+        cod_origem=cod_origem,
+        page=page,
+        per_page=per_page,
+        sort_by=sort_by,
+        sort_order=sort_order
+    )
 
 
 def list_tipos_lancamento():
@@ -156,12 +172,12 @@ def import_lancamentos_service(
     try:
         for i, item in enumerate(rows, start=2):
             dat = item.get('Data') or item.get('dat_lancamento')
-            desc = item.get('Descrição') or item.get('descricao')
+            desc = item.get('Qualificador') or item.get('Descrição') or item.get('descricao')
             valor = item.get('Valor (R$)') or item.get('val_lancamento')
             tipo_raw = item.get('Tipo') or item.get('cod_tipo_lancamento')
 
             if not (dat and desc and valor and tipo_raw):
-                errors.append(f"Linha {i}: Dados incompletos (Data, Descrição, Valor ou Tipo faltando)")
+                errors.append(f"Linha {i}: Dados incompletos (Data, Qualificador, Valor ou Tipo faltando)")
                 continue
 
             if isinstance(dat, datetime):

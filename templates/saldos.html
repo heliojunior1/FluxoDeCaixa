@@ -24,71 +24,136 @@
 </form>
 
 <!-- Filtros -->
-<form method="POST" action="{{ url_for('saldos') }}" class="bg-white p-6 rounded-lg shadow-md mb-8">
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+<form id="filter-form" method="POST" action="{{ url_for('saldos') }}" class="bg-white p-6 rounded-lg shadow-md mb-8">
+    <input type="hidden" name="sort_by" id="sort_by" value="{{ sort_by }}">
+    <input type="hidden" name="sort_order" id="sort_order" value="{{ sort_order }}">
+    <input type="hidden" name="page" id="page_input" value="{{ page }}">
+    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <div>
             <label for="competencia" class="block text-sm font-medium text-gray-700">Competência</label>
             <div class="flex items-center mt-1">
-                <input type="date" name="start_date"
-                    class="form-input block w-full rounded-md border-gray-300 shadow-sm" placeholder="de">
-                <span class="mx-2 text-gray-500">-</span>
-                <input type="date" name="end_date" class="form-input block w-full rounded-md border-gray-300 shadow-sm"
-                    placeholder="a">
+                <input type="date" name="start_date" value="{{ filtros.start_date }}"
+                    class="form-input block w-full rounded-md border-gray-300 shadow-sm text-sm" placeholder="de">
+                <span class="mx-1 text-gray-500">-</span>
+                <input type="date" name="end_date" value="{{ filtros.end_date }}"
+                    class="form-input block w-full rounded-md border-gray-300 shadow-sm text-sm" placeholder="a">
             </div>
         </div>
         <div>
             <label for="tipo" class="block text-sm font-medium text-gray-700">Tipo</label>
-            <select name="tipo" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+            <select name="tipo" class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
                 <option value="">Todos</option>
                 {% for t in tipos %}
-                <option value="{{ t.cod_tipo_lancamento }}">{{ t.dsc_tipo_lancamento }}</option>
+                <option value="{{ t.cod_tipo_lancamento }}" {% if filtros.tipo == t.cod_tipo_lancamento %}selected{% endif %}>{{ t.dsc_tipo_lancamento }}</option>
                 {% endfor %}
             </select>
         </div>
         <div>
-            <label for="descricao" class="block text-sm font-medium text-gray-700">Descrição</label>
-            <input type="text" name="descricao"
-                class="form-input mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-                placeholder="Buscar por descrição...">
-        </div>
-        <div>
-            <label for="origem" class="block text-sm font-medium text-gray-700">Qualificador</label>
+            <label for="qualificador_folha" class="block text-sm font-medium text-gray-700">Qualificador</label>
             <select name="qualificador_folha"
-                class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
                 <option value="">Todos</option>
                 {% for q in qualificadores_folha %}
-                <option value="{{ q.seq_qualificador }}">{{ q.num_qualificador }} - {{ q.dsc_qualificador }}</option>
+                <option value="{{ q.seq_qualificador }}" {% if filtros.qualificador_folha == q.seq_qualificador %}selected{% endif %}>{{ q.num_qualificador }} - {{ q.dsc_qualificador }}</option>
                 {% endfor %}
             </select>
         </div>
-    </div>
-    <div class="flex justify-end mt-6">
-        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg">
-            Consultar
-        </button>
+        <div>
+            <label for="seq_conta" class="block text-sm font-medium text-gray-700">Conta Bancária</label>
+            <select name="seq_conta"
+                class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
+                <option value="">Todas</option>
+                {% for c in contas %}
+                <option value="{{ c.seq_conta }}" {% if filtros.seq_conta == c.seq_conta %}selected{% endif %}>{{ c.cod_banco }} / {{ c.num_agencia }} / {{ c.num_conta }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="cod_origem" class="block text-sm font-medium text-gray-700">Origem</label>
+            <select name="cod_origem"
+                class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm text-sm">
+                <option value="">Todas</option>
+                {% for o in origens %}
+                <option value="{{ o.cod_origem_lancamento }}" {% if filtros.cod_origem == o.cod_origem_lancamento %}selected{% endif %}>{{ o.dsc_origem_lancamento }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="flex items-end">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg w-full">
+                Consultar
+            </button>
+        </div>
     </div>
 </form>
 
 <!-- Tabela de Lançamentos -->
 <div class="bg-white p-6 rounded-lg shadow-md">
+    {% if lancamentos|length == 0 %}
+    <div class="text-center py-12">
+        <i data-lucide="search-x" class="w-16 h-16 mx-auto text-gray-400 mb-4"></i>
+        <h3 class="text-lg font-medium text-gray-600 mb-2">Pesquisa sem resultados</h3>
+        <p class="text-gray-500">Não foram encontrados lançamentos com os filtros selecionados.</p>
+        <p class="text-gray-400 text-sm mt-2">Tente ajustar os critérios de busca ou limpar os filtros.</p>
+    </div>
+    {% else %}
+    <!-- Info de resultados e paginação superior -->
+    <div class="flex justify-between items-center mb-4">
+        <div class="text-sm text-gray-600">
+            Mostrando {{ ((page - 1) * per_page) + 1 }} - {{ [page * per_page, total_count]|min }} de {{ total_count }} lançamentos
+        </div>
+        <div class="text-sm text-gray-500">
+            Ordenado por: <span class="font-medium">
+            {% if sort_by == 'dat_lancamento' %}Data{% elif sort_by == 'val_lancamento' %}Valor{% elif sort_by == 'cod_tipo_lancamento' %}Tipo{% elif sort_by == 'cod_origem_lancamento' %}Origem{% elif sort_by == 'seq_qualificador' %}Qualificador{% elif sort_by == 'seq_conta' %}Conta{% endif %}
+            </span>
+            ({% if sort_order == 'desc' %}decrescente{% else %}crescente{% endif %})
+        </div>
+    </div>
     <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
             <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Descrição
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 sortable-header" data-sort="dat_lancamento">
+                    <div class="flex items-center">
+                        Data
+                        <i data-lucide="{% if sort_by == 'dat_lancamento' %}{% if sort_order == 'desc' %}chevron-down{% else %}chevron-up{% endif %}{% else %}chevrons-up-down{% endif %}" class="w-4 h-4 ml-1"></i>
+                    </div>
                 </th>
-                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Valor (R$)
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 sortable-header" data-sort="seq_qualificador">
+                    <div class="flex items-center">
+                        Qualificador
+                        <i data-lucide="{% if sort_by == 'seq_qualificador' %}{% if sort_order == 'desc' %}chevron-down{% else %}chevron-up{% endif %}{% else %}chevrons-up-down{% endif %}" class="w-4 h-4 ml-1"></i>
+                    </div>
                 </th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Origem</th>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conta</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 sortable-header" data-sort="val_lancamento">
+                    <div class="flex items-center justify-end">
+                        Valor (R$)
+                        <i data-lucide="{% if sort_by == 'val_lancamento' %}{% if sort_order == 'desc' %}chevron-down{% else %}chevron-up{% endif %}{% else %}chevrons-up-down{% endif %}" class="w-4 h-4 ml-1"></i>
+                    </div>
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 sortable-header" data-sort="cod_tipo_lancamento">
+                    <div class="flex items-center">
+                        Tipo
+                        <i data-lucide="{% if sort_by == 'cod_tipo_lancamento' %}{% if sort_order == 'desc' %}chevron-down{% else %}chevron-up{% endif %}{% else %}chevrons-up-down{% endif %}" class="w-4 h-4 ml-1"></i>
+                    </div>
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 sortable-header" data-sort="cod_origem_lancamento">
+                    <div class="flex items-center">
+                        Origem
+                        <i data-lucide="{% if sort_by == 'cod_origem_lancamento' %}{% if sort_order == 'desc' %}chevron-down{% else %}chevron-up{% endif %}{% else %}chevrons-up-down{% endif %}" class="w-4 h-4 ml-1"></i>
+                    </div>
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 sortable-header" data-sort="seq_conta">
+                    <div class="flex items-center">
+                        Conta
+                        <i data-lucide="{% if sort_by == 'seq_conta' %}{% if sort_order == 'desc' %}chevron-down{% else %}chevron-up{% endif %}{% else %}chevrons-up-down{% endif %}" class="w-4 h-4 ml-1"></i>
+                    </div>
+                </th>
                 <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
             </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
             {% for l in lancamentos %}
             <tr>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ l.dat_lancamento.strftime('%Y-%m-%d')
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">{{ l.dat_lancamento.strftime('%d/%m/%Y')
                     }}</td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-800 font-medium">{{
                     l.qualificador.num_qualificador }} - {{ l.qualificador.dsc_qualificador }}</td>
@@ -143,6 +208,76 @@
             {% endfor %}
         </tbody>
     </table>
+    
+    <!-- Paginação -->
+    {% if total_pages > 1 %}
+    <div class="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 mt-4">
+        <div class="flex flex-1 justify-between sm:hidden">
+            {% if page > 1 %}
+            <button type="button" onclick="goToPage({{ page - 1 }})" class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Anterior</button>
+            {% endif %}
+            {% if page < total_pages %}
+            <button type="button" onclick="goToPage({{ page + 1 }})" class="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Próxima</button>
+            {% endif %}
+        </div>
+        <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+            <div>
+                <p class="text-sm text-gray-700">
+                    Página <span class="font-medium">{{ page }}</span> de <span class="font-medium">{{ total_pages }}</span>
+                </p>
+            </div>
+            <div>
+                <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                    <!-- Primeira página -->
+                    <button type="button" onclick="goToPage(1)" {% if page == 1 %}disabled{% endif %}
+                        class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 {% if page == 1 %}cursor-not-allowed opacity-50{% endif %}">
+                        <i data-lucide="chevrons-left" class="w-4 h-4"></i>
+                    </button>
+                    <!-- Página anterior -->
+                    <button type="button" onclick="goToPage({{ page - 1 }})" {% if page == 1 %}disabled{% endif %}
+                        class="relative inline-flex items-center px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 {% if page == 1 %}cursor-not-allowed opacity-50{% endif %}">
+                        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                    </button>
+                    
+                    <!-- Números das páginas -->
+                    {% set start_page = [1, page - 2]|max %}
+                    {% set end_page = [total_pages, page + 2]|min %}
+                    
+                    {% if start_page > 1 %}
+                    <button type="button" onclick="goToPage(1)" class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">1</button>
+                    {% if start_page > 2 %}
+                    <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300">...</span>
+                    {% endif %}
+                    {% endif %}
+                    
+                    {% for p in range(start_page, end_page + 1) %}
+                    <button type="button" onclick="goToPage({{ p }})"
+                        class="relative inline-flex items-center px-4 py-2 text-sm font-semibold ring-1 ring-inset ring-gray-300 focus:z-20 focus:outline-offset-0 {% if p == page %}z-10 bg-blue-600 text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600{% else %}text-gray-900 hover:bg-gray-50{% endif %}">{{ p }}</button>
+                    {% endfor %}
+                    
+                    {% if end_page < total_pages %}
+                    {% if end_page < total_pages - 1 %}
+                    <span class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-700 ring-1 ring-inset ring-gray-300">...</span>
+                    {% endif %}
+                    <button type="button" onclick="goToPage({{ total_pages }})" class="relative inline-flex items-center px-4 py-2 text-sm font-semibold text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0">{{ total_pages }}</button>
+                    {% endif %}
+                    
+                    <!-- Próxima página -->
+                    <button type="button" onclick="goToPage({{ page + 1 }})" {% if page == total_pages %}disabled{% endif %}
+                        class="relative inline-flex items-center px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 {% if page == total_pages %}cursor-not-allowed opacity-50{% endif %}">
+                        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                    </button>
+                    <!-- Última página -->
+                    <button type="button" onclick="goToPage({{ total_pages }})" {% if page == total_pages %}disabled{% endif %}
+                        class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 {% if page == total_pages %}cursor-not-allowed opacity-50{% endif %}">
+                        <i data-lucide="chevrons-right" class="w-4 h-4"></i>
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
 </div>
 
 <!-- Modal de Inserção Manual -->
@@ -156,6 +291,8 @@
         </div>
         <div class="mt-5">
             <form id="manual-entry-form" action="{{ url_for('add_lancamento') }}" method="POST">
+                <!-- Campo hidden para origem Manual automática -->
+                <input type="hidden" name="cod_origem_lancamento" value="{{ cod_origem_manual }}">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label for="dat_lancamento" class="block text-sm font-medium text-gray-700">Data</label>
@@ -188,16 +325,6 @@
                             class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
                             {% for t in tipos %}
                             <option value="{{ t.cod_tipo_lancamento }}">{{ t.dsc_tipo_lancamento }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="md:col-span-2">
-                        <label for="cod_origem_lancamento"
-                            class="block text-sm font-medium text-gray-700">Origem</label>
-                        <select name="cod_origem_lancamento" id="cod_origem_lancamento"
-                            class="form-select mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
-                            {% for o in origens %}
-                            <option value="{{ o.cod_origem_lancamento }}">{{ o.dsc_origem_lancamento }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -316,7 +443,36 @@
 
 {% block scripts %}
 <script>
+    // Função para navegar para uma página
+    function goToPage(page) {
+        document.getElementById('page_input').value = page;
+        document.getElementById('filter-form').submit();
+    }
+
+    // Função para ordenar por coluna
+    function sortBy(column) {
+        const currentSortBy = document.getElementById('sort_by').value;
+        const currentSortOrder = document.getElementById('sort_order').value;
+        
+        if (currentSortBy === column) {
+            // Inverte a ordem se clicar na mesma coluna
+            document.getElementById('sort_order').value = currentSortOrder === 'desc' ? 'asc' : 'desc';
+        } else {
+            document.getElementById('sort_by').value = column;
+            document.getElementById('sort_order').value = 'desc';
+        }
+        document.getElementById('page_input').value = 1; // Volta para primeira página ao ordenar
+        document.getElementById('filter-form').submit();
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
+        // Adicionar listeners para ordenação nas colunas
+        document.querySelectorAll('.sortable-header').forEach(header => {
+            header.addEventListener('click', () => {
+                sortBy(header.dataset.sort);
+            });
+        });
+
         // Modal de Inserção Manual
         const manualEntryBtn = document.getElementById('manual-entry-btn');
         const manualModal = document.getElementById('manual-entry-modal');

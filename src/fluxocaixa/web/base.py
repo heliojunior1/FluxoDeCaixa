@@ -73,17 +73,26 @@ async def recreate_db():
 async def saldos(request: Request):
     start_date = None
     end_date = None
-    descricao = None
     tipo = None
     qualificador_folha = None
+    seq_conta = None
+    cod_origem = None
+    page = 1
+    per_page = 50
+    sort_by = 'dat_lancamento'
+    sort_order = 'desc'
 
     if request.method == 'POST':
         form = await request.form()
         sd_str = form.get('start_date')
         ed_str = form.get('end_date')
-        descricao = form.get('descricao')
         tipo_str = form.get('tipo')
         qual_str = form.get('qualificador_folha')
+        conta_str = form.get('seq_conta')
+        origem_str = form.get('cod_origem')
+        page_str = form.get('page')
+        sort_by = form.get('sort_by', 'dat_lancamento')
+        sort_order = form.get('sort_order', 'desc')
 
         if sd_str and ed_str:
             start_date = date.fromisoformat(sd_str)
@@ -94,14 +103,37 @@ async def saldos(request: Request):
         
         if qual_str:
             qualificador_folha = int(qual_str)
+        
+        if conta_str:
+            seq_conta = int(conta_str)
+        
+        if origem_str:
+            cod_origem = int(origem_str)
+        
+        if page_str:
+            page = int(page_str)
+    else:
+        # GET request - check query params
+        page_str = request.query_params.get('page')
+        sort_by = request.query_params.get('sort_by', 'dat_lancamento')
+        sort_order = request.query_params.get('sort_order', 'desc')
+        if page_str:
+            page = int(page_str)
 
-    lancamentos = list_lancamentos(
+    lancamentos, total_count = list_lancamentos(
         start_date=start_date,
         end_date=end_date,
-        descricao=descricao,
         tipo=tipo,
-        qualificador_folha=qualificador_folha
+        qualificador_folha=qualificador_folha,
+        seq_conta=seq_conta,
+        cod_origem=cod_origem,
+        page=page,
+        per_page=per_page,
+        sort_by=sort_by,
+        sort_order=sort_order
     )
+
+    total_pages = (total_count + per_page - 1) // per_page if total_count > 0 else 1
 
     tipos = list_tipos_lancamento()
     origens = list_origens_lancamento()
@@ -109,6 +141,10 @@ async def saldos(request: Request):
     qualificadores = list_active_qualificadores()
     qualificadores_folha = [q for q in qualificadores if q.is_folha()]
     contas = list_contas_bancarias()
+
+    # Obter código da origem "Manual" para inserção automática
+    origem_manual = next((o for o in origens if o.dsc_origem_lancamento == 'Manual'), None)
+    cod_origem_manual = origem_manual.cod_origem_lancamento if origem_manual else 1
 
     return templates.TemplateResponse(
         'saldos.html',
@@ -120,6 +156,21 @@ async def saldos(request: Request):
             'qualificadores': qualificadores,
             'qualificadores_folha': qualificadores_folha,
             'contas': contas,
+            'page': page,
+            'per_page': per_page,
+            'total_count': total_count,
+            'total_pages': total_pages,
+            'sort_by': sort_by,
+            'sort_order': sort_order,
+            'cod_origem_manual': cod_origem_manual,
+            'filtros': {
+                'start_date': start_date.isoformat() if start_date else '',
+                'end_date': end_date.isoformat() if end_date else '',
+                'tipo': tipo or '',
+                'qualificador_folha': qualificador_folha or '',
+                'seq_conta': seq_conta or '',
+                'cod_origem': cod_origem or '',
+            },
         },
     )
 
@@ -160,12 +211,12 @@ async def download_lancamento_template():
     """Return an XLSX template for bulk Lancamento import."""
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.append(["Data", "Descrição", "Valor (R$)", "Tipo"])
+    ws.append(["Data", "Qualificador", "Valor (R$)", "Tipo", "Banco", "Agencia", "Conta"])
     exemplos = [
-        (date(2025, 1, 15), "ICMS", 700000.0, "Entrada"),
-        (date(2025, 1, 15), "REPASSE MUNICÍPIOS", -420000.0, "Saída"),
-        (date(2025, 2, 15), "FPE", 710000.0, "Entrada"),
-        (date(2025, 2, 15), "FOLHA", -525000.0, "Saída"),
+        (date(2025, 1, 15), "ICMS", 700000.0, "Entrada", "001", "0001", "123456-7"),
+        (date(2025, 1, 15), "REPASSE MUNICÍPIOS", -420000.0, "Saída", "001", "0001", "123456-7"),
+        (date(2025, 2, 15), "FPE", 710000.0, "Entrada", "341", "3200", "556677-8"),
+        (date(2025, 2, 15), "FOLHA", -525000.0, "Saída", "237", "1234", "98765-4"),
     ]
     for e in exemplos:
         ws.append(list(e))
