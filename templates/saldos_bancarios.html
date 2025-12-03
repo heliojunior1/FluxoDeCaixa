@@ -399,7 +399,9 @@
 
             editForm.action = `/saldos-bancarios/${seq}/editar`;
             document.getElementById('edit_conta_display').value = contasMap[seqConta] || '';
-            document.getElementById('edit_dat_display').value = new Date(datSaldo).toLocaleDateString('pt-BR');
+            // Format date without timezone conversion (datSaldo is YYYY-MM-DD)
+            const [year, month, day] = datSaldo.split('-');
+            document.getElementById('edit_dat_display').value = `${day}/${month}/${year}`;
             document.getElementById('edit_val_saldo').value = valSaldo;
 
             editModal.classList.remove('hidden');
