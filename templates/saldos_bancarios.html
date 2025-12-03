@@ -17,6 +17,32 @@
         </button>
     </div>
 
+    <!-- Success Message -->
+    {% if success_message %}
+    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg relative" role="alert">
+        <div class="flex items-center">
+            <i data-lucide="check-circle" class="w-5 h-5 mr-2"></i>
+            <span class="block sm:inline">{{ success_message }}</span>
+        </div>
+        <button type="button" onclick="this.parentElement.remove()" class="absolute top-0 bottom-0 right-0 px-4 py-3">
+            <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- Error Message -->
+    {% if error_message %}
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg relative" role="alert">
+        <div class="flex items-start">
+            <i data-lucide="alert-circle" class="w-5 h-5 mr-2 mt-0.5"></i>
+            <pre class="block sm:inline whitespace-pre-wrap text-sm">{{ error_message }}</pre>
+        </div>
+        <button type="button" onclick="this.parentElement.remove()" class="absolute top-0 bottom-0 right-0 px-4 py-3">
+            <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+    </div>
+    {% endif %}
+
     <!-- Import Section -->
     <form action="{{ url_for('import_saldos_bancarios') }}" method="post" enctype="multipart/form-data"
         class="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
@@ -64,14 +90,34 @@
 
     <!-- Table -->
     <div class="bg-white p-6 rounded-lg shadow-md">
+        <!-- Pagination Info -->
+        <div class="flex justify-between items-center mb-4">
+            <span class="text-sm text-gray-600">
+                Exibindo {{ ((page - 1) * per_page) + 1 if saldos else 0 }} - {{ ((page - 1) * per_page) + saldos|length }} de {{ total_count }} registros
+            </span>
+        </div>
+        
         <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
                 <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Conta
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="sortTable('dat_saldo')">
+                        Data
+                        {% if sort_by == 'dat_saldo' %}
+                            <i data-lucide="{{ 'arrow-up' if sort_order == 'asc' else 'arrow-down' }}" class="w-4 h-4 inline-block ml-1"></i>
+                        {% endif %}
                     </th>
-                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Saldo
-                        (R$)</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="sortTable('seq_conta')">
+                        Conta
+                        {% if sort_by == 'seq_conta' %}
+                            <i data-lucide="{{ 'arrow-up' if sort_order == 'asc' else 'arrow-down' }}" class="w-4 h-4 inline-block ml-1"></i>
+                        {% endif %}
+                    </th>
+                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onclick="sortTable('val_saldo')">
+                        Saldo (R$)
+                        {% if sort_by == 'val_saldo' %}
+                            <i data-lucide="{{ 'arrow-up' if sort_order == 'asc' else 'arrow-down' }}" class="w-4 h-4 inline-block ml-1"></i>
+                        {% endif %}
+                    </th>
                     <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Ações
                     </th>
                 </tr>
@@ -116,8 +162,76 @@
                 {% endif %}
             </tbody>
         </table>
+        
+        <!-- Pagination Controls -->
+        {% if total_pages > 1 %}
+        <nav class="flex justify-center mt-6">
+            <ul class="flex items-center space-x-1">
+                <!-- First Page -->
+                <li>
+                    <button onclick="goToPage(1)" {% if page == 1 %}disabled{% endif %}
+                        class="px-3 py-2 rounded-md {% if page == 1 %}bg-gray-100 text-gray-400 cursor-not-allowed{% else %}bg-white text-gray-700 hover:bg-gray-100{% endif %} border">
+                        <i data-lucide="chevrons-left" class="w-4 h-4"></i>
+                    </button>
+                </li>
+                <!-- Previous Page -->
+                <li>
+                    <button onclick="goToPage({{ page - 1 }})" {% if page == 1 %}disabled{% endif %}
+                        class="px-3 py-2 rounded-md {% if page == 1 %}bg-gray-100 text-gray-400 cursor-not-allowed{% else %}bg-white text-gray-700 hover:bg-gray-100{% endif %} border">
+                        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                    </button>
+                </li>
+                
+                <!-- Page Numbers -->
+                {% set start_page = [page - 2, 1] | max %}
+                {% set end_page = [page + 2, total_pages] | min %}
+                
+                {% if start_page > 1 %}
+                <li><span class="px-2 text-gray-500">...</span></li>
+                {% endif %}
+                
+                {% for p in range(start_page, end_page + 1) %}
+                <li>
+                    <button onclick="goToPage({{ p }})"
+                        class="px-4 py-2 rounded-md border {% if p == page %}bg-blue-600 text-white{% else %}bg-white text-gray-700 hover:bg-gray-100{% endif %}">
+                        {{ p }}
+                    </button>
+                </li>
+                {% endfor %}
+                
+                {% if end_page < total_pages %}
+                <li><span class="px-2 text-gray-500">...</span></li>
+                {% endif %}
+                
+                <!-- Next Page -->
+                <li>
+                    <button onclick="goToPage({{ page + 1 }})" {% if page == total_pages %}disabled{% endif %}
+                        class="px-3 py-2 rounded-md {% if page == total_pages %}bg-gray-100 text-gray-400 cursor-not-allowed{% else %}bg-white text-gray-700 hover:bg-gray-100{% endif %} border">
+                        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                    </button>
+                </li>
+                <!-- Last Page -->
+                <li>
+                    <button onclick="goToPage({{ total_pages }})" {% if page == total_pages %}disabled{% endif %}
+                        class="px-3 py-2 rounded-md {% if page == total_pages %}bg-gray-100 text-gray-400 cursor-not-allowed{% else %}bg-white text-gray-700 hover:bg-gray-100{% endif %} border">
+                        <i data-lucide="chevrons-right" class="w-4 h-4"></i>
+                    </button>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
     </div>
 </div>
+
+<!-- Hidden form for pagination and sorting -->
+<form id="pagination-form" method="POST" action="{{ url_for('saldos_bancarios') }}" style="display: none;">
+    <input type="hidden" name="seq_conta" value="{{ seq_conta_filter or '' }}">
+    <input type="hidden" name="data_inicio" value="{{ data_inicio_filter or '' }}">
+    <input type="hidden" name="data_fim" value="{{ data_fim_filter or '' }}">
+    <input type="hidden" name="page" id="page-input" value="{{ page }}">
+    <input type="hidden" name="sort_by" id="sort-by-input" value="{{ sort_by }}">
+    <input type="hidden" name="sort_order" id="sort-order-input" value="{{ sort_order }}">
+</form>
 
 <!-- Modal de Novo Saldo -->
 <div id="novo-saldo-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
@@ -219,6 +333,28 @@
 
 {% block scripts %}
 <script>
+    // Pagination function
+    function goToPage(pageNum) {
+        document.getElementById('page-input').value = pageNum;
+        document.getElementById('pagination-form').submit();
+    }
+    
+    // Sorting function
+    function sortTable(column) {
+        const currentSortBy = '{{ sort_by }}';
+        const currentSortOrder = '{{ sort_order }}';
+        
+        let newSortOrder = 'asc';
+        if (column === currentSortBy) {
+            newSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+        }
+        
+        document.getElementById('sort-by-input').value = column;
+        document.getElementById('sort-order-input').value = newSortOrder;
+        document.getElementById('page-input').value = 1; // Reset to page 1 when sorting
+        document.getElementById('pagination-form').submit();
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         // Modal de Novo Saldo
         const novoSaldoBtn = document.getElementById('novo-saldo-btn');

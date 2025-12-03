@@ -9,6 +9,15 @@ from fastapi import APIRouter, HTTPException
 logger = logging.getLogger(__name__)
 
 
+def _rollback_session():
+    """Rollback the database session to recover from errors."""
+    try:
+        from ..models.base import db
+        db.session.rollback()
+    except Exception as e:
+        logger.warning("Failed to rollback session: %s", e)
+
+
 def handle_exceptions(func):
     """Wrap endpoint functions to provide basic exception handling."""
 
@@ -22,6 +31,8 @@ def handle_exceptions(func):
                 raise
             except Exception as exc:  # pragma: no cover - defensive
                 logger.exception("Unhandled exception in endpoint: %s", exc)
+                # Rollback session to recover from database errors
+                _rollback_session()
                 raise HTTPException(status_code=500, detail="Internal server error")
 
         return async_wrapper
@@ -34,6 +45,8 @@ def handle_exceptions(func):
             raise
         except Exception as exc:  # pragma: no cover - defensive
             logger.exception("Unhandled exception in endpoint: %s", exc)
+            # Rollback session to recover from database errors
+            _rollback_session()
             raise HTTPException(status_code=500, detail="Internal server error")
 
     return sync_wrapper

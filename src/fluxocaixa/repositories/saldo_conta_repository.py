@@ -117,13 +117,25 @@ class SaldoContaRepository:
             )
         ).order_by(SaldoConta.dat_saldo).all()
     
+    def exists(self, seq_conta: int, dat_saldo: date) -> bool:
+        """Check if a balance record already exists for account and date.
+        
+        Args:
+            seq_conta: Account sequence ID
+            dat_saldo: Balance date
+            
+        Returns:
+            True if record exists, False otherwise
+        """
+        return self.get_saldo_by_conta_and_date(seq_conta, dat_saldo) is not None
+
     def create(
         self, 
         seq_conta: int, 
         dat_saldo: date, 
         val_saldo: float, 
         cod_pessoa_inclusao: int
-    ) -> SaldoConta:
+    ) -> tuple[SaldoConta | None, str | None]:
         """Create a new balance record.
         
         Args:
@@ -133,32 +145,58 @@ class SaldoContaRepository:
             cod_pessoa_inclusao: User ID who created the record
             
         Returns:
-            Created SaldoConta object
+            Tuple of (Created SaldoConta object, error message)
+            If successful: (SaldoConta, None)
+            If error: (None, error_message)
         """
-        saldo = SaldoConta(
-            seq_conta=seq_conta,
-            dat_saldo=dat_saldo,
-            val_saldo=val_saldo,
-            cod_pessoa_inclusao=cod_pessoa_inclusao
-        )
-        self.session.add(saldo)
-        self.session.commit()
-        return saldo
+        # Check for duplicate
+        if self.exists(seq_conta, dat_saldo):
+            return None, f"Já existe um saldo cadastrado para esta conta na data {dat_saldo.strftime('%d/%m/%Y')}"
+        
+        try:
+            saldo = SaldoConta(
+                seq_conta=seq_conta,
+                dat_saldo=dat_saldo,
+                val_saldo=val_saldo,
+                cod_pessoa_inclusao=cod_pessoa_inclusao
+            )
+            self.session.add(saldo)
+            self.session.commit()
+            return saldo, None
+        except Exception as e:
+            self.session.rollback()
+            return None, f"Erro ao criar saldo: {str(e)}"
     
-    def bulk_create(self, saldos_data: list[dict]) -> int:
-        """Create multiple balance records in bulk.
+    def bulk_create(self, saldos_data: list[dict]) -> tuple[int, int, list[str]]:
+        """Create multiple balance records in bulk, skipping duplicates.
         
         Args:
             saldos_data: List of dictionaries with keys: seq_conta, dat_saldo, 
                         val_saldo, cod_pessoa_inclusao
             
         Returns:
-            Number of records created
+            Tuple of (created_count, skipped_count, errors)
         """
-        saldos = [SaldoConta(**data) for data in saldos_data]
-        self.session.bulk_save_objects(saldos)
-        self.session.commit()
-        return len(saldos)
+        created = 0
+        skipped = 0
+        errors = []
+        
+        for data in saldos_data:
+            try:
+                # Check if already exists
+                if self.exists(data['seq_conta'], data['dat_saldo']):
+                    skipped += 1
+                    continue
+                
+                saldo = SaldoConta(**data)
+                self.session.add(saldo)
+                self.session.commit()
+                created += 1
+            except Exception as e:
+                self.session.rollback()
+                errors.append(f"Conta {data['seq_conta']} / Data {data['dat_saldo']}: {str(e)}")
+        
+        return created, skipped, errors
     
     def update(
         self, 
@@ -205,22 +243,30 @@ class SaldoContaRepository:
         seq_conta: int | None = None,
         data_inicio: date | None = None,
         data_fim: date | None = None,
-        limit: int | None = None,
-        offset: int = 0
-    ) -> list[SaldoConta]:
-        """List balance records with optional filters.
+        page: int = 1,
+        per_page: int = 50,
+        sort_by: str = 'dat_saldo',
+        sort_order: str = 'desc'
+    ) -> tuple[list[SaldoConta], int]:
+        """List balance records with optional filters and pagination.
         
         Args:
             seq_conta: Optional account filter
             data_inicio: Optional start date filter
             data_fim: Optional end date filter
-            limit: Optional limit for pagination
-            offset: Offset for pagination
+            page: Page number (1-indexed)
+            per_page: Items per page
+            sort_by: Column to sort by
+            sort_order: 'asc' or 'desc'
             
         Returns:
-            List of SaldoConta objects
+            Tuple of (List of SaldoConta objects, total count)
         """
-        query = self.session.query(SaldoConta)
+        from sqlalchemy.orm import joinedload
+        
+        query = self.session.query(SaldoConta).options(
+            joinedload(SaldoConta.conta)
+        )
         
         if seq_conta is not None:
             query = query.filter(SaldoConta.seq_conta == seq_conta)
@@ -231,12 +277,27 @@ class SaldoContaRepository:
         if data_fim is not None:
             query = query.filter(SaldoConta.dat_saldo <= data_fim)
         
-        query = query.order_by(SaldoConta.dat_saldo.desc())
+        # Dynamic sorting
+        sort_column_map = {
+            'dat_saldo': SaldoConta.dat_saldo,
+            'val_saldo': SaldoConta.val_saldo,
+            'seq_conta': SaldoConta.seq_conta,
+        }
+        sort_column = sort_column_map.get(sort_by, SaldoConta.dat_saldo)
         
-        if limit is not None:
-            query = query.limit(limit).offset(offset)
+        if sort_order == 'asc':
+            query = query.order_by(sort_column.asc())
+        else:
+            query = query.order_by(sort_column.desc())
         
-        return query.all()
+        # Get total count
+        total_count = query.count()
+        
+        # Apply pagination
+        offset = (page - 1) * per_page
+        saldos = query.offset(offset).limit(per_page).all()
+        
+        return saldos, total_count
     
     def count(
         self,
