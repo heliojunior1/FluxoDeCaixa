@@ -1,11 +1,15 @@
-from ..domain import LancamentoCreate, LancamentoOut
-from ..repositories import LancamentoRepository
+"""Service layer for Lancamento operations."""
+from __future__ import annotations
+
 import csv
 import openpyxl
 from io import BytesIO, StringIO
 from datetime import date, datetime
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+
+from ..domain import LancamentoCreate, LancamentoOut
+from ..repositories import LancamentoRepository
 
 from ..models import (
     db,
@@ -46,25 +50,29 @@ def list_lancamentos(
     )
 
 
-def list_tipos_lancamento():
+def list_tipos_lancamento() -> list[TipoLancamento]:
+    """List all tipos de lancamento."""
     from ..repositories import TipoLancamentoRepository
     repo = TipoLancamentoRepository()
     return repo.list_all()
 
 
-def list_origens_lancamento():
+def list_origens_lancamento() -> list[OrigemLancamento]:
+    """List all origens de lancamento."""
     from ..repositories import OrigemLancamentoRepository
     repo = OrigemLancamentoRepository()
     return repo.list_all()
 
 
-def list_contas_bancarias():
+def list_contas_bancarias() -> list[ContaBancaria]:
+    """List all active bank accounts."""
     from ..repositories import ContaBancariaRepository
     repo = ContaBancariaRepository()
     return repo.list_active()
 
 
-def list_conferencias():
+def list_conferencias() -> list[Conferencia]:
+    """List all conferencias."""
     from ..repositories import ConferenciaRepository
     repo = ConferenciaRepository()
     return repo.list_all()
@@ -100,7 +108,8 @@ def update_lancamento(ident: int, data: LancamentoCreate, repo: LancamentoReposi
     )
 
 
-def delete_lancamento(ident: int, repo: LancamentoRepository | None = None):
+def delete_lancamento(ident: int, repo: LancamentoRepository | None = None) -> None:
+    """Soft delete a lancamento."""
     repo = repo or LancamentoRepository()
     repo.soft_delete(ident)
 

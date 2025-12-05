@@ -1,9 +1,12 @@
 """Service layer for SaldoConta (Bank Account Balance) operations."""
+from __future__ import annotations
+
 from datetime import date
 from io import BytesIO, StringIO
 import csv
 import openpyxl
 
+from ..models import SaldoConta
 from ..domain import SaldoContaCreate, SaldoContaUpdate
 from ..repositories import SaldoContaRepository, ContaBancariaRepository
 
@@ -45,7 +48,7 @@ def list_saldos_conta(
     )
 
 
-def get_saldo_conta(seq_saldo_conta: int, repo: SaldoContaRepository | None = None):
+def get_saldo_conta(seq_saldo_conta: int, repo: SaldoContaRepository | None = None) -> SaldoConta | None:
     """Get a single bank account balance by ID.
     
     Args:
@@ -56,7 +59,6 @@ def get_saldo_conta(seq_saldo_conta: int, repo: SaldoContaRepository | None = No
         SaldoConta object or None if not found
     """
     repo = repo or SaldoContaRepository()
-    from ..models import SaldoConta
     return repo.session.query(SaldoConta).get(seq_saldo_conta)
 
 
@@ -86,7 +88,7 @@ def update_saldo_conta(
     seq_saldo_conta: int,
     data: SaldoContaUpdate,
     repo: SaldoContaRepository | None = None
-):
+) -> SaldoConta | None:
     """Update an existing bank account balance record.
     
     Args:
@@ -106,7 +108,7 @@ def update_saldo_conta(
     )
 
 
-def delete_saldo_conta(seq_saldo_conta: int, repo: SaldoContaRepository | None = None):
+def delete_saldo_conta(seq_saldo_conta: int, repo: SaldoContaRepository | None = None) -> bool:
     """Delete a bank account balance record.
     
     Args:

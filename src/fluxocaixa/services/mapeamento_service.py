@@ -1,13 +1,23 @@
+"""Service layer for Mapeamento operations."""
+from __future__ import annotations
+
 from ..domain import MapeamentoCreate, MapeamentoOut
+from ..models import Mapeamento, Qualificador
 from ..repositories import MapeamentoRepository
 
 
-def list_mapeamentos(status: str | None = None, tipo: str | None = None, repo: MapeamentoRepository | None = None):
+def list_mapeamentos(
+    status: str | None = None,
+    tipo: str | None = None,
+    repo: MapeamentoRepository | None = None
+) -> tuple[list[Mapeamento], list[Qualificador]]:
+    """List mapeamentos with optional filters."""
     repo = repo or MapeamentoRepository()
     return repo.list(status, tipo), repo.list_qualificadores()
 
 
 def get_mapeamento_by_id(ident: int, repo: MapeamentoRepository | None = None) -> MapeamentoOut:
+    """Get mapeamento by ID as output DTO."""
     repo = repo or MapeamentoRepository()
     mp = repo.get(ident)
     return MapeamentoOut(
@@ -21,6 +31,7 @@ def get_mapeamento_by_id(ident: int, repo: MapeamentoRepository | None = None) -
 
 
 def create_mapeamento(data: MapeamentoCreate, repo: MapeamentoRepository | None = None) -> MapeamentoOut:
+    """Create a new mapeamento."""
     repo = repo or MapeamentoRepository()
     mp = repo.create(data)
     return MapeamentoOut(
@@ -34,6 +45,7 @@ def create_mapeamento(data: MapeamentoCreate, repo: MapeamentoRepository | None 
 
 
 def update_mapeamento(ident: int, data: MapeamentoCreate, repo: MapeamentoRepository | None = None) -> MapeamentoOut:
+    """Update an existing mapeamento."""
     repo = repo or MapeamentoRepository()
     mp = repo.update(ident, data)
     return MapeamentoOut(
@@ -46,6 +58,7 @@ def update_mapeamento(ident: int, data: MapeamentoCreate, repo: MapeamentoReposi
     )
 
 
-def delete_mapeamento(ident: int, repo: MapeamentoRepository | None = None):
+def delete_mapeamento(ident: int, repo: MapeamentoRepository | None = None) -> None:
+    """Soft delete a mapeamento."""
     repo = repo or MapeamentoRepository()
     repo.soft_delete(ident)
