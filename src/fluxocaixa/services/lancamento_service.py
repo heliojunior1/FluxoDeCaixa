@@ -89,7 +89,7 @@ def create_lancamento(data: LancamentoCreate, repo: LancamentoRepository | None 
         cod_tipo_lancamento=lanc.cod_tipo_lancamento,
         cod_origem_lancamento=lanc.cod_origem_lancamento,
         dsc_lancamento=None,
-    seq_conta=lanc.seq_conta,
+        seq_conta=lanc.seq_conta,
     )
 
 
