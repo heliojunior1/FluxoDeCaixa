@@ -134,3 +134,51 @@ class QualificadorRepository:
     def get_limit(self, limit: int) -> list[Qualificador]:
         """Get qualificadores with a limit."""
         return self.session.query(Qualificador).limit(limit).all()
+
+    def get_children(self, parent_id: int) -> list[Qualificador]:
+        """Get children of a qualificador."""
+        return (
+            self.session.query(Qualificador)
+            .filter_by(cod_qualificador_pai=parent_id, ind_status='A')
+            .order_by(Qualificador.num_qualificador)
+            .all()
+        )
+
+
+# ========== Standalone wrapper functions for backward compatibility ==========
+# These allow using the module as: qualificador_repository.get_qualificadores_by_ids(ids)
+
+_default_repo: QualificadorRepository | None = None
+
+
+def _get_repo() -> QualificadorRepository:
+    """Get or create the default repository instance."""
+    global _default_repo
+    if _default_repo is None:
+        _default_repo = QualificadorRepository()
+    return _default_repo
+
+
+def get_qualificadores_by_ids(ids: list[int]) -> list[Qualificador]:
+    """Get qualificadores by list of IDs (standalone wrapper)."""
+    return _get_repo().get_by_ids(ids)
+
+
+def get_all() -> list[Qualificador]:
+    """Get all qualificadores (standalone wrapper)."""
+    return _get_repo().get_all()
+
+
+def get_active() -> list[Qualificador]:
+    """Get active qualificadores (standalone wrapper)."""
+    return _get_repo().get_active()
+
+
+def get_by_id(qualificador_id: int) -> Qualificador | None:
+    """Get qualificador by ID (standalone wrapper)."""
+    return _get_repo().get_by_id(qualificador_id)
+
+
+def get_by_name(name: str) -> Qualificador | None:
+    """Get qualificador by name (standalone wrapper)."""
+    return _get_repo().get_by_name(name)

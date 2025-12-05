@@ -73,7 +73,7 @@ async def update_alerta_route(request: Request, seq_alerta: int):
     return RedirectResponse(request.url_for('alertas'), status_code=303)
 
 
-@router.post('/alertas/{seq_alerta}/deletar')
+@router.post('/alertas/{seq_alerta}/deletar', name='delete_alerta')
 @handle_exceptions
 async def deletar_alerta(request: Request, seq_alerta: int):
     delete_alerta(seq_alerta)
