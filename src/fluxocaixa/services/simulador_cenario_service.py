@@ -4,7 +4,7 @@ from datetime import date
 from typing import Dict, List, Optional
 import json
 
-from ..repositories import simulador_cenario_repository as repo
+from ..repositories.simulador_cenario_repository import SimuladorCenarioRepository
 from ..repositories.simulador_cenario_historico_repository import SimuladorCenarioHistoricoRepository
 from ..models import (
     SimuladorCenario,
@@ -16,27 +16,42 @@ from ..models import (
     SimuladorCenarioHistorico,
 )
 
+# Default repository instance for backward compatibility
+_default_repo = None
+
+
+def _get_repo() -> SimuladorCenarioRepository:
+    """Get or create the default repository instance."""
+    global _default_repo
+    if _default_repo is None:
+        _default_repo = SimuladorCenarioRepository()
+    return _default_repo
+
 
 # ==================== CRUD Operations ====================
 
-def list_simuladores() -> List[SimuladorCenario]:
+def list_simuladores(repo: SimuladorCenarioRepository | None = None) -> List[SimuladorCenario]:
     """Lista todos os cenários simuladores."""
-    return repo.get_all_simuladores()
+    repo = repo or _get_repo()
+    return repo.get_all()
 
 
-def list_active_simuladores() -> List[SimuladorCenario]:
+def list_active_simuladores(repo: SimuladorCenarioRepository | None = None) -> List[SimuladorCenario]:
     """Lista apenas cenários ativos."""
-    return repo.get_active_simuladores()
+    repo = repo or _get_repo()
+    return repo.get_active()
 
 
-def get_simulador(seq_simulador_cenario: int) -> Optional[SimuladorCenario]:
+def get_simulador(seq_simulador_cenario: int, repo: SimuladorCenarioRepository | None = None) -> Optional[SimuladorCenario]:
     """Busca um cenário simulador por ID."""
-    return repo.get_simulador_by_id(seq_simulador_cenario)
+    repo = repo or _get_repo()
+    return repo.get_by_id(seq_simulador_cenario)
 
 
-def delete_simulador(seq_simulador_cenario: int, user_id: int = 1) -> Optional[SimuladorCenario]:
+def delete_simulador(seq_simulador_cenario: int, user_id: int = 1, repo: SimuladorCenarioRepository | None = None) -> Optional[SimuladorCenario]:
     """Inativa logicamente um cenário simulador."""
-    return repo.delete_simulador_logical(seq_simulador_cenario, user_id)
+    repo = repo or _get_repo()
+    return repo.delete_logical(seq_simulador_cenario, user_id)
 
 
 # ==================== Criar Cenário Completo ====================
@@ -82,7 +97,7 @@ def criar_simulador_cenario(
         ind_status='A',
         cod_pessoa_inclusao=user_id,
     )
-    repo.create_simulador(simulador)
+    _get_repo().create(simulador)
     
     # Criar configuração de receita
     cenario_receita = CenarioReceita(
@@ -90,7 +105,7 @@ def criar_simulador_cenario(
         cod_tipo_cenario=tipo_cenario_receita,
         json_configuracao=json.dumps(config_receita) if config_receita else None,
     )
-    repo.create_cenario_receita(cenario_receita)
+    _get_repo().create_cenario_receita(cenario_receita)
     
     # Criar ajustes de receita (para todos os tipos de cenário, não apenas MANUAL)
     if ajustes_receita:
@@ -113,7 +128,7 @@ def criar_simulador_cenario(
         cod_tipo_cenario=tipo_cenario_despesa,
         json_configuracao=json.dumps(config_despesa) if config_despesa else None,
     )
-    repo.create_cenario_despesa(cenario_despesa)
+    _get_repo().create_cenario_despesa(cenario_despesa)
     
     # Criar ajustes de despesa (para todos os tipos de cenário, não apenas MANUAL)
     if ajustes_despesa:
@@ -123,7 +138,7 @@ def criar_simulador_cenario(
             ano_base,
         )
     
-    repo.commit()
+    _get_repo().commit()
     return simulador
 
 
@@ -148,7 +163,7 @@ def _criar_ajustes_receita(seq_cenario_receita: int, ajustes_data: Dict, ano_bas
                     cod_tipo_ajuste=cod_tipo_ajuste,
                     val_ajuste=val_ajuste,
                 )
-                repo.create_ajuste_receita(ajuste)
+                _get_repo().create_ajuste_receita(ajuste)
             except (ValueError, IndexError):
                 continue
 
@@ -173,7 +188,7 @@ def _criar_ajustes_despesa(seq_cenario_despesa: int, ajustes_data: Dict, ano_bas
                     cod_tipo_ajuste=cod_tipo_ajuste,
                     val_ajuste=val_ajuste,
                 )
-                repo.create_ajuste_despesa(ajuste)
+                _get_repo().create_ajuste_despesa(ajuste)
             except (ValueError, IndexError):
                 continue
 
@@ -187,7 +202,7 @@ def _criar_parametros_economicos(seq_cenario_receita: int, parametros: List[Dict
             val_coeficiente=param['coeficiente'],
             json_valores_historicos=json.dumps(param.get('valores_historicos', [])),
         )
-        repo.create_parametro_economico(modelo_param)
+        _get_repo().create_parametro_economico(modelo_param)
 
 
 # ==================== Atualizar Cenário ====================
@@ -207,7 +222,7 @@ def atualizar_simulador_cenario(
     user_id: int = 1,  # ID do usuário criando o cenário
 ) -> Optional[SimuladorCenario]:
     """Atualiza um cenário simulador existente."""
-    simulador = repo.get_simulador_by_id(seq_simulador_cenario)
+    simulador = _get_repo().get_by_id(seq_simulador_cenario)
     if not simulador:
         return None
     
@@ -227,33 +242,33 @@ def atualizar_simulador_cenario(
     simulador.cod_pessoa_alteracao = user_id
     
     # Atualizar receita
-    cenario_receita = repo.get_cenario_receita_by_simulador(seq_simulador_cenario)
+    cenario_receita = _get_repo().get_cenario_receita(seq_simulador_cenario)
     if cenario_receita:
         cenario_receita.cod_tipo_cenario = tipo_cenario_receita
         cenario_receita.json_configuracao = json.dumps(config_receita) if config_receita else None
         
         # Remover ajustes antigos e criar novos (para todos os tipos, não apenas MANUAL)
-        repo.delete_ajustes_receita_by_cenario_ano(cenario_receita.seq_cenario_receita, ano_base)
+        _get_repo().delete_ajustes_receita_by_year(cenario_receita.seq_cenario_receita, ano_base)
         if ajustes_receita:
             _criar_ajustes_receita(cenario_receita.seq_cenario_receita, ajustes_receita, ano_base)
         
         # Atualizar parâmetros econômicos
         if tipo_cenario_receita == 'REGRESSAO' and config_receita.get('parametros'):
-            repo.delete_parametros_by_cenario_receita(cenario_receita.seq_cenario_receita)
+            _get_repo().delete_parametros_by_cenario(cenario_receita.seq_cenario_receita)
             _criar_parametros_economicos(cenario_receita.seq_cenario_receita, config_receita['parametros'])
     
     # Atualizar despesa
-    cenario_despesa = repo.get_cenario_despesa_by_simulador(seq_simulador_cenario)
+    cenario_despesa = _get_repo().get_cenario_despesa(seq_simulador_cenario)
     if cenario_despesa:
         cenario_despesa.cod_tipo_cenario = tipo_cenario_despesa
         cenario_despesa.json_configuracao = json.dumps(config_despesa) if config_despesa else None
         
         # Remover ajustes antigos e criar novos (para todos os tipos, não apenas MANUAL)
-        repo.delete_ajustes_despesa_by_cenario_ano(cenario_despesa.seq_cenario_despesa, ano_base)
+        _get_repo().delete_ajustes_despesa_by_year(cenario_despesa.seq_cenario_despesa, ano_base)
         if ajustes_despesa:
             _criar_ajustes_despesa(cenario_despesa.seq_cenario_despesa, ajustes_despesa, ano_base)
     
-    repo.commit()
+    _get_repo().commit()
     return simulador
 
 
@@ -278,7 +293,7 @@ def obter_simulador_completo(seq_simulador_cenario: int) -> Optional[Dict]:
             }
         }
     """
-    simulador = repo.get_simulador_by_id(seq_simulador_cenario)
+    simulador = _get_repo().get_by_id(seq_simulador_cenario)
     if not simulador:
         return None
     
@@ -289,17 +304,17 @@ def obter_simulador_completo(seq_simulador_cenario: int) -> Optional[Dict]:
     }
     
     # Carregar dados de receita
-    cenario_receita = repo.get_cenario_receita_by_simulador(seq_simulador_cenario)
+    cenario_receita = _get_repo().get_cenario_receita(seq_simulador_cenario)
     if cenario_receita:
         resultado['receita']['config'] = cenario_receita
-        resultado['receita']['ajustes'] = repo.get_ajustes_receita_by_cenario(cenario_receita.seq_cenario_receita)
-        resultado['receita']['parametros'] = repo.get_parametros_by_cenario_receita(cenario_receita.seq_cenario_receita)
+        resultado['receita']['ajustes'] = _get_repo().get_ajustes_receita(cenario_receita.seq_cenario_receita)
+        resultado['receita']['parametros'] = _get_repo().get_parametros_economicos(cenario_receita.seq_cenario_receita)
     
     # Carregar dados de despesa
-    cenario_despesa = repo.get_cenario_despesa_by_simulador(seq_simulador_cenario)
+    cenario_despesa = _get_repo().get_cenario_despesa(seq_simulador_cenario)
     if cenario_despesa:
         resultado['despesa']['config'] = cenario_despesa
-        resultado['despesa']['ajustes'] = repo.get_ajustes_despesa_by_cenario(cenario_despesa.seq_cenario_despesa)
+        resultado['despesa']['ajustes'] = _get_repo().get_ajustes_despesa(cenario_despesa.seq_cenario_despesa)
     
     return resultado
 

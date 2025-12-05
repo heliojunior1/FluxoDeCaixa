@@ -1,53 +1,88 @@
-from ..repositories import qualificador_repository
+from ..repositories.qualificador_repository import QualificadorRepository
 from ..models import Qualificador
 
-def list_all_qualificadores():
-    return qualificador_repository.get_all_qualificadores()
 
-def list_active_qualificadores():
-    return qualificador_repository.get_active_qualificadores()
+def list_all_qualificadores(repo: QualificadorRepository | None = None):
+    repo = repo or QualificadorRepository()
+    return repo.get_all()
 
-def list_root_qualificadores():
-    return qualificador_repository.get_root_qualificadores()
 
-def get_qualificador(qualificador_id: int):
-    return qualificador_repository.get_qualificador_by_id(qualificador_id)
+def list_active_qualificadores(repo: QualificadorRepository | None = None):
+    repo = repo or QualificadorRepository()
+    return repo.get_active()
 
-def get_qualificador_by_name(name: str):
-    return qualificador_repository.get_qualificador_by_name(name)
 
-def list_receita_qualificadores():
-    return qualificador_repository.get_receita_qualificadores()
+def list_root_qualificadores(repo: QualificadorRepository | None = None):
+    repo = repo or QualificadorRepository()
+    return repo.get_root()
 
-def list_despesa_qualificadores():
-    return qualificador_repository.get_despesa_qualificadores()
 
-def list_receita_qualificadores_folha():
+def get_qualificador(qualificador_id: int, repo: QualificadorRepository | None = None):
+    repo = repo or QualificadorRepository()
+    return repo.get_by_id(qualificador_id)
+
+
+def get_qualificador_by_name(name: str, repo: QualificadorRepository | None = None):
+    repo = repo or QualificadorRepository()
+    return repo.get_by_name(name)
+
+
+def list_receita_qualificadores(repo: QualificadorRepository | None = None):
+    repo = repo or QualificadorRepository()
+    return repo.get_receita()
+
+
+def list_despesa_qualificadores(repo: QualificadorRepository | None = None):
+    repo = repo or QualificadorRepository()
+    return repo.get_despesa()
+
+
+def list_receita_qualificadores_folha(repo: QualificadorRepository | None = None):
     """Retorna apenas qualificadores de receita que não têm filhos."""
-    return qualificador_repository.get_receita_qualificadores_folha()
+    repo = repo or QualificadorRepository()
+    return repo.get_receita_folha()
 
-def list_despesa_qualificadores_folha():
+
+def list_despesa_qualificadores_folha(repo: QualificadorRepository | None = None):
     """Retorna apenas qualificadores de despesa que não têm filhos."""
-    return qualificador_repository.get_despesa_qualificadores_folha()
+    repo = repo or QualificadorRepository()
+    return repo.get_despesa_folha()
 
-def create_qualificador(num_qualificador: str, dsc_qualificador: str, cod_qualificador_pai: int = None):
+
+def create_qualificador(
+    num_qualificador: str,
+    dsc_qualificador: str,
+    cod_qualificador_pai: int = None,
+    repo: QualificadorRepository | None = None
+):
+    repo = repo or QualificadorRepository()
     qualificador = Qualificador(
         num_qualificador=num_qualificador,
         dsc_qualificador=dsc_qualificador,
         cod_qualificador_pai=cod_qualificador_pai,
     )
-    return qualificador_repository.create_qualificador(qualificador)
+    return repo.create(qualificador)
 
-def update_qualificador(seq_qualificador: int, num_qualificador: str, dsc_qualificador: str, cod_qualificador_pai: int = None):
-    qualificador = qualificador_repository.get_qualificador_by_id(seq_qualificador)
+
+def update_qualificador(
+    seq_qualificador: int,
+    num_qualificador: str,
+    dsc_qualificador: str,
+    cod_qualificador_pai: int = None,
+    repo: QualificadorRepository | None = None
+):
+    repo = repo or QualificadorRepository()
+    qualificador = repo.get_by_id(seq_qualificador)
     if not qualificador:
         return None
-    
+
     qualificador.num_qualificador = num_qualificador
     qualificador.dsc_qualificador = dsc_qualificador
     qualificador.cod_qualificador_pai = cod_qualificador_pai
-    
-    return qualificador_repository.update_qualificador(qualificador)
 
-def delete_qualificador(seq_qualificador: int):
-    return qualificador_repository.delete_qualificador_logical(seq_qualificador)
+    return repo.update(qualificador)
+
+
+def delete_qualificador(seq_qualificador: int, repo: QualificadorRepository | None = None):
+    repo = repo or QualificadorRepository()
+    return repo.delete_logical(seq_qualificador)

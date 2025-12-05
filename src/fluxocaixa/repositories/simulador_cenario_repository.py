@@ -1,10 +1,11 @@
 """Repository for Simulador de Cenários functionality."""
+from __future__ import annotations
 
+from datetime import date
 from typing import List, Optional
-from sqlalchemy import and_
+from sqlalchemy.orm import Session
 
 from ..models import (
-    db,
     SimuladorCenario,
     CenarioReceita,
     CenarioReceitaAjuste,
@@ -12,179 +13,187 @@ from ..models import (
     CenarioDespesaAjuste,
     ModeloEconomicoParametro,
 )
+from ..models.base import db
 
 
-# ==================== SimuladorCenario ====================
+class SimuladorCenarioRepository:
+    """Data access layer for Simulador de Cenários."""
 
-def get_all_simuladores() -> List[SimuladorCenario]:
-    """Retorna todos os cenários simuladores."""
-    return SimuladorCenario.query.order_by(SimuladorCenario.dat_criacao.desc()).all()
+    def __init__(self, session: Session | None = None):
+        self.session = session or db.session
 
+    # ==================== SimuladorCenario ====================
 
-def get_active_simuladores() -> List[SimuladorCenario]:
-    """Retorna apenas cenários ativos."""
-    return (
-        SimuladorCenario.query
-        .filter_by(ind_status='A')
-        .order_by(SimuladorCenario.dat_criacao.desc())
-        .all()
-    )
+    def get_all(self) -> List[SimuladorCenario]:
+        """Retorna todos os cenários simuladores."""
+        return (
+            self.session.query(SimuladorCenario)
+            .order_by(SimuladorCenario.dat_criacao.desc())
+            .all()
+        )
 
+    def get_active(self) -> List[SimuladorCenario]:
+        """Retorna apenas cenários ativos."""
+        return (
+            self.session.query(SimuladorCenario)
+            .filter_by(ind_status='A')
+            .order_by(SimuladorCenario.dat_criacao.desc())
+            .all()
+        )
 
-def get_simulador_by_id(seq_simulador_cenario: int) -> Optional[SimuladorCenario]:
-    """Busca um cenário simulador por ID."""
-    return SimuladorCenario.query.get(seq_simulador_cenario)
+    def get_by_id(self, seq_simulador_cenario: int) -> Optional[SimuladorCenario]:
+        """Busca um cenário simulador por ID."""
+        return self.session.get(SimuladorCenario, seq_simulador_cenario)
 
+    def create(self, simulador: SimuladorCenario) -> SimuladorCenario:
+        """Cria um novo cenário simulador."""
+        self.session.add(simulador)
+        self.session.commit()
+        return simulador
 
-def create_simulador(simulador: SimuladorCenario) -> SimuladorCenario:
-    """Cria um novo cenário simulador."""
-    db.session.add(simulador)
-    db.session.commit()
-    return simulador
+    def update(self, simulador: SimuladorCenario) -> SimuladorCenario:
+        """Atualiza um cenário simulador existente."""
+        self.session.commit()
+        return simulador
 
+    def delete_logical(self, seq_simulador_cenario: int, user_id: int = 1) -> Optional[SimuladorCenario]:
+        """Inativa logicamente um cenário simulador."""
+        simulador = self.get_by_id(seq_simulador_cenario)
+        if simulador:
+            simulador.ind_status = 'I'
+            simulador.cod_pessoa_alteracao = user_id
+            simulador.dat_alteracao = date.today()
+            self.session.commit()
+        return simulador
 
-def update_simulador(simulador: SimuladorCenario) -> SimuladorCenario:
-    """Atualiza um cenário simulador existente."""
-    db.session.commit()
-    return simulador
+    # ==================== CenarioReceita ====================
 
+    def get_cenario_receita(self, seq_simulador_cenario: int) -> Optional[CenarioReceita]:
+        """Busca configuração de receita por ID do simulador."""
+        return (
+            self.session.query(CenarioReceita)
+            .filter_by(seq_simulador_cenario=seq_simulador_cenario)
+            .first()
+        )
 
-def delete_simulador_logical(seq_simulador_cenario: int, user_id: int = 1) -> Optional[SimuladorCenario]:
-    """Inativa logicamente um cenário simulador."""
-    from datetime import date
-    
-    simulador = get_simulador_by_id(seq_simulador_cenario)
-    if simulador:
-        simulador.ind_status = 'I'
-        simulador.cod_pessoa_alteracao = user_id
-        simulador.dat_alteracao = date.today()
-        db.session.commit()
-    return simulador
+    def create_cenario_receita(self, cenario_receita: CenarioReceita) -> CenarioReceita:
+        """Cria configuração de receita."""
+        self.session.add(cenario_receita)
+        self.session.commit()
+        return cenario_receita
 
+    def update_cenario_receita(self, cenario_receita: CenarioReceita) -> CenarioReceita:
+        """Atualiza configuração de receita."""
+        self.session.commit()
+        return cenario_receita
 
-# ==================== CenarioReceita ====================
+    # ==================== CenarioReceitaAjuste ====================
 
-def get_cenario_receita_by_simulador(seq_simulador_cenario: int) -> Optional[CenarioReceita]:
-    """Busca configuração de receita por ID do simulador."""
-    return CenarioReceita.query.filter_by(seq_simulador_cenario=seq_simulador_cenario).first()
+    def get_ajustes_receita(self, seq_cenario_receita: int) -> List[CenarioReceitaAjuste]:
+        """Retorna todos os ajustes de um cenário de receita."""
+        return (
+            self.session.query(CenarioReceitaAjuste)
+            .filter_by(seq_cenario_receita=seq_cenario_receita)
+            .all()
+        )
 
+    def get_ajustes_receita_by_year(self, seq_cenario_receita: int, ano: int) -> List[CenarioReceitaAjuste]:
+        """Retorna ajustes de receita por ano."""
+        return (
+            self.session.query(CenarioReceitaAjuste)
+            .filter_by(seq_cenario_receita=seq_cenario_receita, ano=ano)
+            .all()
+        )
 
-def create_cenario_receita(cenario_receita: CenarioReceita) -> CenarioReceita:
-    """Cria configuração de receita."""
-    db.session.add(cenario_receita)
-    db.session.commit()
-    return cenario_receita
+    def create_ajuste_receita(self, ajuste: CenarioReceitaAjuste) -> CenarioReceitaAjuste:
+        """Cria um ajuste de receita."""
+        self.session.add(ajuste)
+        return ajuste
 
+    def delete_ajustes_receita_by_year(self, seq_cenario_receita: int, ano: int) -> None:
+        """Remove todos os ajustes de receita para um ano específico."""
+        self.session.query(CenarioReceitaAjuste).filter_by(
+            seq_cenario_receita=seq_cenario_receita,
+            ano=ano
+        ).delete()
+        self.session.commit()
 
-def update_cenario_receita(cenario_receita: CenarioReceita) -> CenarioReceita:
-    """Atualiza configuração de receita."""
-    db.session.commit()
-    return cenario_receita
+    # ==================== CenarioDespesa ====================
 
+    def get_cenario_despesa(self, seq_simulador_cenario: int) -> Optional[CenarioDespesa]:
+        """Busca configuração de despesa por ID do simulador."""
+        return (
+            self.session.query(CenarioDespesa)
+            .filter_by(seq_simulador_cenario=seq_simulador_cenario)
+            .first()
+        )
 
-# ==================== CenarioReceitaAjuste ====================
+    def create_cenario_despesa(self, cenario_despesa: CenarioDespesa) -> CenarioDespesa:
+        """Cria configuração de despesa."""
+        self.session.add(cenario_despesa)
+        self.session.commit()
+        return cenario_despesa
 
-def get_ajustes_receita_by_cenario(seq_cenario_receita: int) -> List[CenarioReceitaAjuste]:
-    """Retorna todos os ajustes de um cenário de receita."""
-    return CenarioReceitaAjuste.query.filter_by(seq_cenario_receita=seq_cenario_receita).all()
+    def update_cenario_despesa(self, cenario_despesa: CenarioDespesa) -> CenarioDespesa:
+        """Atualiza configuração de despesa."""
+        self.session.commit()
+        return cenario_despesa
 
+    # ==================== CenarioDespesaAjuste ====================
 
-def get_ajustes_receita_by_cenario_and_year(seq_cenario_receita: int, ano: int) -> List[CenarioReceitaAjuste]:
-    """Retorna ajustes de receita por ano."""
-    return (
-        CenarioReceitaAjuste.query
-        .filter_by(seq_cenario_receita=seq_cenario_receita, ano=ano)
-        .all()
-    )
+    def get_ajustes_despesa(self, seq_cenario_despesa: int) -> List[CenarioDespesaAjuste]:
+        """Retorna todos os ajustes de um cenário de despesa."""
+        return (
+            self.session.query(CenarioDespesaAjuste)
+            .filter_by(seq_cenario_despesa=seq_cenario_despesa)
+            .all()
+        )
 
+    def get_ajustes_despesa_by_year(self, seq_cenario_despesa: int, ano: int) -> List[CenarioDespesaAjuste]:
+        """Retorna ajustes de despesa por ano."""
+        return (
+            self.session.query(CenarioDespesaAjuste)
+            .filter_by(seq_cenario_despesa=seq_cenario_despesa, ano=ano)
+            .all()
+        )
 
-def create_ajuste_receita(ajuste: CenarioReceitaAjuste) -> CenarioReceitaAjuste:
-    """Cria um ajuste de receita."""
-    db.session.add(ajuste)
-    return ajuste
+    def create_ajuste_despesa(self, ajuste: CenarioDespesaAjuste) -> CenarioDespesaAjuste:
+        """Cria um ajuste de despesa."""
+        self.session.add(ajuste)
+        return ajuste
 
+    def delete_ajustes_despesa_by_year(self, seq_cenario_despesa: int, ano: int) -> None:
+        """Remove todos os ajustes de despesa para um ano específico."""
+        self.session.query(CenarioDespesaAjuste).filter_by(
+            seq_cenario_despesa=seq_cenario_despesa,
+            ano=ano
+        ).delete()
+        self.session.commit()
 
-def delete_ajustes_receita_by_cenario_ano(seq_cenario_receita: int, ano: int):
-    """Remove todos os ajustes de receita para um ano específico."""
-    CenarioReceitaAjuste.query.filter_by(
-        seq_cenario_receita=seq_cenario_receita,
-        ano=ano
-    ).delete()
-    db.session.commit()
+    # ==================== ModeloEconomicoParametro ====================
 
+    def get_parametros_economicos(self, seq_cenario_receita: int) -> List[ModeloEconomicoParametro]:
+        """Retorna parâmetros econômicos de um cenário de receita."""
+        return (
+            self.session.query(ModeloEconomicoParametro)
+            .filter_by(seq_cenario_receita=seq_cenario_receita)
+            .all()
+        )
 
-# ==================== CenarioDespesa ====================
+    def create_parametro_economico(self, parametro: ModeloEconomicoParametro) -> ModeloEconomicoParametro:
+        """Cria um parâmetro econômico."""
+        self.session.add(parametro)
+        return parametro
 
-def get_cenario_despesa_by_simulador(seq_simulador_cenario: int) -> Optional[CenarioDespesa]:
-    """Busca configuração de despesa por ID do simulador."""
-    return CenarioDespesa.query.filter_by(seq_simulador_cenario=seq_simulador_cenario).first()
+    def delete_parametros_by_cenario(self, seq_cenario_receita: int) -> None:
+        """Remove todos os parâmetros de um cenário de receita."""
+        self.session.query(ModeloEconomicoParametro).filter_by(
+            seq_cenario_receita=seq_cenario_receita
+        ).delete()
+        self.session.commit()
 
+    # ==================== Utility ====================
 
-def create_cenario_despesa(cenario_despesa: CenarioDespesa) -> CenarioDespesa:
-    """Cria configuração de despesa."""
-    db.session.add(cenario_despesa)
-    db.session.commit()
-    return cenario_despesa
-
-
-def update_cenario_despesa(cenario_despesa: CenarioDespesa) -> CenarioDespesa:
-    """Atualiza configuração de despesa."""
-    db.session.commit()
-    return cenario_despesa
-
-
-# ==================== CenarioDespesaAjuste ====================
-
-def get_ajustes_despesa_by_cenario(seq_cenario_despesa: int) -> List[CenarioDespesaAjuste]:
-    """Retorna todos os ajustes de um cenário de despesa."""
-    return CenarioDespesaAjuste.query.filter_by(seq_cenario_despesa=seq_cenario_despesa).all()
-
-
-def get_ajustes_despesa_by_cenario_and_year(seq_cenario_despesa: int, ano: int) -> List[CenarioDespesaAjuste]:
-    """Retorna ajustes de despesa por ano."""
-    return (
-        CenarioDespesaAjuste.query
-        .filter_by(seq_cenario_despesa=seq_cenario_despesa, ano=ano)
-        .all()
-    )
-
-
-def create_ajuste_despesa(ajuste: CenarioDespesaAjuste) -> CenarioDespesaAjuste:
-    """Cria um ajuste de despesa."""
-    db.session.add(ajuste)
-    return ajuste
-
-
-def delete_ajustes_despesa_by_cenario_ano(seq_cenario_despesa: int, ano: int):
-    """Remove todos os ajustes de despesa para um ano específico."""
-    CenarioDespesaAjuste.query.filter_by(
-        seq_cenario_despesa=seq_cenario_despesa,
-        ano=ano
-    ).delete()
-    db.session.commit()
-
-
-# ==================== ModeloEconomicoParametro ====================
-
-def get_parametros_by_cenario_receita(seq_cenario_receita: int) -> List[ModeloEconomicoParametro]:
-    """Retorna parâmetros econômicos de um cenário de receita."""
-    return ModeloEconomicoParametro.query.filter_by(seq_cenario_receita=seq_cenario_receita).all()
-
-
-def create_parametro_economico(parametro: ModeloEconomicoParametro) -> ModeloEconomicoParametro:
-    """Cria um parâmetro econômico."""
-    db.session.add(parametro)
-    return parametro
-
-
-def delete_parametros_by_cenario_receita(seq_cenario_receita: int):
-    """Remove todos os parâmetros de um cenário de receita."""
-    ModeloEconomicoParametro.query.filter_by(seq_cenario_receita=seq_cenario_receita).delete()
-    db.session.commit()
-
-
-# ==================== Commit ====================
-
-def commit():
-    """Commit manual para operações em lote."""
-    db.session.commit()
+    def commit(self) -> None:
+        """Commit manual para operações em lote."""
+        self.session.commit()

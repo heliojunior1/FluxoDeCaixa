@@ -1,91 +1,136 @@
-from ..models import db, Qualificador
+"""Repository for Qualificador data access."""
+from __future__ import annotations
 
-def get_all_qualificadores():
-    return Qualificador.query.order_by(Qualificador.num_qualificador).all()
+from sqlalchemy.orm import Session
+from sqlalchemy import func
 
-def get_active_qualificadores():
-    return Qualificador.query.filter_by(ind_status='A').order_by(Qualificador.num_qualificador).all()
+from ..models import Qualificador
+from ..models.base import db
 
-def get_root_qualificadores():
-    return Qualificador.query.filter_by(ind_status='A', cod_qualificador_pai=None).order_by(Qualificador.num_qualificador).all()
 
-def get_qualificador_by_id(qualificador_id: int):
-    return Qualificador.query.get(qualificador_id)
+class QualificadorRepository:
+    """Data access layer for Qualificador records."""
 
-def get_qualificadores_by_ids(ids: list[int]):
-    return Qualificador.query.filter(
-        Qualificador.seq_qualificador.in_(ids)
-    ).all()
+    def __init__(self, session: Session | None = None):
+        self.session = session or db.session
 
-def get_qualificador_by_name(name: str):
-    from sqlalchemy import func
-    return Qualificador.query.filter(func.lower(Qualificador.dsc_qualificador) == name.lower()).first()
+    def get_all(self) -> list[Qualificador]:
+        """Get all qualificadores ordered by number."""
+        return self.session.query(Qualificador).order_by(Qualificador.num_qualificador).all()
 
-def get_receita_qualificadores():
-    return Qualificador.query.filter(
-        Qualificador.num_qualificador.startswith('1'),
-        Qualificador.ind_status == 'A',
-    ).order_by(Qualificador.num_qualificador).all()
+    def get_active(self) -> list[Qualificador]:
+        """Get only active qualificadores."""
+        return (
+            self.session.query(Qualificador)
+            .filter_by(ind_status='A')
+            .order_by(Qualificador.num_qualificador)
+            .all()
+        )
 
-def get_despesa_qualificadores():
-    return Qualificador.query.filter(
-        Qualificador.num_qualificador.startswith('2'),
-        Qualificador.ind_status == 'A',
-    ).order_by(Qualificador.num_qualificador).all()
+    def get_root(self) -> list[Qualificador]:
+        """Get root qualificadores (no parent)."""
+        return (
+            self.session.query(Qualificador)
+            .filter_by(ind_status='A', cod_qualificador_pai=None)
+            .order_by(Qualificador.num_qualificador)
+            .all()
+        )
 
-def get_receita_qualificadores_folha():
-    """Retorna apenas qualificadores de receita que não têm filhos (folhas da árvore)."""
-    from sqlalchemy import not_, exists, select
-    
-    # Subquery para verificar se existe algum filho
-    subquery = select(Qualificador.seq_qualificador).where(
-        Qualificador.cod_qualificador_pai == Qualificador.seq_qualificador
-    ).correlate(Qualificador)
-    
-    # Buscar todos os qualificadores de receita
-    todos = Qualificador.query.filter(
-        Qualificador.num_qualificador.startswith('1'),
-        Qualificador.ind_status == 'A',
-    ).order_by(Qualificador.num_qualificador).all()
-    
-    # Filtrar apenas os que não têm filhos
-    ids_pais = set(q.cod_qualificador_pai for q in todos if q.cod_qualificador_pai)
-    folhas = [q for q in todos if q.seq_qualificador not in ids_pais]
-    
-    return folhas
+    def get_by_id(self, qualificador_id: int) -> Qualificador | None:
+        """Get qualificador by ID."""
+        return self.session.get(Qualificador, qualificador_id)
 
-def get_despesa_qualificadores_folha():
-    """Retorna apenas qualificadores de despesa que não têm filhos (folhas da árvore)."""
-    # Buscar todos os qualificadores de despesa
-    todos = Qualificador.query.filter(
-        Qualificador.num_qualificador.startswith('2'),
-        Qualificador.ind_status == 'A',
-    ).order_by(Qualificador.num_qualificador).all()
-    
-    # Filtrar apenas os que não têm filhos
-    ids_pais = set(q.cod_qualificador_pai for q in todos if q.cod_qualificador_pai)
-    folhas = [q for q in todos if q.seq_qualificador not in ids_pais]
-    
-    return folhas
+    def get_by_ids(self, ids: list[int]) -> list[Qualificador]:
+        """Get qualificadores by list of IDs."""
+        return (
+            self.session.query(Qualificador)
+            .filter(Qualificador.seq_qualificador.in_(ids))
+            .all()
+        )
 
-def create_qualificador(qualificador: Qualificador):
-    db.session.add(qualificador)
-    db.session.commit()
-    return qualificador
+    def get_by_name(self, name: str) -> Qualificador | None:
+        """Get qualificador by name (case-insensitive)."""
+        return (
+            self.session.query(Qualificador)
+            .filter(func.lower(Qualificador.dsc_qualificador) == name.lower())
+            .first()
+        )
 
-def update_qualificador(qualificador: Qualificador):
-    db.session.commit()
-    return qualificador
+    def get_receita(self) -> list[Qualificador]:
+        """Get receita qualificadores (num starts with '1')."""
+        return (
+            self.session.query(Qualificador)
+            .filter(
+                Qualificador.num_qualificador.startswith('1'),
+                Qualificador.ind_status == 'A',
+            )
+            .order_by(Qualificador.num_qualificador)
+            .all()
+        )
 
-def delete_qualificador_logical(qualificador_id: int):
-    qualificador = get_qualificador_by_id(qualificador_id)
-    if qualificador:
-        qualificador.ind_status = 'I'
-        db.session.commit()
-    return qualificador
+    def get_despesa(self) -> list[Qualificador]:
+        """Get despesa qualificadores (num starts with '2')."""
+        return (
+            self.session.query(Qualificador)
+            .filter(
+                Qualificador.num_qualificador.startswith('2'),
+                Qualificador.ind_status == 'A',
+            )
+            .order_by(Qualificador.num_qualificador)
+            .all()
+        )
 
-def count_qualificadores():
-    return Qualificador.query.count()
+    def get_receita_folha(self) -> list[Qualificador]:
+        """Get receita qualificadores that have no children (leaf nodes)."""
+        todos = (
+            self.session.query(Qualificador)
+            .filter(
+                Qualificador.num_qualificador.startswith('1'),
+                Qualificador.ind_status == 'A',
+            )
+            .order_by(Qualificador.num_qualificador)
+            .all()
+        )
+        ids_pais = set(q.cod_qualificador_pai for q in todos if q.cod_qualificador_pai)
+        return [q for q in todos if q.seq_qualificador not in ids_pais]
 
-def get_qualificadores_limit(limit: int):
-    return Qualificador.query.limit(limit).all()
+    def get_despesa_folha(self) -> list[Qualificador]:
+        """Get despesa qualificadores that have no children (leaf nodes)."""
+        todos = (
+            self.session.query(Qualificador)
+            .filter(
+                Qualificador.num_qualificador.startswith('2'),
+                Qualificador.ind_status == 'A',
+            )
+            .order_by(Qualificador.num_qualificador)
+            .all()
+        )
+        ids_pais = set(q.cod_qualificador_pai for q in todos if q.cod_qualificador_pai)
+        return [q for q in todos if q.seq_qualificador not in ids_pais]
+
+    def create(self, qualificador: Qualificador) -> Qualificador:
+        """Create a new qualificador."""
+        self.session.add(qualificador)
+        self.session.commit()
+        return qualificador
+
+    def update(self, qualificador: Qualificador) -> Qualificador:
+        """Update an existing qualificador."""
+        self.session.commit()
+        return qualificador
+
+    def delete_logical(self, qualificador_id: int) -> Qualificador | None:
+        """Logically delete a qualificador by setting ind_status to 'I'."""
+        qualificador = self.get_by_id(qualificador_id)
+        if qualificador:
+            qualificador.ind_status = 'I'
+            self.session.commit()
+        return qualificador
+
+    def count(self) -> int:
+        """Count all qualificadores."""
+        return self.session.query(Qualificador).count()
+
+    def get_limit(self, limit: int) -> list[Qualificador]:
+        """Get qualificadores with a limit."""
+        return self.session.query(Qualificador).limit(limit).all()
