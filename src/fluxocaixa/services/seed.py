@@ -18,6 +18,7 @@ from ..models import (
     CenarioDespesa,
     CenarioReceitaAjuste,
     CenarioDespesaAjuste,
+    Loa,
 )
 from ..models.base import db
 from ..models import ContaBancaria
@@ -30,6 +31,10 @@ def seed_data(session=None):
         session.query(Mapeamento).delete()
     except Exception:
         # Table might not exist yet
+        pass
+    try:
+        session.query(Loa).delete()
+    except Exception:
         pass
     session.query(Pagamento).delete()
     session.query(Lancamento).delete()
@@ -1011,3 +1016,80 @@ def seed_data(session=None):
         
         session.commit()
         print(f"Seeded 2 complete simulador scenarios with adjustments for ALL qualifiers across 12 months")
+
+    # ==================== Seed LOA (Lei Orçamentária Anual) ====================
+    if not Loa.query.first():
+        # LOA 2025 — Receitas (valores anuais em R$)
+        loa_receitas_2025 = {
+            'ICMS': 8_760_000_000.00,
+            'IPVA': 598_000_000.00,
+            'ITCMD': 102_600_000.00,
+            'FPE': 9_120_000_000.00,
+            'FECOEP': 456_605_520.00,
+            'ROYALTIES': 120_500_000.00,
+            'APLICAÇÕES FINANCEIRAS': 74_100_000.00,
+            'IR': 720_000_000.00,
+            'OUTRAS RECEITAS': 1_530_000_000.00,
+        }
+
+        # LOA 2025 — Despesas (valores anuais em R$)
+        loa_despesas_2025 = {
+            'FOLHA': 6_555_000_000.00,
+            'PASEP': 296_000_000.00,
+            'DÍVIDAS': 480_000_000.00,
+            'PRECATÓRIOS': 81_500_000.00,
+            'CUSTEIO': 1_238_000_000.00,
+            'INVESTIMENTO + AUMENTO DE CAPITAL': 361_048_000.00,
+            'REPASSE MUNICÍPIOS': 5_340_000_000.00,
+            'REPASSE FUNDEB': 3_307_255_440.00,
+            'SAÚDE 12%': 2_001_588_960.00,
+            'EDUCAÇÃO 5%': 680_962_000.00,
+            'PODERES': 2_610_000_000.00,
+            'RESTOS A PAGAR TESOURO e DEMAIS': 588_000_000.00,
+            'FECOEP - RESTOS A PAGAR - FONTE 761': 296_519_460.00,
+        }
+
+        # LOA 2024 — Receitas (valores levemente menores)
+        loa_receitas_2024 = {
+            'ICMS': 7_936_680_000.00,
+            'IPVA': 539_652_000.00,
+            'ITCMD': 87_183_600.00,
+            'FPE': 8_304_120_000.00,
+            'FECOEP': 429_456_000.00,
+            'ROYALTIES': 88_553_400.00,
+            'APLICAÇÕES FINANCEIRAS': 54_994_800.00,
+            'IR': 665_000_000.00,
+            'OUTRAS RECEITAS': 1_462_398_000.00,
+        }
+
+        # LOA 2024 — Despesas
+        loa_despesas_2024 = {
+            'FOLHA': 5_844_183_600.00,
+            'PASEP': 156_780_480.00,
+            'DÍVIDAS': 456_598_000.00,
+            'PRECATÓRIOS': 456_597_780.00,
+            'CUSTEIO': 1_111_464_000.00,
+            'INVESTIMENTO + AUMENTO DE CAPITAL': 350_953_000.00,
+            'REPASSE MUNICÍPIOS': 2_302_528_080.00,
+            'REPASSE FUNDEB': 2_986_257_960.00,
+            'SAÚDE 12%': 1_860_000_000.00,
+            'EDUCAÇÃO 5%': 552_086_160.00,
+            'PODERES': 1_762_395_960.00,
+            'RESTOS A PAGAR TESOURO e DEMAIS': 736_668_240.00,
+            'FECOEP - RESTOS A PAGAR - FONTE 761': 295_774_320.00,
+        }
+
+        for dados_dict in [loa_receitas_2025, loa_despesas_2025]:
+            for nome, valor in dados_dict.items():
+                qual = encontrar_qualificador(nome)
+                if qual:
+                    session.add(Loa(num_ano=2025, seq_qualificador=qual.seq_qualificador, val_loa=valor))
+
+        for dados_dict in [loa_receitas_2024, loa_despesas_2024]:
+            for nome, valor in dados_dict.items():
+                qual = encontrar_qualificador(nome)
+                if qual:
+                    session.add(Loa(num_ano=2024, seq_qualificador=qual.seq_qualificador, val_loa=valor))
+
+        session.commit()
+        print("Seeded LOA data for 2024 and 2025")

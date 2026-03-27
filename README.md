@@ -78,7 +78,7 @@ venv\Scripts\activate.bat
 #### No Linux/Mac:
 ```bash
 # Criar ambiente virtual
-python3 -m venv venv
+python -m venv venv
 
 # Ativar ambiente virtual
 source venv/bin/activate

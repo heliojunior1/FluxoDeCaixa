@@ -21,6 +21,7 @@ from .simulador_cenario import (
     ModeloEconomicoParametro,
 )
 from .simulador_cenario_historico import SimuladorCenarioHistorico
+from .loa import Loa
 
 __all__ = [
     'db',
@@ -46,4 +47,5 @@ __all__ = [
     'CenarioDespesaAjuste',
     'ModeloEconomicoParametro',
     'SimuladorCenarioHistorico',
+    'Loa',
 ]
