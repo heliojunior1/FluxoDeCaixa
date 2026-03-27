@@ -537,6 +537,49 @@ def executar_simulacao(seq_simulador_cenario: int) -> Optional[Dict]:
         config = json.loads(config_receita.json_configuracao or '{}')
         projecao_receita = modelos.projetar_regressao_multipla(meses_projecao, config, ano_base)
         projecao_receita_detalhada = None
+    
+    elif tipo_receita == 'XGBOOST':
+        config = json.loads(config_receita.json_configuracao or '{}')
+        seq_qualificador = config.get('seq_qualificador')
+        seq_qualificadores = config.get('seq_qualificadores', [])
+        
+        data_fim = date(ano_base - 1, 12, 31)
+        data_inicio = data_fim - relativedelta(years=3)
+        
+        if seq_qualificadores and len(seq_qualificadores) > 1:
+            dados_hist = modelos.obter_dados_historicos_agregados(seq_qualificadores, data_inicio, data_fim)
+        elif seq_qualificador:
+            dados_hist = modelos.obter_dados_historicos(seq_qualificador, data_inicio, data_fim)
+        else:
+            dados_hist = pd.DataFrame(columns=['data', 'valor'])
+        
+        if len(dados_hist) >= 13:
+            projecao_receita = modelos.projetar_xgboost(dados_hist, meses_projecao, config, ano_base)
+        else:
+            projecao_receita = pd.DataFrame({'data': [], 'valor_projetado': []})
+        projecao_receita_detalhada = None
+        
+    elif tipo_receita == 'LIGHTGBM':
+        config = json.loads(config_receita.json_configuracao or '{}')
+        seq_qualificador = config.get('seq_qualificador')
+        seq_qualificadores = config.get('seq_qualificadores', [])
+        
+        data_fim = date(ano_base - 1, 12, 31)
+        data_inicio = data_fim - relativedelta(years=3)
+        
+        if seq_qualificadores and len(seq_qualificadores) > 1:
+            dados_hist = modelos.obter_dados_historicos_agregados(seq_qualificadores, data_inicio, data_fim)
+        elif seq_qualificador:
+            dados_hist = modelos.obter_dados_historicos(seq_qualificador, data_inicio, data_fim)
+        else:
+            dados_hist = pd.DataFrame(columns=['data', 'valor'])
+        
+        if len(dados_hist) >= 13:
+            projecao_receita = modelos.projetar_lightgbm(dados_hist, meses_projecao, config, ano_base)
+        else:
+            projecao_receita = pd.DataFrame({'data': [], 'valor_projetado': []})
+        projecao_receita_detalhada = None
+
     else:
         # Fallback: cenário vazio
         projecao_receita = pd.DataFrame({

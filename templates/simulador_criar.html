@@ -79,6 +79,12 @@
                     <option value="REGRESSAO" {% if cenario_completo and
                         cenario_completo.receita.config.cod_tipo_cenario=='REGRESSAO' %}selected{% endif %}>Regressão
                         Linear Múltipla</option>
+                    <option value="XGBOOST" {% if cenario_completo and
+                        cenario_completo.receita.config.cod_tipo_cenario=='XGBOOST' %}selected{% endif %}>XGBoost
+                        (Gradient Boosting)</option>
+                    <option value="LIGHTGBM" {% if cenario_completo and
+                        cenario_completo.receita.config.cod_tipo_cenario=='LIGHTGBM' %}selected{% endif %}>LightGBM
+                        (Microsoft Gradient Boosting)</option>
                 </select>
             </div>
 
@@ -268,6 +274,60 @@
                                     id="reg_val_inflacao" class="w-full border rounded p-1"
                                     placeholder="Valor Inflação">
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Parâmetros XGBoost -->
+                <div id="xgboost_params" class="model-params hidden">
+                    <p class="text-xs text-gray-500 mb-2">XGBoost — Gradient Boosting com features de lag, sazonalidade e tendência</p>
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">Nº Árvores (n_estimators)</label>
+                            <input type="number" name="receita_config_n_estimators" value="100" min="10" max="1000"
+                                class="w-full border rounded p-1">
+                            <p class="text-xs text-gray-400 mt-1">Mais árvores = mais precisão, mais lento</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">Profundidade Máx. (max_depth)</label>
+                            <input type="number" name="receita_config_max_depth" value="6" min="1" max="15"
+                                class="w-full border rounded p-1">
+                            <p class="text-xs text-gray-400 mt-1">Controla complexidade do modelo</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">Taxa de Aprendizado (learning_rate)</label>
+                            <input type="number" step="0.01" name="receita_config_learning_rate" value="0.1" min="0.01" max="1.0"
+                                class="w-full border rounded p-1">
+                            <p class="text-xs text-gray-400 mt-1">Menor = mais conservador</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Parâmetros LightGBM -->
+                <div id="lightgbm_params" class="model-params hidden">
+                    <p class="text-xs text-gray-500 mb-2">LightGBM — Gradient Boosting otimizado (Microsoft), mais rápido e eficiente</p>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">Nº Árvores (n_estimators)</label>
+                            <input type="number" name="receita_config_n_estimators" value="100" min="10" max="1000"
+                                class="w-full border rounded p-1">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">Profundidade Máx. (max_depth)</label>
+                            <input type="number" name="receita_config_max_depth" value="-1" min="-1" max="15"
+                                class="w-full border rounded p-1">
+                            <p class="text-xs text-gray-400 mt-1">-1 = sem limite</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">Taxa de Aprendizado</label>
+                            <input type="number" step="0.01" name="receita_config_learning_rate" value="0.1" min="0.01" max="1.0"
+                                class="w-full border rounded p-1">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600">Nº Folhas (num_leaves)</label>
+                            <input type="number" name="receita_config_num_leaves" value="31" min="2" max="256"
+                                class="w-full border rounded p-1">
+                            <p class="text-xs text-gray-400 mt-1">Principal param de complexidade</p>
                         </div>
                     </div>
                 </div>
@@ -504,6 +564,8 @@
         const arimaParams = document.getElementById('arima_params');
         const sarimaParams = document.getElementById('sarima_params');
         const regParams = document.getElementById('regressao_params');
+        const xgboostParams = document.getElementById('xgboost_params');
+        const lightgbmParams = document.getElementById('lightgbm_params');
         const commonParams = document.getElementById('common_model_params');
         const filhosContainer = document.getElementById('qualificador_filhos_container');
 
@@ -512,7 +574,7 @@
         }
 
         // Esconder todos os parâmetros específicos
-        [hwParams, arimaParams, sarimaParams, regParams].forEach(section => {
+        [hwParams, arimaParams, sarimaParams, regParams, xgboostParams, lightgbmParams].forEach(section => {
             if (section) {
                 section.classList.add('hidden');
             }
@@ -547,6 +609,12 @@
             if (commonParams) {
                 commonParams.classList.add('hidden');
             }
+        } else if (tipoSelect.value === 'XGBOOST' && xgboostParams) {
+            xgboostParams.classList.remove('hidden');
+            if (filhosContainer) filhosContainer.classList.remove('hidden');
+        } else if (tipoSelect.value === 'LIGHTGBM' && lightgbmParams) {
+            lightgbmParams.classList.remove('hidden');
+            if (filhosContainer) filhosContainer.classList.remove('hidden');
         }
         
         // Atualizar lista de filhos se necessário
@@ -586,7 +654,7 @@
         if (!select || !filhosContainer || !filhosList) return;
         
         // Verificar se o modelo atual suporta qualificadores filhos
-        const modelosComFilhos = ['HOLT_WINTERS', 'ARIMA', 'SARIMA', 'MEDIA_HISTORICA'];
+        const modelosComFilhos = ['HOLT_WINTERS', 'ARIMA', 'SARIMA', 'MEDIA_HISTORICA', 'XGBOOST', 'LIGHTGBM'];
         if (!modelosComFilhos.includes(tipoReceita)) {
             filhosContainer.classList.add('hidden');
             return;
@@ -763,7 +831,7 @@
             return;
         }
 
-        if (['HOLT_WINTERS', 'ARIMA', 'SARIMA'].includes(tipoModelo)) {
+        if (['HOLT_WINTERS', 'ARIMA', 'SARIMA', 'XGBOOST', 'LIGHTGBM'].includes(tipoModelo)) {
             const btn = document.querySelector('button[onclick="aplicarModeloReceita()"]');
             const originalText = btn.innerHTML;
             btn.innerHTML = '<i data-lucide="loader" class="animate-spin"></i> Calculando...';
@@ -806,6 +874,19 @@
                         D: parseInt(document.querySelector('input[name="receita_config_D"]')?.value || 1),
                         Q: parseInt(document.querySelector('input[name="receita_config_Q"]')?.value || 1),
                         s: parseInt(document.querySelector('input[name="receita_config_s"]')?.value || 12)
+                    };
+                } else if (tipoModelo === 'XGBOOST') {
+                    config = {
+                        n_estimators: parseInt(document.querySelector('input[name="receita_config_n_estimators"]')?.value || 100),
+                        max_depth: parseInt(document.querySelector('input[name="receita_config_max_depth"]')?.value || 6),
+                        learning_rate: parseFloat(document.querySelector('input[name="receita_config_learning_rate"]')?.value || 0.1)
+                    };
+                } else if (tipoModelo === 'LIGHTGBM') {
+                    config = {
+                        n_estimators: parseInt(document.querySelector('input[name="receita_config_n_estimators"]')?.value || 100),
+                        max_depth: parseInt(document.querySelector('input[name="receita_config_max_depth"]')?.value || -1),
+                        learning_rate: parseFloat(document.querySelector('input[name="receita_config_learning_rate"]')?.value || 0.1),
+                        num_leaves: parseInt(document.querySelector('input[name="receita_config_num_leaves"]')?.value || 31)
                     };
                 }
 

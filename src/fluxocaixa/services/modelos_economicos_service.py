@@ -30,6 +30,21 @@ try:
 except ImportError as e:
     print(f"Warning: sklearn not available: {e}")
 
+HAS_XGBOOST = False
+HAS_LIGHTGBM = False
+
+try:
+    from xgboost import XGBRegressor
+    HAS_XGBOOST = True
+except ImportError as e:
+    print(f"Warning: xgboost not available: {e}")
+
+try:
+    from lightgbm import LGBMRegressor
+    HAS_LIGHTGBM = True
+except ImportError as e:
+    print(f"Warning: lightgbm not available: {e}")
+
 
 from ..models import db, Lancamento, Qualificador
 from sqlalchemy import func, extract, and_
@@ -469,6 +484,202 @@ def projetar_regressao_multipla(
     resultado = pd.DataFrame({
         'data': datas_futuras,
         'valor_projetado': projecoes
+    })
+    
+    return resultado
+
+
+def projetar_xgboost(
+    dados_historicos: pd.DataFrame,
+    meses_projecao: int,
+    config: Dict,
+    ano_base: int = None,
+) -> pd.DataFrame:
+    """
+    Projeta valores usando XGBoost (Gradient Boosting).
+    
+    Uses feature engineering with lag values, cyclical month encoding,
+    rolling statistics, and trend. Prediction is done recursively:
+    each predicted month becomes a lag input for the next.
+    
+    Args:
+        dados_historicos: DataFrame with columns 'data' and 'valor'
+        meses_projecao: Number of months to project
+        config: Dict with parameters:
+            - n_estimators: number of trees (default: 100)
+            - max_depth: max tree depth (default: 6)
+            - learning_rate: learning rate (default: 0.1)
+        ano_base: Base year for projection (optional)
+    
+    Returns:
+        DataFrame with columns: data, valor_projetado
+    """
+    if not HAS_XGBOOST:
+        raise ValueError("Biblioteca xgboost não está instalada. Execute: pip install xgboost")
+    
+    if len(dados_historicos) < 24:
+        if len(dados_historicos) >= 13:
+            print("Aviso: Usando XGBoost com menos de 24 meses de dados")
+        else:
+            raise ValueError("XGBoost requer pelo menos 13 meses de dados históricos (12 para lags + 1 para treino)")
+    
+    from .feature_engineering import (
+        criar_features_serie_temporal,
+        criar_features_futuras,
+        preparar_dados_treino,
+        get_feature_columns,
+        atualizar_lags_recursivo,
+    )
+    
+    # Parameters
+    n_estimators = int(config.get('n_estimators', 100))
+    max_depth = int(config.get('max_depth', 6))
+    learning_rate = float(config.get('learning_rate', 0.1))
+    
+    # Generate features from historical data
+    df_features = criar_features_serie_temporal(dados_historicos)
+    
+    # Prepare training data
+    X_train, y_train = preparar_dados_treino(df_features)
+    
+    if len(X_train) < 2:
+        raise ValueError("Dados insuficientes para treinar XGBoost após remoção de NaN nos lags")
+    
+    # Train model
+    model = XGBRegressor(
+        n_estimators=n_estimators,
+        max_depth=max_depth,
+        learning_rate=learning_rate,
+        random_state=42,
+        verbosity=0,
+    )
+    model.fit(X_train, y_train)
+    
+    # Generate future features
+    df_futuro = criar_features_futuras(df_features, meses_projecao, ano_base)
+    feature_cols = get_feature_columns()
+    
+    # Recursive prediction
+    valores_previstos = []
+    valores_historicos = df_features['valor'].values
+    
+    for i in range(meses_projecao):
+        row = df_futuro.iloc[i].to_dict()
+        
+        # Update lags with previously predicted values
+        row = atualizar_lags_recursivo(row, valores_previstos, valores_historicos, i)
+        
+        # Predict
+        X_pred = pd.DataFrame([row])[feature_cols]
+        X_pred = X_pred.replace([np.inf, -np.inf], 0).fillna(0)
+        pred = float(model.predict(X_pred)[0])
+        pred = max(pred, 0)  # Ensure non-negative
+        
+        valores_previstos.append(pred)
+    
+    # Build result DataFrame
+    resultado = pd.DataFrame({
+        'data': df_futuro['data'].values[:meses_projecao],
+        'valor_projetado': valores_previstos
+    })
+    
+    return resultado
+
+
+def projetar_lightgbm(
+    dados_historicos: pd.DataFrame,
+    meses_projecao: int,
+    config: Dict,
+    ano_base: int = None,
+) -> pd.DataFrame:
+    """
+    Projeta valores usando LightGBM (Microsoft Gradient Boosting).
+    
+    Uses the same feature engineering approach as XGBoost with recursive prediction.
+    LightGBM is generally faster and more memory-efficient than XGBoost.
+    
+    Args:
+        dados_historicos: DataFrame with columns 'data' and 'valor'
+        meses_projecao: Number of months to project
+        config: Dict with parameters:
+            - n_estimators: number of trees (default: 100)
+            - max_depth: max tree depth (default: -1 = no limit)
+            - learning_rate: learning rate (default: 0.1)
+            - num_leaves: max number of leaves per tree (default: 31)
+        ano_base: Base year for projection (optional)
+    
+    Returns:
+        DataFrame with columns: data, valor_projetado
+    """
+    if not HAS_LIGHTGBM:
+        raise ValueError("Biblioteca lightgbm não está instalada. Execute: pip install lightgbm")
+    
+    if len(dados_historicos) < 24:
+        if len(dados_historicos) >= 13:
+            print("Aviso: Usando LightGBM com menos de 24 meses de dados")
+        else:
+            raise ValueError("LightGBM requer pelo menos 13 meses de dados históricos (12 para lags + 1 para treino)")
+    
+    from .feature_engineering import (
+        criar_features_serie_temporal,
+        criar_features_futuras,
+        preparar_dados_treino,
+        get_feature_columns,
+        atualizar_lags_recursivo,
+    )
+    
+    # Parameters
+    n_estimators = int(config.get('n_estimators', 100))
+    max_depth = int(config.get('max_depth', -1))
+    learning_rate = float(config.get('learning_rate', 0.1))
+    num_leaves = int(config.get('num_leaves', 31))
+    
+    # Generate features from historical data
+    df_features = criar_features_serie_temporal(dados_historicos)
+    
+    # Prepare training data
+    X_train, y_train = preparar_dados_treino(df_features)
+    
+    if len(X_train) < 2:
+        raise ValueError("Dados insuficientes para treinar LightGBM após remoção de NaN nos lags")
+    
+    # Train model
+    model = LGBMRegressor(
+        n_estimators=n_estimators,
+        max_depth=max_depth,
+        learning_rate=learning_rate,
+        num_leaves=num_leaves,
+        random_state=42,
+        verbosity=-1,
+    )
+    model.fit(X_train, y_train)
+    
+    # Generate future features
+    df_futuro = criar_features_futuras(df_features, meses_projecao, ano_base)
+    feature_cols = get_feature_columns()
+    
+    # Recursive prediction
+    valores_previstos = []
+    valores_historicos = df_features['valor'].values
+    
+    for i in range(meses_projecao):
+        row = df_futuro.iloc[i].to_dict()
+        
+        # Update lags with previously predicted values
+        row = atualizar_lags_recursivo(row, valores_previstos, valores_historicos, i)
+        
+        # Predict
+        X_pred = pd.DataFrame([row])[feature_cols]
+        X_pred = X_pred.replace([np.inf, -np.inf], 0).fillna(0)
+        pred = float(model.predict(X_pred)[0])
+        pred = max(pred, 0)  # Ensure non-negative
+        
+        valores_previstos.append(pred)
+    
+    # Build result DataFrame
+    resultado = pd.DataFrame({
+        'data': df_futuro['data'].values[:meses_projecao],
+        'valor_projetado': valores_previstos
     })
     
     return resultado

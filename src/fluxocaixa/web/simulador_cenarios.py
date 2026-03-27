@@ -377,6 +377,32 @@ async def simulador_calcular_projecao(request: Request):
             
             resultado = modelos.projetar_media_historica(dados_hist, meses_projecao, config, ano_base)
                 
+        elif tipo_modelo == 'XGBOOST':
+            data_inicio = data_fim - relativedelta(years=3)
+            
+            if len(seq_qualificadores) > 1:
+                dados_hist = modelos.obter_dados_historicos_agregados(seq_qualificadores, data_inicio, data_fim)
+            else:
+                dados_hist = modelos.obter_dados_historicos(seq_qualificadores[0], data_inicio, data_fim)
+            
+            if len(dados_hist) < 13:
+                return JSONResponse({'error': f'Dados históricos insuficientes. Encontrados: {len(dados_hist)} meses, mínimo: 13'}, status_code=400)
+            
+            resultado = modelos.projetar_xgboost(dados_hist, meses_projecao, config, ano_base)
+
+        elif tipo_modelo == 'LIGHTGBM':
+            data_inicio = data_fim - relativedelta(years=3)
+            
+            if len(seq_qualificadores) > 1:
+                dados_hist = modelos.obter_dados_historicos_agregados(seq_qualificadores, data_inicio, data_fim)
+            else:
+                dados_hist = modelos.obter_dados_historicos(seq_qualificadores[0], data_inicio, data_fim)
+            
+            if len(dados_hist) < 13:
+                return JSONResponse({'error': f'Dados históricos insuficientes. Encontrados: {len(dados_hist)} meses, mínimo: 13'}, status_code=400)
+            
+            resultado = modelos.projetar_lightgbm(dados_hist, meses_projecao, config, ano_base)
+
         else:
             return JSONResponse({'error': 'Modelo não suportado para cálculo automático'}, status_code=400)
         
@@ -438,12 +464,12 @@ def _parse_model_config_from_form(form, tipo: str) -> dict:
         if key.startswith(f'{tipo}_config_'):
             param_name = key.replace(f'{tipo}_config_', '')
             # Converter valores numéricos
-            if param_name in ['seasonal_periods', 'p', 'd', 'q', 'P', 'D', 'Q', 's', 'periodo_meses']:
+            if param_name in ['seasonal_periods', 'p', 'd', 'q', 'P', 'D', 'Q', 's', 'periodo_meses', 'n_estimators', 'max_depth', 'num_leaves']:
                 try:
                     config[param_name] = int(value)
                 except (ValueError, TypeError):
                     pass
-            elif param_name in ['fator_ajuste', 'alpha', 'beta0', 'beta1', 'beta2', 'val_pib', 'val_inflacao']:
+            elif param_name in ['fator_ajuste', 'alpha', 'beta0', 'beta1', 'beta2', 'val_pib', 'val_inflacao', 'learning_rate']:
                 try:
                     config[param_name] = float(value)
                 except (ValueError, TypeError):

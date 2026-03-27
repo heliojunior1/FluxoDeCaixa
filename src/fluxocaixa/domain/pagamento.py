@@ -11,4 +11,3 @@ class PagamentoCreate(BaseModel):
 
 class PagamentoOut(PagamentoCreate):
     seq_pagamento: int
-

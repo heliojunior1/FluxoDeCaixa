@@ -89,8 +89,7 @@ source venv/bin/activate
 Com o ambiente virtual ativado, instale as dependências:
 
 ```bash
-pip install -r requirements.txt
-```
+ ```
 
 ### 4. Executar a Aplicação
 
