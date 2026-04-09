@@ -328,6 +328,32 @@ def seed_data(session=None):
         'DEMAIS RECEITAS': [238194.12, 275768.90, 112289.34, 179055.67, 113601.89, 75102.90, 67796.90, 74420.45, 56952.45, 66895.67, 57826.67, 144493.12]
     }
 
+    # Create 2023 data (historical patterns)
+    receitas_2023 = {
+        'IR': [72345.12, 160234.56, 95678.90, 108456.78, 76234.56, 98567.89, 88234.56, 82345.67, 78234.56, 79012.34, 47567.89, 77234.56],
+        'IPVA': [86234.56, 40123.45, 49876.54, 56234.56, 65678.90, 61234.56, 67345.67, 49876.54, 40987.65, 33456.78, 21234.56, 17654.32],
+        'ITCMD': [7654.32, 5678.90, 3765.43, 3612.34, 3678.90, 5234.56, 4234.56, 10234.56, 6678.90, 7234.56, 3812.34, 7345.67],
+        'ICMS': [598765.43, 615678.90, 534567.89, 540234.56, 539876.54, 542345.67, 517234.56, 548765.43, 530234.56, 551234.56, 616789.01, 641234.56],
+        'FECOEP': [34234.56, 30123.45, 29876.54, 32456.78, 32567.89, 30912.34, 30678.90, 32234.56, 32123.45, 32134.56, 36789.01, 40234.56],
+        'FPE': [601234.56, 823456.78, 539876.54, 545678.90, 698765.43, 679876.54, 435678.90, 575234.56, 469876.54, 497654.32, 643456.78, 721234.56],
+        'ROYALTIES': [6567.89, 7234.56, 8765.43, 7456.78, 7567.89, 2934.56, 4234.56, 11123.45, 6345.67, 5534.56, 6512.34, 7412.34],
+        'APLICAÇÕES FINANCEIRAS': [5734.56, 5312.34, 4634.56, 3856.78, 3012.34, 3745.67, 2956.78, 2267.89, 1856.78, 7234.56, 6178.90, 3912.34],
+        'DEMAIS RECEITAS': [220456.78, 255234.56, 103876.54, 165678.90, 105234.56, 69456.78, 62678.90, 68876.54, 52678.90, 61789.01, 53456.78, 133876.54]
+    }
+
+    # Create 2022 data (older historical patterns)
+    receitas_2022 = {
+        'IR': [66234.56, 147890.12, 88456.78, 100234.56, 70123.45, 91234.56, 81456.78, 76234.56, 72123.45, 73456.78, 43876.54, 71234.56],
+        'IPVA': [79876.54, 37234.56, 46123.45, 52345.67, 60876.54, 56789.01, 62456.78, 46234.56, 37876.54, 30876.54, 19567.89, 16234.56],
+        'ITCMD': [7012.34, 5234.56, 3456.78, 3312.34, 3387.65, 4812.34, 3912.34, 9456.78, 6145.67, 6678.90, 3512.34, 6789.01],
+        'ICMS': [554321.09, 570987.65, 496234.56, 501876.54, 500987.65, 503456.78, 480123.45, 509876.54, 492345.67, 511876.54, 572345.67, 595678.90],
+        'FECOEP': [31456.78, 27654.32, 27456.78, 29876.54, 29987.65, 28456.78, 28234.56, 29678.90, 29567.89, 29578.90, 33876.54, 37012.34],
+        'FPE': [557234.56, 763456.78, 501234.56, 506789.01, 648234.56, 630987.65, 404567.89, 533876.54, 436234.56, 461876.54, 597234.56, 669876.54],
+        'ROYALTIES': [6045.67, 6678.90, 8123.45, 6876.54, 6987.65, 2712.34, 3912.34, 10267.89, 5867.89, 5112.34, 6012.34, 6845.67],
+        'APLICAÇÕES FINANCEIRAS': [5289.01, 4901.23, 4278.90, 3567.89, 2778.90, 3456.78, 2734.56, 2089.01, 1712.34, 6678.90, 5712.34, 3612.34],
+        'DEMAIS RECEITAS': [204234.56, 236456.78, 96234.56, 153456.78, 97654.32, 64234.56, 58123.45, 63876.54, 48876.54, 57234.56, 49567.89, 124234.56]
+    }
+
     # Despesas 2025
     despesas_2025 = {
         'REPASSE MUNICÍPIOS': [420000.00, 410000.00, 430000.00, 440000.00, 435000.00, 450000.00, 455000.00, 460000.00, 470000.00, 480000.00, 490000.00, 500000.00],
@@ -358,6 +384,38 @@ def seed_data(session=None):
         'INVESTIMENTO + AUMENTO DE CAPITAL': [11384.58, 34152.86, 35951.62, 28364.39, 30544.00, 30156.58, 30156.58, 30156.58, 30156.58, 30156.58, 30156.58, 30156.58],
         'RESTOS A PAGAR TESOURO e DEMAIS': [164241.60, 111371.66, 67278.49, 41591.37, 27623.59, 64912.10, 64912.10, 64912.10, 64912.10, 64912.10, 0.00, 0.00],
         'FECOEP - RESTOS A PAGAR - FONTE 761': [42857.13, 32153.02, 23163.06, 22429.36, 20879.54, 20100.86, 20767.69, 21007.48, 22429.65, 23323.25, 23323.25, 23323.25]
+    }
+
+    # Create 2023 despesas (historical patterns)
+    despesas_2023 = {
+        'REPASSE MUNICÍPIOS': [163876.54, 190567.89, 170234.56, 157234.56, 166876.54, 213456.78, 167123.45, 166234.56, 157567.89, 159876.54, 169876.54, 174567.89],
+        'REPASSE FUNDEB': [219234.56, 284876.54, 208567.89, 202876.54, 237234.56, 244567.89, 182123.45, 214876.54, 189456.78, 197876.54, 236123.45, 257012.34],
+        'SAÚDE 12%': [112234.56, 155876.54, 133876.54, 158345.67, 143876.54, 138567.89, 138567.89, 138567.89, 138567.89, 138567.89, 138567.89, 138567.89],
+        'EDUCAÇÃO 5%': [6976.54, 26087.65, 19198.76, 39609.87, 42854.32, 61876.54, 61876.54, 61876.54, 61876.54, 61876.54, 61876.54, 61876.54],
+        'PODERES': [133456.78, 140876.54, 123345.67, 125789.01, 126189.76, 123234.56, 123234.56, 123234.56, 123234.56, 123234.56, 123234.56, 243456.78],
+        'PASEP': [13012.34, 14876.54, 13234.56, 11134.56, 12678.90, 12705.67, 12713.45, 9998.76, 11598.76, 10267.89, 10693.45, 12298.76],
+        'PRECATÓRIOS': [122456.78, 62234.56, 14898.76, 7556.78, 7959.87, 7798.76, 275.67, 275.67, 275.67, 358.90, 358.90, 198456.78],
+        'FOLHA': [338567.89, 346345.67, 339876.54, 361567.89, 372876.54, 354567.89, 350765.43, 353598.76, 351578.90, 350923.45, 351756.78, 374876.54],
+        'CUSTEIO': [19012.34, 112678.90, 85654.32, 65234.56, 92567.89, 95876.54, 95876.54, 95876.54, 95876.54, 95876.54, 95876.54, 79234.56],
+        'INVESTIMENTO + AUMENTO DE CAPITAL': [10543.21, 31629.63, 33283.17, 26263.17, 28279.30, 27920.70, 27920.70, 27920.70, 27920.70, 27920.70, 27920.70, 27920.70],
+        'RESTOS A PAGAR TESOURO e DEMAIS': [152123.45, 103234.56, 62345.67, 38534.56, 25598.76, 60123.45, 60123.45, 60123.45, 60123.45, 60123.45, 0.00, 0.00],
+        'FECOEP - RESTOS A PAGAR - FONTE 761': [39678.90, 29765.43, 21456.78, 20776.54, 19341.23, 18619.87, 19237.65, 19459.87, 20776.67, 21604.32, 21604.32, 21604.32]
+    }
+
+    # Create 2022 despesas (older historical patterns)
+    despesas_2022 = {
+        'REPASSE MUNICÍPIOS': [151876.54, 176789.01, 157876.54, 145876.54, 154765.43, 197876.54, 155012.34, 154123.45, 146234.56, 148234.56, 157456.78, 161876.54],
+        'REPASSE FUNDEB': [203234.56, 264012.34, 193456.78, 188123.45, 220012.34, 226876.54, 168876.54, 199345.67, 175678.90, 183567.89, 218876.54, 238234.56],
+        'SAÚDE 12%': [104012.34, 144567.89, 124234.56, 146876.54, 133456.78, 128567.89, 128567.89, 128567.89, 128567.89, 128567.89, 128567.89, 128567.89],
+        'EDUCAÇÃO 5%': [6467.89, 24187.65, 17809.87, 36734.56, 39745.67, 57376.54, 57376.54, 57376.54, 57376.54, 57376.54, 57376.54, 57376.54],
+        'PODERES': [123765.43, 130567.89, 114345.67, 116567.89, 116945.67, 114234.56, 114234.56, 114234.56, 114234.56, 114234.56, 114234.56, 225678.90],
+        'PASEP': [12067.89, 13789.01, 12267.89, 10321.09, 11756.78, 11781.45, 11789.01, 9267.89, 10756.78, 9523.45, 9918.76, 11406.78],
+        'PRECATÓRIOS': [113567.89, 57734.56, 13812.34, 7012.34, 7387.65, 7237.65, 255.67, 255.67, 255.67, 332.98, 332.98, 184012.34],
+        'FOLHA': [314123.45, 321345.67, 315234.56, 335345.67, 345876.54, 328876.54, 325345.67, 327978.90, 326098.76, 325489.01, 326267.89, 347678.90],
+        'CUSTEIO': [17634.56, 104534.56, 79456.78, 60512.34, 85876.54, 88956.78, 88956.78, 88956.78, 88956.78, 88956.78, 88956.78, 73512.34],
+        'INVESTIMENTO + AUMENTO DE CAPITAL': [9776.54, 29329.63, 30876.54, 24367.89, 26234.56, 25901.23, 25901.23, 25901.23, 25901.23, 25901.23, 25901.23, 25901.23],
+        'RESTOS A PAGAR TESOURO e DEMAIS': [141012.34, 95765.43, 57876.54, 35745.67, 23745.67, 55765.43, 55765.43, 55765.43, 55765.43, 55765.43, 0.00, 0.00],
+        'FECOEP - RESTOS A PAGAR - FONTE 761': [36789.01, 27598.76, 19912.34, 19276.54, 17945.67, 17276.54, 17849.87, 18056.78, 19276.67, 20043.21, 20043.21, 20043.21]
     }
 
     # Map qualifiers to specific accounts for realistic data
@@ -416,6 +474,40 @@ def seed_data(session=None):
                         seq_conta=seq_conta
                     ))
 
+        # Add 2023 receitas
+        for origem_nome, valores in receitas_2023.items():
+            qualificador = encontrar_qualificador(origem_nome)
+            if qualificador and origem_manual:
+                seq_conta = qualificador_conta_map.get(origem_nome, 1)
+                for month, valor in enumerate(valores, 1):
+                    month_date = date(2023, month, 15)
+                    session.add(Lancamento(
+                        dat_lancamento=month_date,
+                        seq_qualificador=qualificador.seq_qualificador,
+                        val_lancamento=valor * 1000,
+                        cod_tipo_lancamento=tipo_entrada.cod_tipo_lancamento,
+                        cod_origem_lancamento=origem_manual.cod_origem_lancamento,
+                        cod_pessoa_inclusao=1,
+                        seq_conta=seq_conta
+                    ))
+
+        # Add 2022 receitas
+        for origem_nome, valores in receitas_2022.items():
+            qualificador = encontrar_qualificador(origem_nome)
+            if qualificador and origem_manual:
+                seq_conta = qualificador_conta_map.get(origem_nome, 1)
+                for month, valor in enumerate(valores, 1):
+                    month_date = date(2022, month, 15)
+                    session.add(Lancamento(
+                        dat_lancamento=month_date,
+                        seq_qualificador=qualificador.seq_qualificador,
+                        val_lancamento=valor * 1000,
+                        cod_tipo_lancamento=tipo_entrada.cod_tipo_lancamento,
+                        cod_origem_lancamento=origem_manual.cod_origem_lancamento,
+                        cod_pessoa_inclusao=1,
+                        seq_conta=seq_conta
+                    ))
+
         # Add saídas (despesas) baseadas nos órgãos de pagamento
         tipo_saida = TipoLancamento.query.filter_by(dsc_tipo_lancamento='Saída').first()
         if tipo_saida and origem_manual:
@@ -453,6 +545,42 @@ def seed_data(session=None):
                                 dat_lancamento=month_date,
                                 seq_qualificador=qualificador.seq_qualificador,
                                 val_lancamento=-valor * 1000,  # Negative for expenses
+                                cod_tipo_lancamento=tipo_saida.cod_tipo_lancamento,
+                                cod_origem_lancamento=origem_manual.cod_origem_lancamento,
+                                cod_pessoa_inclusao=1,
+                                seq_conta=seq_conta
+                            ))
+
+            # Add 2023 despesas como lançamentos de saída
+            for orgao_nome, valores in despesas_2023.items():
+                qualificador = encontrar_qualificador(orgao_nome)
+                if qualificador:
+                    seq_conta = qualificador_conta_map.get(orgao_nome, 1)
+                    for month, valor in enumerate(valores, 1):
+                        if valor > 0:
+                            month_date = date(2023, month, 15)
+                            session.add(Lancamento(
+                                dat_lancamento=month_date,
+                                seq_qualificador=qualificador.seq_qualificador,
+                                val_lancamento=-valor * 1000,
+                                cod_tipo_lancamento=tipo_saida.cod_tipo_lancamento,
+                                cod_origem_lancamento=origem_manual.cod_origem_lancamento,
+                                cod_pessoa_inclusao=1,
+                                seq_conta=seq_conta
+                            ))
+
+            # Add 2022 despesas como lançamentos de saída
+            for orgao_nome, valores in despesas_2022.items():
+                qualificador = encontrar_qualificador(orgao_nome)
+                if qualificador:
+                    seq_conta = qualificador_conta_map.get(orgao_nome, 1)
+                    for month, valor in enumerate(valores, 1):
+                        if valor > 0:
+                            month_date = date(2022, month, 15)
+                            session.add(Lancamento(
+                                dat_lancamento=month_date,
+                                seq_qualificador=qualificador.seq_qualificador,
+                                val_lancamento=-valor * 1000,
                                 cod_tipo_lancamento=tipo_saida.cod_tipo_lancamento,
                                 cod_origem_lancamento=origem_manual.cod_origem_lancamento,
                                 cod_pessoa_inclusao=1,
@@ -514,6 +642,44 @@ def seed_data(session=None):
                                 seq_qualificador=qualificador.seq_qualificador if qualificador else None,
                                 val_pagamento=valor * 1000,  # Convert to thousands
                                 dsc_pagamento=f'Despesa {despesa_nome} - {calendar.month_name[month]} 2024'
+                            ))
+
+        # Add 2023 despesas
+        for despesa_nome, valores in despesas_2023.items():
+            if despesa_nome in despesa_para_orgao_e_qual:
+                orgao_nome, qualificador_nome = despesa_para_orgao_e_qual[despesa_nome]
+                orgao = Orgao.query.filter_by(nom_orgao=orgao_nome).first()
+                qualificador = encontrar_qualificador(qualificador_nome)
+                
+                if orgao:
+                    for month, valor in enumerate(valores, 1):
+                        if valor > 0:
+                            month_date = date(2023, month, 15)
+                            session.add(Pagamento(
+                                dat_pagamento=month_date,
+                                cod_orgao=orgao.cod_orgao,
+                                seq_qualificador=qualificador.seq_qualificador if qualificador else None,
+                                val_pagamento=valor * 1000,
+                                dsc_pagamento=f'Despesa {despesa_nome} - {calendar.month_name[month]} 2023'
+                            ))
+
+        # Add 2022 despesas
+        for despesa_nome, valores in despesas_2022.items():
+            if despesa_nome in despesa_para_orgao_e_qual:
+                orgao_nome, qualificador_nome = despesa_para_orgao_e_qual[despesa_nome]
+                orgao = Orgao.query.filter_by(nom_orgao=orgao_nome).first()
+                qualificador = encontrar_qualificador(qualificador_nome)
+                
+                if orgao:
+                    for month, valor in enumerate(valores, 1):
+                        if valor > 0:
+                            month_date = date(2022, month, 15)
+                            session.add(Pagamento(
+                                dat_pagamento=month_date,
+                                cod_orgao=orgao.cod_orgao,
+                                seq_qualificador=qualificador.seq_qualificador if qualificador else None,
+                                val_pagamento=valor * 1000,
+                                dsc_pagamento=f'Despesa {despesa_nome} - {calendar.month_name[month]} 2022'
                             ))
 
 
@@ -786,17 +952,17 @@ def seed_data(session=None):
         contas = ContaBancaria.query.filter_by(ind_status='A').all()
         
         if contas:
-            # Base initial balances for each account (as of Dec 31, 2023)
+            # Base initial balances for each account (as of Dec 31, 2021)
             saldos_base = {
-                1: 250000000.00,  # Conta Única - Tesouro
-                2: 180000000.00,  # Conta Judicial  
-                3: 80000000.00,   # Conta Salário
-                4: 150000000.00,  # Conta FPE
-                5: 90000000.00,   # Recursos Próprios
+                1: 200000000.00,  # Conta Única - Tesouro
+                2: 150000000.00,  # Conta Judicial  
+                3: 65000000.00,   # Conta Salário
+                4: 120000000.00,  # Conta FPE
+                5: 75000000.00,   # Recursos Próprios
             }
             
-            # Generate daily balances from Jan 1, 2024 to today
-            data_inicio = date(2024, 1, 1)
+            # Generate daily balances from Jan 1, 2022 to today
+            data_inicio = date(2022, 1, 1)
             data_fim = date.today()
             
             # For each account, generate daily balances
@@ -1091,5 +1257,77 @@ def seed_data(session=None):
                 if qual:
                     session.add(Loa(num_ano=2024, seq_qualificador=qual.seq_qualificador, val_loa=valor))
 
+        # LOA 2023 — Receitas
+        loa_receitas_2023 = {
+            'ICMS': 7_189_920_000.00,
+            'IPVA': 487_476_000.00,
+            'ITCMD': 74_006_160.00,
+            'FPE': 7_556_749_200.00,
+            'FECOEP': 404_098_800.00,
+            'ROYALTIES': 65_047_300.00,
+            'APLICAÇÕES FINANCEIRAS': 40_796_760.00,
+            'IR': 614_000_000.00,
+            'OUTRAS RECEITAS': 1_397_530_800.00,
+        }
+
+        # LOA 2023 — Despesas
+        loa_despesas_2023 = {
+            'FOLHA': 5_290_986_000.00,
+            'PASEP': 115_536_000.00,
+            'DÍVIDAS': 434_068_100.00,
+            'PRECATÓRIOS': 411_538_000.00,
+            'CUSTEIO': 1_000_317_600.00,
+            'INVESTIMENTO + AUMENTO DE CAPITAL': 326_385_790.00,
+            'REPASSE MUNICÍPIOS': 2_094_300_720.00,
+            'REPASSE FUNDEB': 2_701_213_200.00,
+            'SAÚDE 12%': 1_730_400_000.00,
+            'EDUCAÇÃO 5%': 496_877_540.00,
+            'PODERES': 1_592_967_600.00,
+            'RESTOS A PAGAR TESOURO e DEMAIS': 680_936_400.00,
+            'FECOEP - RESTOS A PAGAR - FONTE 761': 274_069_920.00,
+        }
+
+        for dados_dict in [loa_receitas_2023, loa_despesas_2023]:
+            for nome, valor in dados_dict.items():
+                qual = encontrar_qualificador(nome)
+                if qual:
+                    session.add(Loa(num_ano=2023, seq_qualificador=qual.seq_qualificador, val_loa=valor))
+
+        # LOA 2022 — Receitas
+        loa_receitas_2022 = {
+            'ICMS': 6_512_088_000.00,
+            'IPVA': 440_566_200.00,
+            'ITCMD': 62_905_236.00,
+            'FPE': 6_878_141_580.00,
+            'FECOEP': 380_252_880.00,
+            'ROYALTIES': 47_784_550.00,
+            'APLICAÇÕES FINANCEIRAS': 30_257_808.00,
+            'IR': 567_000_000.00,
+            'OUTRAS RECEITAS': 1_337_002_140.00,
+        }
+
+        # LOA 2022 — Despesas
+        loa_despesas_2022 = {
+            'FOLHA': 4_790_292_630.00,
+            'PASEP': 85_096_128.00,
+            'DÍVIDAS': 412_864_700.00,
+            'PRECATÓRIOS': 370_384_200.00,
+            'CUSTEIO': 900_285_840.00,
+            'INVESTIMENTO + AUMENTO DE CAPITAL': 303_538_584.00,
+            'REPASSE MUNICÍPIOS': 1_905_813_660.00,
+            'REPASSE FUNDEB': 2_443_096_920.00,
+            'SAÚDE 12%': 1_608_672_000.00,
+            'EDUCAÇÃO 5%': 447_189_786.00,
+            'PODERES': 1_441_076_280.00,
+            'RESTOS A PAGAR TESOURO e DEMAIS': 630_066_720.00,
+            'FECOEP - RESTOS A PAGAR - FONTE 761': 253_924_920.00,
+        }
+
+        for dados_dict in [loa_receitas_2022, loa_despesas_2022]:
+            for nome, valor in dados_dict.items():
+                qual = encontrar_qualificador(nome)
+                if qual:
+                    session.add(Loa(num_ano=2022, seq_qualificador=qual.seq_qualificador, val_loa=valor))
+
         session.commit()
-        print("Seeded LOA data for 2024 and 2025")
+        print("Seeded LOA data for 2022, 2023, 2024 and 2025")
