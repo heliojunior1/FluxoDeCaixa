@@ -24,6 +24,12 @@ class SimuladorCenario(Base):
     dsc_cenario = Column(String(255))
     ano_base = Column(Integer, nullable=False)
     meses_projecao = Column(Integer, nullable=False, default=12)
+    # 'ANUAL', 'MENSAL', 'QUINZENAL', 'SEMANAL'
+    cod_periodicidade = Column(String(15), nullable=False, default='MENSAL')
+    # Método de cálculo da base histórica: 'MEDIA_SIMPLES', 'MEDIA_PONDERADA', 'VALOR_FIXO'
+    cod_metodo_base = Column(String(20), nullable=False, default='MEDIA_SIMPLES')
+    # JSON com config da base: {"anos": [2024,2025], "pesos": {"2024":1,"2025":3}}
+    json_config_base = Column(Text)
     dat_criacao = Column(Date, default=date.today, nullable=False)
     ind_status = Column(String(1), default='A', nullable=False)  # 'A' Ativo, 'I' Inativo
     dat_inclusao = Column(Date, default=date.today, nullable=False)

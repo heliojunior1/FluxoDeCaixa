@@ -1,0 +1,546 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-3">
+                <div class="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/30">
+                    <i data-lucide="function-square" class="w-5 h-5 text-white"></i>
+                </div>
+                Fórmulas de Projeção
+            </h1>
+            <p class="text-slate-500 mt-1 text-sm">Configure fórmulas parametrizáveis para cada rubrica de receita ou despesa</p>
+        </div>
+        <button onclick="openModal('create')"
+            class="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl text-sm font-medium shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 transition-all hover:scale-105">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            Nova Fórmula
+        </button>
+    </div>
+
+    <!-- Lista de Fórmulas -->
+    {% if formulas_data %}
+    <div class="grid gap-4">
+        {% for item in formulas_data %}
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200/60 hover:shadow-md transition-shadow overflow-hidden" id="formula-card-{{ item.formula.seq_rubrica_formula }}">
+            <div class="p-6">
+                <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                    <!-- Info Principal -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-3 mb-2">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold
+                                {% if item.formula.qualificador and item.formula.qualificador.tipo_fluxo == 'receita' %}
+                                bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200
+                                {% else %}
+                                bg-red-50 text-red-700 ring-1 ring-red-200
+                                {% endif %}">
+                                {% if item.formula.qualificador %}
+                                    {{ item.formula.qualificador.tipo_fluxo|capitalize }}
+                                {% endif %}
+                            </span>
+                            <h3 class="text-lg font-semibold text-slate-800">{{ item.formula.nom_formula }}</h3>
+                        </div>
+
+                        <div class="mb-3">
+                            <p class="text-xs text-slate-400 uppercase tracking-wider font-medium mb-1">Qualificador</p>
+                            <p class="text-sm text-slate-600">
+                                {% if item.formula.qualificador %}
+                                    {{ item.formula.qualificador.path_completo }}
+                                {% endif %}
+                            </p>
+                        </div>
+
+                        <!-- Fórmula -->
+                        <div class="bg-slate-50 rounded-xl p-4 border border-slate-200/60">
+                            <p class="text-xs text-slate-400 uppercase tracking-wider font-medium mb-2">Expressão</p>
+                            <code class="text-sm font-mono text-violet-700 bg-violet-50 px-3 py-1.5 rounded-lg inline-block">
+                                {{ item.formula.dsc_formula_expressao }}
+                            </code>
+                            <div class="mt-3 flex flex-wrap gap-1.5">
+                                {% for var in item.variaveis %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium
+                                    {% if var == 'base' %}
+                                    bg-amber-50 text-amber-700 ring-1 ring-amber-200
+                                    {% else %}
+                                    bg-blue-50 text-blue-700 ring-1 ring-blue-200
+                                    {% endif %}">
+                                    {{ var }}
+                                </span>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Nota sobre base -->
+                        <div class="mt-3 flex items-center gap-2 text-xs text-slate-400">
+                            <i data-lucide="info" class="w-3.5 h-3.5"></i>
+                            A configuração da base histórica é feita no cenário de simulação.
+                        </div>
+                    </div>
+
+                    <!-- Ações -->
+                    <div class="flex items-center gap-2 lg:flex-col">
+                        <button onclick="openEditModal({{ item.formula.seq_rubrica_formula }}, {{ item.formula_json|tojson }})"
+                            class="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Editar">
+                            <i data-lucide="pencil" class="w-4 h-4"></i>
+                        </button>
+                        <form method="POST" action="/formulas/{{ item.formula.seq_rubrica_formula }}/deletar"
+                            onsubmit="return confirm('Tem certeza que deseja excluir esta fórmula?')">
+                            <button type="submit"
+                                class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Excluir">
+                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-12 text-center">
+        <div class="w-16 h-16 bg-violet-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <i data-lucide="function-square" class="w-8 h-8 text-violet-400"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-slate-700 mb-2">Nenhuma fórmula cadastrada</h3>
+        <p class="text-slate-500 mb-6 max-w-md mx-auto">
+            Cadastre fórmulas de projeção para suas rubricas. Cada fórmula define como o valor de uma receita ou despesa será projetado.
+        </p>
+        <button onclick="openModal('create')"
+            class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl text-sm font-medium shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 transition-all">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            Criar Primeira Fórmula
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal Criar/Editar Fórmula -->
+<div id="formulaModal" class="fixed inset-0 z-50 hidden">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal()"></div>
+    <div class="fixed inset-0 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto relative">
+            <div class="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 rounded-t-2xl flex items-center justify-between z-10">
+                <h2 id="modalTitle" class="text-lg font-semibold text-slate-800">Nova Fórmula</h2>
+                <button onclick="closeModal()" class="p-1 text-slate-400 hover:text-slate-600 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="formulaForm" method="POST" action="/formulas/criar" class="p-6 space-y-6">
+                <!-- Qualificador -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Qualificador (Rubrica)</label>
+                    <select name="seq_qualificador" id="select_qualificador" required
+                        class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
+                        onchange="carregarAnosDisponiveis(this.value)">
+                        <option value="">Selecione um qualificador...</option>
+                        <optgroup label="📈 Receitas">
+                            {% for q in qualificadores_receita %}
+                            <option value="{{ q.seq_qualificador }}">{{ q.path_completo }}</option>
+                            {% endfor %}
+                        </optgroup>
+                        <optgroup label="📉 Despesas">
+                            {% for q in qualificadores_despesa %}
+                            <option value="{{ q.seq_qualificador }}">{{ q.path_completo }}</option>
+                            {% endfor %}
+                        </optgroup>
+                    </select>
+                </div>
+
+                <!-- Nome da Fórmula -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Nome da Fórmula</label>
+                    <input type="text" name="nom_formula" required placeholder="Ex: Projeção ICMS"
+                        class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none">
+                </div>
+
+                <!-- Expressão -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                        Expressão da Fórmula
+                        <span class="text-slate-400 font-normal ml-1">(use 'base' para o valor histórico)</span>
+                    </label>
+                    <div class="relative">
+                        <input type="text" name="dsc_formula_expressao" id="input_expressao" required
+                            placeholder="Ex: base * (1 + ipca) * (1 + pib * elasticidade)"
+                            class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-violet-500 focus:border-transparent outline-none"
+                            oninput="validarExpressaoDebounce()">
+                    </div>
+                    <!-- Feedback de validação -->
+                    <div id="validacao_feedback" class="mt-2 hidden">
+                        <div id="validacao_ok" class="hidden flex items-center gap-2 text-sm text-emerald-600">
+                            <i data-lucide="check-circle" class="w-4 h-4"></i>
+                            <span>Expressão válida</span>
+                        </div>
+                        <div id="validacao_erro" class="hidden flex items-center gap-2 text-sm text-red-600">
+                            <i data-lucide="alert-circle" class="w-4 h-4"></i>
+                            <span id="validacao_erro_msg"></span>
+                        </div>
+                    </div>
+                    <!-- Variáveis detectadas -->
+                    <div id="variaveis_detectadas" class="mt-3 hidden">
+                        <p class="text-xs text-slate-400 uppercase tracking-wider font-medium mb-1.5">Variáveis detectadas</p>
+                        <div id="variaveis_lista" class="flex flex-wrap gap-1.5"></div>
+                    </div>
+                    <!-- Parâmetros disponíveis -->
+                    <div class="mt-3">
+                        <p class="text-xs text-slate-400 uppercase tracking-wider font-medium mb-1.5">Parâmetros globais disponíveis</p>
+                        <div id="params_disponiveis" class="flex flex-wrap gap-1.5 text-xs text-slate-500">
+                            <span class="italic">Carregando...</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Nota sobre base histórica -->
+                <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3">
+                    <p class="text-xs text-indigo-600 flex items-center gap-1.5">
+                        <i data-lucide="info" class="w-3.5 h-3.5"></i>
+                        A configuração da base histórica (anos, método de cálculo) é feita na tela de criação do cenário de simulação.
+                    </p>
+                </div>
+
+                <!-- Preview -->
+                <div id="secao_preview" class="hidden bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl p-4 border border-violet-200/50">
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-sm font-medium text-violet-700">Teste da Fórmula</p>
+                        <button type="button" onclick="testarFormula()"
+                            class="text-xs px-3 py-1.5 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors">
+                            Calcular
+                        </button>
+                    </div>
+                    <div id="preview_inputs" class="grid grid-cols-2 gap-3 mb-3"></div>
+                    <div id="preview_resultado" class="hidden">
+                        <p class="text-sm text-slate-600">Resultado:
+                            <span id="preview_valor" class="font-bold text-violet-700 text-lg"></span>
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Botões -->
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" onclick="closeModal()"
+                        class="px-5 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit"
+                        class="px-5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50 transition-all">
+                        Salvar Fórmula
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let validacaoTimeout = null;
+    let anosDisponiveis = [];
+    let parametrosGlobais = [];
+
+    document.addEventListener('DOMContentLoaded', function() {
+        lucide.createIcons();
+        carregarParametrosGlobais();
+        toggleMetodoBase();
+    });
+
+    // ==================== Modal ====================
+
+    function openModal(mode) {
+        document.getElementById('formulaModal').classList.remove('hidden');
+        document.getElementById('modalTitle').textContent = 'Nova Fórmula';
+        document.getElementById('formulaForm').action = '/formulas/criar';
+        document.getElementById('formulaForm').reset();
+        document.getElementById('variaveis_detectadas').classList.add('hidden');
+        document.getElementById('validacao_feedback').classList.add('hidden');
+        document.getElementById('secao_preview').classList.add('hidden');
+        toggleMetodoBase();
+    }
+
+    function openEditModal(id, formula) {
+        document.getElementById('formulaModal').classList.remove('hidden');
+        document.getElementById('modalTitle').textContent = 'Editar Fórmula';
+        document.getElementById('formulaForm').action = `/formulas/${id}/atualizar`;
+
+        // Preencher campos
+        const form = document.getElementById('formulaForm');
+        form.querySelector('[name="seq_qualificador"]').value = formula.seq_qualificador;
+        form.querySelector('[name="nom_formula"]').value = formula.nom_formula;
+        form.querySelector('[name="dsc_formula_expressao"]').value = formula.dsc_formula_expressao;
+
+        // Selecionar método base
+        const metodoRadio = form.querySelector(`[name="cod_metodo_base"][value="${formula.cod_metodo_base}"]`);
+        if (metodoRadio) metodoRadio.checked = true;
+
+        toggleMetodoBase();
+
+        // Carregar anos e depois preencher seleção
+        if (formula.seq_qualificador) {
+            carregarAnosDisponiveis(formula.seq_qualificador, formula);
+        }
+
+        // Preencher valor fixo
+        if (formula.cod_metodo_base === 'VALOR_FIXO' && formula.json_config_base) {
+            try {
+                const config = typeof formula.json_config_base === 'string'
+                    ? JSON.parse(formula.json_config_base)
+                    : formula.json_config_base;
+                form.querySelector('[name="valor_fixo"]').value = config.valor || '';
+            } catch(e) {}
+        }
+
+        // Validar expressão
+        validarExpressao();
+    }
+
+    function closeModal() {
+        document.getElementById('formulaModal').classList.add('hidden');
+    }
+
+    // ==================== Validação de Expressão ====================
+
+    function validarExpressaoDebounce() {
+        clearTimeout(validacaoTimeout);
+        validacaoTimeout = setTimeout(validarExpressao, 400);
+    }
+
+    async function validarExpressao() {
+        const expressao = document.getElementById('input_expressao').value.trim();
+        if (!expressao) {
+            document.getElementById('validacao_feedback').classList.add('hidden');
+            document.getElementById('variaveis_detectadas').classList.add('hidden');
+            document.getElementById('secao_preview').classList.add('hidden');
+            return;
+        }
+
+        try {
+            const resp = await fetch('/formulas/validar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({expressao}),
+            });
+            const data = await resp.json();
+
+            document.getElementById('validacao_feedback').classList.remove('hidden');
+
+            if (data.valida) {
+                document.getElementById('validacao_ok').classList.remove('hidden');
+                document.getElementById('validacao_erro').classList.add('hidden');
+
+                // Mostrar variáveis
+                const listaDiv = document.getElementById('variaveis_lista');
+                listaDiv.innerHTML = '';
+                data.variaveis.forEach(v => {
+                    const cls = v === 'base'
+                        ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
+                        : data.variaveis_globais.includes(v)
+                            ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
+                            : 'bg-orange-50 text-orange-700 ring-1 ring-orange-200';
+                    listaDiv.innerHTML += `<span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium ${cls}">${v}</span>`;
+                });
+                document.getElementById('variaveis_detectadas').classList.remove('hidden');
+
+                // Mostrar preview se tem variáveis
+                if (data.variaveis.length > 0) {
+                    montarPreview(data.variaveis);
+                    document.getElementById('secao_preview').classList.remove('hidden');
+                }
+            } else {
+                document.getElementById('validacao_ok').classList.add('hidden');
+                document.getElementById('validacao_erro').classList.remove('hidden');
+                document.getElementById('validacao_erro_msg').textContent = data.erro;
+                document.getElementById('variaveis_detectadas').classList.add('hidden');
+                document.getElementById('secao_preview').classList.add('hidden');
+            }
+        } catch(e) {
+            console.error('Erro ao validar:', e);
+        }
+    }
+
+    // ==================== Anos Disponíveis ====================
+
+    async function carregarAnosDisponiveis(seqQualificador, formulaEdit) {
+        if (!seqQualificador) return;
+
+        try {
+            const resp = await fetch(`/formulas/anos-disponiveis/${seqQualificador}`);
+            const data = await resp.json();
+            anosDisponiveis = data.anos || [];
+
+            const container = document.getElementById('anos_checkboxes');
+            if (anosDisponiveis.length === 0) {
+                container.innerHTML = '<p class="text-sm text-slate-400 italic">Nenhum dado histórico encontrado para este qualificador</p>';
+                return;
+            }
+
+            // Parse dos anos/pesos pré-selecionados (para edição)
+            let anosSelecionados = [];
+            let pesosEdit = {};
+            if (formulaEdit && formulaEdit.json_config_base) {
+                try {
+                    const config = typeof formulaEdit.json_config_base === 'string'
+                        ? JSON.parse(formulaEdit.json_config_base)
+                        : formulaEdit.json_config_base;
+                    anosSelecionados = config.anos || [];
+                    pesosEdit = config.pesos || {};
+                } catch(e) {}
+            }
+
+            container.innerHTML = anosDisponiveis.map(ano => {
+                const checked = anosSelecionados.includes(ano) ? 'checked' : '';
+                return `
+                    <label class="relative cursor-pointer">
+                        <input type="checkbox" value="${ano}" ${checked}
+                            class="peer sr-only ano-checkbox"
+                            onchange="atualizarAnosSelecionados()">
+                        <div class="px-4 py-2.5 border-2 border-slate-200 rounded-xl text-sm font-medium text-slate-600
+                            peer-checked:border-violet-500 peer-checked:bg-violet-50 peer-checked:text-violet-700 transition-all">
+                            ${ano}
+                        </div>
+                    </label>
+                `;
+            }).join('');
+
+            atualizarAnosSelecionados();
+
+            // Preencher pesos se for edição com MEDIA_PONDERADA
+            if (Object.keys(pesosEdit).length > 0) {
+                setTimeout(() => {
+                    anosSelecionados.forEach(ano => {
+                        const input = document.querySelector(`[name="peso_${ano}"]`);
+                        if (input && pesosEdit[String(ano)]) {
+                            input.value = pesosEdit[String(ano)];
+                        }
+                    });
+                }, 100);
+            }
+        } catch(e) {
+            console.error('Erro ao carregar anos:', e);
+        }
+    }
+
+    function atualizarAnosSelecionados() {
+        const checkboxes = document.querySelectorAll('.ano-checkbox:checked');
+        const anos = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        document.getElementById('anos_selecionados').value = JSON.stringify(anos);
+
+        // Atualizar pesos se MEDIA_PONDERADA
+        const metodo = document.querySelector('[name="cod_metodo_base"]:checked')?.value;
+        if (metodo === 'MEDIA_PONDERADA') {
+            const pesosDiv = document.getElementById('pesos_inputs');
+            pesosDiv.innerHTML = anos.map(ano => `
+                <div class="flex items-center gap-2">
+                    <label class="text-sm text-slate-600 font-medium w-12">${ano}</label>
+                    <input type="number" name="peso_${ano}" value="1" min="0.1" step="0.1"
+                        class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-violet-500 outline-none">
+                </div>
+            `).join('');
+        }
+    }
+
+    // ==================== Método Base ====================
+
+    function toggleMetodoBase() {
+        const metodo = document.querySelector('[name="cod_metodo_base"]:checked')?.value || 'MEDIA_SIMPLES';
+
+        document.getElementById('secao_anos').classList.toggle('hidden', metodo === 'VALOR_FIXO');
+        document.getElementById('secao_pesos').classList.toggle('hidden', metodo !== 'MEDIA_PONDERADA');
+        document.getElementById('secao_valor_fixo').classList.toggle('hidden', metodo !== 'VALOR_FIXO');
+
+        if (metodo === 'MEDIA_PONDERADA') {
+            atualizarAnosSelecionados();
+        }
+    }
+
+    // ==================== Parâmetros Globais ====================
+
+    async function carregarParametrosGlobais() {
+        try {
+            const resp = await fetch('/api/parametros-globais');
+            const data = await resp.json();
+            parametrosGlobais = data.parametros || [];
+
+            const container = document.getElementById('params_disponiveis');
+            if (parametrosGlobais.length === 0) {
+                container.innerHTML = '<span class="italic text-xs">Nenhum parâmetro cadastrado. <a href="/parametros-globais" class="text-violet-600 underline">Cadastrar</a></span>';
+                return;
+            }
+
+            container.innerHTML = parametrosGlobais.map(p =>
+                `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 ring-1 ring-blue-200 cursor-pointer hover:bg-blue-100 transition-colors"
+                    onclick="inserirVariavel('${p.nom_parametro}')" title="${p.dsc_parametro || 'Clique para inserir'}">
+                    ${p.nom_parametro}
+                    <span class="text-blue-400 text-[10px]">${p.cod_tipo === 'P' ? '%' : 'R$'}</span>
+                </span>`
+            ).join('');
+        } catch(e) {
+            console.error('Erro ao carregar parâmetros:', e);
+        }
+    }
+
+    function inserirVariavel(nome) {
+        const input = document.getElementById('input_expressao');
+        const pos = input.selectionStart || input.value.length;
+        const antes = input.value.substring(0, pos);
+        const depois = input.value.substring(pos);
+
+        // Adicionar espaço antes se necessário
+        const precisa_espaco = antes.length > 0 && !antes.endsWith(' ') && !antes.endsWith('(');
+        input.value = antes + (precisa_espaco ? ' ' : '') + nome + depois;
+        input.focus();
+        validarExpressaoDebounce();
+    }
+
+    // ==================== Preview ====================
+
+    function montarPreview(variaveis) {
+        const container = document.getElementById('preview_inputs');
+        container.innerHTML = variaveis.map(v => {
+            const defaultVal = v === 'base' ? '100000' : '0.045';
+            return `
+                <div class="flex items-center gap-2">
+                    <label class="text-xs text-slate-600 font-medium w-24 truncate" title="${v}">${v}</label>
+                    <input type="number" step="any" value="${defaultVal}"
+                        data-var="${v}"
+                        class="preview-var-input flex-1 px-2.5 py-1.5 bg-white border border-violet-200 rounded-lg text-xs focus:ring-1 focus:ring-violet-400 outline-none">
+                </div>
+            `;
+        }).join('');
+        document.getElementById('preview_resultado').classList.add('hidden');
+    }
+
+    async function testarFormula() {
+        const expressao = document.getElementById('input_expressao').value.trim();
+        const inputs = document.querySelectorAll('.preview-var-input');
+        const variaveis = {};
+
+        inputs.forEach(input => {
+            variaveis[input.dataset.var] = parseFloat(input.value) || 0;
+        });
+
+        try {
+            const resp = await fetch('/formulas/preview', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({expressao, variaveis}),
+            });
+            const data = await resp.json();
+
+            if (data.resultado !== undefined) {
+                document.getElementById('preview_valor').textContent = data.formatado;
+                document.getElementById('preview_resultado').classList.remove('hidden');
+            } else {
+                alert(data.error || 'Erro ao calcular');
+            }
+        } catch(e) {
+            console.error('Erro ao testar:', e);
+        }
+    }
+</script>
+{% endblock %}

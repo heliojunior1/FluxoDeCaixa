@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-800 flex items-center gap-3">
+                <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30">
+                    <i data-lucide="settings-2" class="w-5 h-5 text-white"></i>
+                </div>
+                Parâmetros Globais
+            </h1>
+            <p class="text-slate-500 mt-1 text-sm">Variáveis macroeconômicas usadas nas fórmulas de projeção (IPCA, PIB, Selic, etc.)</p>
+        </div>
+        <button onclick="openModal()"
+            class="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-xl text-sm font-medium shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all hover:scale-105">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            Novo Parâmetro
+        </button>
+    </div>
+
+    <!-- Info Card -->
+    <div class="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl p-5 border border-blue-200/50 mb-6">
+        <div class="flex items-start gap-3">
+            <i data-lucide="info" class="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0"></i>
+            <div>
+                <p class="text-sm text-blue-800 font-medium">Como funcionam os parâmetros?</p>
+                <p class="text-sm text-blue-600 mt-1">
+                    Os parâmetros globais são variáveis que podem ser usadas em qualquer fórmula de projeção.
+                    O nome do parâmetro deve ser o mesmo usado na expressão da fórmula.
+                    Por exemplo, se a fórmula é <code class="bg-blue-100 px-1.5 py-0.5 rounded font-mono text-xs">base * (1 + ipca)</code>,
+                    deve existir um parâmetro chamado <code class="bg-blue-100 px-1.5 py-0.5 rounded font-mono text-xs">ipca</code>.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Parâmetros -->
+    {% if parametros %}
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
+        <table class="w-full">
+            <thead>
+                <tr class="bg-slate-50 border-b border-slate-200">
+                    <th class="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Nome</th>
+                    <th class="px-6 py-3.5 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Descrição</th>
+                    <th class="px-6 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Tipo</th>
+                    <th class="px-6 py-3.5 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider w-32">Ações</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+                {% for p_item in parametros_data %}
+                {% set p = p_item.obj %}
+                <tr class="hover:bg-slate-50/50 transition-colors">
+                    <td class="px-6 py-4">
+                        <code class="text-sm font-mono font-semibold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-lg">{{ p.nom_parametro }}</code>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-slate-600">{{ p.dsc_parametro or '—' }}</td>
+                    <td class="px-6 py-4 text-center">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold
+                            {% if p.cod_tipo == 'P' %}
+                            bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200
+                            {% else %}
+                            bg-amber-50 text-amber-700 ring-1 ring-amber-200
+                            {% endif %}">
+                            {% if p.cod_tipo == 'P' %}Percentual{% else %}Valor{% endif %}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex items-center justify-center gap-1">
+                            <button onclick='openEditModal({{ p.seq_parametro_global }}, {{ p_item.json|tojson }})'
+                                class="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                title="Editar">
+                                <i data-lucide="pencil" class="w-4 h-4"></i>
+                            </button>
+                            <form method="POST" action="/parametros-globais/{{ p.seq_parametro_global }}/deletar"
+                                onsubmit="return confirm('Tem certeza que deseja excluir este parâmetro?')" class="inline">
+                                <button type="submit"
+                                    class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Excluir">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <!-- Empty State -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200/60 p-12 text-center">
+        <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <i data-lucide="settings-2" class="w-8 h-8 text-blue-400"></i>
+        </div>
+        <h3 class="text-lg font-semibold text-slate-700 mb-2">Nenhum parâmetro cadastrado</h3>
+        <p class="text-slate-500 mb-6 max-w-md mx-auto">
+            Cadastre parâmetros macroeconômicos como IPCA, PIB e Selic para usar nas fórmulas de projeção.
+        </p>
+        <button onclick="openModal()"
+            class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-cyan-600 text-white rounded-xl text-sm font-medium shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            Criar Primeiro Parâmetro
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- Sugestões Rápidas -->
+    {% if not parametros %}
+    <div class="mt-6 bg-white rounded-2xl shadow-sm border border-slate-200/60 p-6">
+        <p class="text-sm font-medium text-slate-700 mb-4">Sugestões de parâmetros comuns:</p>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <button onclick="criarRapido('ipca', 'Índice Nacional de Preços ao Consumidor Amplo', 'P')"
+                class="p-3 border-2 border-dashed border-slate-200 rounded-xl hover:border-blue-300 hover:bg-blue-50/50 transition-all text-left">
+                <p class="text-sm font-semibold text-slate-700">ipca</p>
+                <p class="text-xs text-slate-400">Inflação</p>
+            </button>
+            <button onclick="criarRapido('pib', 'Produto Interno Bruto - Crescimento Real', 'P')"
+                class="p-3 border-2 border-dashed border-slate-200 rounded-xl hover:border-blue-300 hover:bg-blue-50/50 transition-all text-left">
+                <p class="text-sm font-semibold text-slate-700">pib</p>
+                <p class="text-xs text-slate-400">PIB</p>
+            </button>
+            <button onclick="criarRapido('selic', 'Taxa Selic Meta', 'P')"
+                class="p-3 border-2 border-dashed border-slate-200 rounded-xl hover:border-blue-300 hover:bg-blue-50/50 transition-all text-left">
+                <p class="text-sm font-semibold text-slate-700">selic</p>
+                <p class="text-xs text-slate-400">Taxa Selic</p>
+            </button>
+            <button onclick="criarRapido('populacao', 'Crescimento Populacional', 'P')"
+                class="p-3 border-2 border-dashed border-slate-200 rounded-xl hover:border-blue-300 hover:bg-blue-50/50 transition-all text-left">
+                <p class="text-sm font-semibold text-slate-700">populacao</p>
+                <p class="text-xs text-slate-400">População</p>
+            </button>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Modal Criar/Editar Parâmetro -->
+<div id="paramModal" class="fixed inset-0 z-50 hidden">
+    <div class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onclick="closeModal()"></div>
+    <div class="fixed inset-0 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg relative">
+            <div class="border-b border-slate-200 px-6 py-4 rounded-t-2xl flex items-center justify-between">
+                <h2 id="modalTitle" class="text-lg font-semibold text-slate-800">Novo Parâmetro</h2>
+                <button onclick="closeModal()" class="p-1 text-slate-400 hover:text-slate-600 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="paramForm" method="POST" action="/parametros-globais/criar" class="p-6 space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                        Nome do Parâmetro
+                        <span class="text-slate-400 font-normal ml-1">(identificador na fórmula)</span>
+                    </label>
+                    <input type="text" name="nom_parametro" required placeholder="Ex: ipca"
+                        pattern="[a-z_]+" title="Use apenas letras minúsculas e underline"
+                        class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                    <p class="text-xs text-slate-400 mt-1">Use apenas letras minúsculas e underline (ex: ipca, pib, crescimento_real)</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Descrição</label>
+                    <input type="text" name="dsc_parametro" placeholder="Ex: Índice de Preços ao Consumidor Amplo"
+                        class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Tipo de Valor</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="relative cursor-pointer">
+                            <input type="radio" name="cod_tipo" value="P" checked class="peer sr-only">
+                            <div class="p-3 border-2 border-slate-200 rounded-xl text-center peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all">
+                                <p class="text-sm font-medium text-slate-700">Percentual</p>
+                                <p class="text-xs text-slate-400 mt-0.5">Ex: 0.045 = 4,5%</p>
+                            </div>
+                        </label>
+                        <label class="relative cursor-pointer">
+                            <input type="radio" name="cod_tipo" value="V" class="peer sr-only">
+                            <div class="p-3 border-2 border-slate-200 rounded-xl text-center peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all">
+                                <p class="text-sm font-medium text-slate-700">Valor Absoluto</p>
+                                <p class="text-xs text-slate-400 mt-0.5">Ex: R$ 1.500,00</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" onclick="closeModal()"
+                        class="px-5 py-2.5 text-sm font-medium text-slate-600 bg-slate-100 rounded-xl hover:bg-slate-200 transition-colors">
+                        Cancelar
+                    </button>
+                    <button type="submit"
+                        class="px-5 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-blue-500 to-cyan-600 rounded-xl shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all">
+                        Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        lucide.createIcons();
+    });
+
+    function openModal() {
+        document.getElementById('paramModal').classList.remove('hidden');
+        document.getElementById('modalTitle').textContent = 'Novo Parâmetro';
+        document.getElementById('paramForm').action = '/parametros-globais/criar';
+        document.getElementById('paramForm').reset();
+    }
+
+    function openEditModal(id, param) {
+        document.getElementById('paramModal').classList.remove('hidden');
+        document.getElementById('modalTitle').textContent = 'Editar Parâmetro';
+        document.getElementById('paramForm').action = `/parametros-globais/${id}/atualizar`;
+
+        const form = document.getElementById('paramForm');
+        form.querySelector('[name="nom_parametro"]').value = param.nom_parametro;
+        form.querySelector('[name="dsc_parametro"]').value = param.dsc_parametro || '';
+        const tipoRadio = form.querySelector(`[name="cod_tipo"][value="${param.cod_tipo}"]`);
+        if (tipoRadio) tipoRadio.checked = true;
+    }
+
+    function closeModal() {
+        document.getElementById('paramModal').classList.add('hidden');
+    }
+
+    async function criarRapido(nome, descricao, tipo) {
+        const form = new FormData();
+        form.append('nom_parametro', nome);
+        form.append('dsc_parametro', descricao);
+        form.append('cod_tipo', tipo);
+
+        try {
+            const resp = await fetch('/parametros-globais/criar', {
+                method: 'POST',
+                body: form,
+                redirect: 'follow',
+            });
+            if (resp.redirected) {
+                window.location.href = resp.url;
+            } else {
+                window.location.reload();
+            }
+        } catch(e) {
+            console.error('Erro:', e);
+            alert('Erro ao criar parâmetro');
+        }
+    }
+</script>
+{% endblock %}

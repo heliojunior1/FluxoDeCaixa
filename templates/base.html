@@ -215,6 +215,22 @@
                 class="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 mt-6 sidebar-section-title whitespace-nowrap">
                 Configurações</p>
 
+            <a href="{{ url_for('formulas_list') }}"
+                class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:text-white group"
+                title="Fórmulas de Projeção">
+                <i data-lucide="function-square"
+                    class="w-5 h-5 text-slate-400 group-hover:text-blue-400 transition-colors flex-shrink-0"></i>
+                <span class="sidebar-text whitespace-nowrap">Fórmulas</span>
+            </a>
+
+            <a href="{{ url_for('parametros_globais_list') }}"
+                class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:text-white group"
+                title="Parâmetros Globais">
+                <i data-lucide="settings-2"
+                    class="w-5 h-5 text-slate-400 group-hover:text-blue-400 transition-colors flex-shrink-0"></i>
+                <span class="sidebar-text whitespace-nowrap">Parâmetros</span>
+            </a>
+
             <a href="{{ url_for('mapeamentos') }}"
                 class="sidebar-link flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium hover:text-white group"
                 title="Mapeamentos">

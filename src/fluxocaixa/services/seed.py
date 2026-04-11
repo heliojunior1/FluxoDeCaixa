@@ -354,6 +354,19 @@ def seed_data(session=None):
         'DEMAIS RECEITAS': [204234.56, 236456.78, 96234.56, 153456.78, 97654.32, 64234.56, 58123.45, 63876.54, 48876.54, 57234.56, 49567.89, 124234.56]
     }
 
+    # Create 2026 data (projected growth ~5% over 2025)
+    receitas_2026 = {
+        'IR': [94500.00, 54600.00, 55650.00, 56700.00, 57750.00, 58800.00, 59850.00, 60900.00, 61950.00, 63000.00, 64050.00, 65100.00],
+        'IPVA': [262500.00, 63000.00, 47250.00, 42000.00, 36750.00, 31500.00, 29400.00, 27300.00, 25200.00, 23100.00, 21000.00, 18900.00],
+        'ITCMD': [8400.00, 8925.00, 8610.00, 8190.00, 8400.00, 8925.00, 9135.00, 9450.00, 9240.00, 9135.00, 9030.00, 9345.00],
+        'ICMS': [735000.00, 745500.00, 756000.00, 750750.00, 761250.00, 766500.00, 771750.00, 777000.00, 782250.00, 787500.00, 792750.00, 798000.00],
+        'FECOEP': [22238.00, 38351.00, 37787.00, 41215.00, 41273.00, 39225.00, 38897.00, 40955.00, 40866.00, 40879.00, 46661.00, 51092.00],
+        'FPE': [728000.00, 738400.00, 748800.00, 759200.00, 769600.00, 780000.00, 790400.00, 800800.00, 811200.00, 821600.00, 832000.00, 842400.00],
+        'ROYALTIES': [8400.00, 8925.00, 9450.00, 9975.00, 9450.00, 8925.00, 8400.00, 9975.00, 10500.00, 11025.00, 10500.00, 9975.00],
+        'APLICAÇÕES FINANCEIRAS': [5250.00, 5460.00, 5565.00, 5775.00, 5880.00, 6090.00, 6195.00, 6300.00, 6510.00, 6720.00, 6825.00, 7035.00],
+        'DEMAIS RECEITAS': [105000.00, 110250.00, 115500.00, 120750.00, 126000.00, 131250.00, 136500.00, 141750.00, 147000.00, 152250.00, 157500.00, 162750.00]
+    }
+
     # Despesas 2025
     despesas_2025 = {
         'REPASSE MUNICÍPIOS': [420000.00, 410000.00, 430000.00, 440000.00, 435000.00, 450000.00, 455000.00, 460000.00, 470000.00, 480000.00, 490000.00, 500000.00],
@@ -416,6 +429,22 @@ def seed_data(session=None):
         'INVESTIMENTO + AUMENTO DE CAPITAL': [9776.54, 29329.63, 30876.54, 24367.89, 26234.56, 25901.23, 25901.23, 25901.23, 25901.23, 25901.23, 25901.23, 25901.23],
         'RESTOS A PAGAR TESOURO e DEMAIS': [141012.34, 95765.43, 57876.54, 35745.67, 23745.67, 55765.43, 55765.43, 55765.43, 55765.43, 55765.43, 0.00, 0.00],
         'FECOEP - RESTOS A PAGAR - FONTE 761': [36789.01, 27598.76, 19912.34, 19276.54, 17945.67, 17276.54, 17849.87, 18056.78, 19276.67, 20043.21, 20043.21, 20043.21]
+    }
+
+    # Despesas 2026 (projected growth ~4% over 2025)
+    despesas_2026 = {
+        'REPASSE MUNICÍPIOS': [436800.00, 426400.00, 447200.00, 457600.00, 452400.00, 468000.00, 473200.00, 478400.00, 488800.00, 499200.00, 509600.00, 520000.00],
+        'REPASSE FUNDEB': [377423.00, 355206.00, 260030.00, 252917.00, 295849.00, 305069.00, 227263.00, 268175.00, 236285.00, 246741.00, 294508.00, 320591.00],
+        'SAÚDE 12%': [139975.00, 194389.00, 167049.00, 197619.00, 179782.00, 172919.00, 172919.00, 172919.00, 172919.00, 172919.00, 172919.00, 172919.00],
+        'EDUCAÇÃO 5%': [8698.00, 32532.00, 23943.00, 49415.00, 53436.00, 77168.00, 77168.00, 77168.00, 77168.00, 77168.00, 77168.00, 77168.00],
+        'PODERES': [197600.00, 202800.00, 208000.00, 213200.00, 218400.00, 223600.00, 228800.00, 234000.00, 239200.00, 244400.00, 249600.00, 254800.00],
+        'PASEP': [20800.00, 21840.00, 21320.00, 22360.00, 22880.00, 23400.00, 23920.00, 24440.00, 24960.00, 25480.00, 26000.00, 26520.00],
+        'PRECATÓRIOS': [10400.00, 9360.00, 8840.00, 8320.00, 7800.00, 7280.00, 6760.00, 6240.00, 5720.00, 5200.00, 4680.00, 4160.00],
+        'FOLHA': [540800.00, 546000.00, 551200.00, 556400.00, 561600.00, 566800.00, 572000.00, 577200.00, 582400.00, 587600.00, 592800.00, 603200.00],
+        'CUSTEIO': [93600.00, 98800.00, 100880.00, 102960.00, 104000.00, 106080.00, 108160.00, 110240.00, 112320.00, 114400.00, 116480.00, 119600.00],
+        'INVESTIMENTO + AUMENTO DE CAPITAL': [13156.00, 39466.00, 41544.00, 32777.00, 35295.00, 34848.00, 34848.00, 34848.00, 34848.00, 34848.00, 34848.00, 34848.00],
+        'RESTOS A PAGAR TESOURO e DEMAIS': [62400.00, 60320.00, 58240.00, 56160.00, 54080.00, 52000.00, 49920.00, 47840.00, 45760.00, 43680.00, 41600.00, 39520.00],
+        'FECOEP - RESTOS A PAGAR - FONTE 761': [49524.00, 37155.00, 26766.00, 25918.00, 24128.00, 23228.00, 23998.00, 24275.00, 25919.00, 26951.00, 26951.00, 26951.00]
     }
 
     # Map qualifiers to specific accounts for realistic data
@@ -508,6 +537,23 @@ def seed_data(session=None):
                         seq_conta=seq_conta
                     ))
 
+        # Add 2026 receitas
+        for origem_nome, valores in receitas_2026.items():
+            qualificador = encontrar_qualificador(origem_nome)
+            if qualificador and origem_manual:
+                seq_conta = qualificador_conta_map.get(origem_nome, 1)
+                for month, valor in enumerate(valores, 1):
+                    month_date = date(2026, month, 15)
+                    session.add(Lancamento(
+                        dat_lancamento=month_date,
+                        seq_qualificador=qualificador.seq_qualificador,
+                        val_lancamento=valor * 1000,
+                        cod_tipo_lancamento=tipo_entrada.cod_tipo_lancamento,
+                        cod_origem_lancamento=origem_manual.cod_origem_lancamento,
+                        cod_pessoa_inclusao=1,
+                        seq_conta=seq_conta
+                    ))
+
         # Add saídas (despesas) baseadas nos órgãos de pagamento
         tipo_saida = TipoLancamento.query.filter_by(dsc_tipo_lancamento='Saída').first()
         if tipo_saida and origem_manual:
@@ -577,6 +623,24 @@ def seed_data(session=None):
                     for month, valor in enumerate(valores, 1):
                         if valor > 0:
                             month_date = date(2022, month, 15)
+                            session.add(Lancamento(
+                                dat_lancamento=month_date,
+                                seq_qualificador=qualificador.seq_qualificador,
+                                val_lancamento=-valor * 1000,
+                                cod_tipo_lancamento=tipo_saida.cod_tipo_lancamento,
+                                cod_origem_lancamento=origem_manual.cod_origem_lancamento,
+                                cod_pessoa_inclusao=1,
+                                seq_conta=seq_conta
+                            ))
+
+            # Add 2026 despesas como lançamentos de saída
+            for orgao_nome, valores in despesas_2026.items():
+                qualificador = encontrar_qualificador(orgao_nome)
+                if qualificador:
+                    seq_conta = qualificador_conta_map.get(orgao_nome, 1)
+                    for month, valor in enumerate(valores, 1):
+                        if valor > 0:
+                            month_date = date(2026, month, 15)
                             session.add(Lancamento(
                                 dat_lancamento=month_date,
                                 seq_qualificador=qualificador.seq_qualificador,
@@ -680,6 +744,25 @@ def seed_data(session=None):
                                 seq_qualificador=qualificador.seq_qualificador if qualificador else None,
                                 val_pagamento=valor * 1000,
                                 dsc_pagamento=f'Despesa {despesa_nome} - {calendar.month_name[month]} 2022'
+                            ))
+
+        # Add 2026 despesas
+        for despesa_nome, valores in despesas_2026.items():
+            if despesa_nome in despesa_para_orgao_e_qual:
+                orgao_nome, qualificador_nome = despesa_para_orgao_e_qual[despesa_nome]
+                orgao = Orgao.query.filter_by(nom_orgao=orgao_nome).first()
+                qualificador = encontrar_qualificador(qualificador_nome)
+                
+                if orgao:
+                    for month, valor in enumerate(valores, 1):
+                        if valor > 0:
+                            month_date = date(2026, month, 15)
+                            session.add(Pagamento(
+                                dat_pagamento=month_date,
+                                cod_orgao=orgao.cod_orgao,
+                                seq_qualificador=qualificador.seq_qualificador if qualificador else None,
+                                val_pagamento=valor * 1000,
+                                dsc_pagamento=f'Despesa {despesa_nome} - {calendar.month_name[month]} 2026'
                             ))
 
 
@@ -1329,5 +1412,98 @@ def seed_data(session=None):
                 if qual:
                     session.add(Loa(num_ano=2022, seq_qualificador=qual.seq_qualificador, val_loa=valor))
 
+        # LOA 2026 — Receitas (projeção ~5% sobre 2025)
+        loa_receitas_2026 = {
+            'ICMS': 9_198_000_000.00,
+            'IPVA': 627_900_000.00,
+            'ITCMD': 107_730_000.00,
+            'FPE': 9_576_000_000.00,
+            'FECOEP': 479_435_800.00,
+            'ROYALTIES': 126_525_000.00,
+            'APLICAÇÕES FINANCEIRAS': 77_805_000.00,
+            'IR': 756_000_000.00,
+            'OUTRAS RECEITAS': 1_606_500_000.00,
+        }
+
+        # LOA 2026 — Despesas (projeção ~4% sobre 2025)
+        loa_despesas_2026 = {
+            'FOLHA': 6_817_200_000.00,
+            'PASEP': 307_840_000.00,
+            'DÍVIDAS': 499_200_000.00,
+            'PRECATÓRIOS': 84_760_000.00,
+            'CUSTEIO': 1_287_520_000.00,
+            'INVESTIMENTO + AUMENTO DE CAPITAL': 375_490_000.00,
+            'REPASSE MUNICÍPIOS': 5_553_600_000.00,
+            'REPASSE FUNDEB': 3_439_545_660.00,
+            'SAÚDE 12%': 2_081_652_520.00,
+            'EDUCAÇÃO 5%': 708_200_480.00,
+            'PODERES': 2_714_400_000.00,
+            'RESTOS A PAGAR TESOURO e DEMAIS': 611_520_000.00,
+            'FECOEP - RESTOS A PAGAR - FONTE 761': 308_380_240.00,
+        }
+
+        for dados_dict in [loa_receitas_2026, loa_despesas_2026]:
+            for nome, valor in dados_dict.items():
+                qual = encontrar_qualificador(nome)
+                if qual:
+                    session.add(Loa(num_ano=2026, seq_qualificador=qual.seq_qualificador, val_loa=valor))
+
         session.commit()
-        print("Seeded LOA data for 2022, 2023, 2024 and 2025")
+        print("Seeded LOA data for 2022, 2023, 2024, 2025 and 2026")
+
+    # ==================== Parâmetros Globais e Fórmulas ====================
+    from ..models.formula import ParametroGlobal, RubricaFormula
+
+    if not ParametroGlobal.query.first():
+        parametros = [
+            ParametroGlobal(nom_parametro='ipca', dsc_parametro='Índice Nacional de Preços ao Consumidor Amplo', cod_tipo='P'),
+            ParametroGlobal(nom_parametro='pib', dsc_parametro='Crescimento Real do PIB', cod_tipo='P'),
+            ParametroGlobal(nom_parametro='selic', dsc_parametro='Taxa Selic Meta', cod_tipo='P'),
+            ParametroGlobal(nom_parametro='populacao', dsc_parametro='Crescimento Populacional', cod_tipo='P'),
+            ParametroGlobal(nom_parametro='elasticidade', dsc_parametro='Elasticidade-renda do tributo', cod_tipo='V'),
+        ]
+        session.add_all(parametros)
+        session.commit()
+        print("Seeded ParametroGlobal data")
+
+    if not RubricaFormula.query.first():
+        import json
+
+        # Fórmula para ICMS
+        icms_qual = encontrar_qualificador('ICMS')
+        if icms_qual:
+            session.add(RubricaFormula(
+                seq_qualificador=icms_qual.seq_qualificador,
+                nom_formula='Projeção ICMS',
+                dsc_formula_expressao='base * (1 + ipca) * (1 + pib * elasticidade)',
+                cod_metodo_base='MEDIA_SIMPLES',
+                json_config_base=json.dumps({'anos': [2023, 2024, 2025]}),
+            ))
+
+        # Fórmula para IPVA
+        ipva_qual = encontrar_qualificador('IPVA')
+        if ipva_qual:
+            session.add(RubricaFormula(
+                seq_qualificador=ipva_qual.seq_qualificador,
+                nom_formula='Projeção IPVA',
+                dsc_formula_expressao='base * (1 + ipca) * (1 + populacao)',
+                cod_metodo_base='MEDIA_PONDERADA',
+                json_config_base=json.dumps({
+                    'anos': [2023, 2024, 2025],
+                    'pesos': {'2023': 1, '2024': 2, '2025': 3},
+                }),
+            ))
+
+        # Fórmula para FPE
+        fpe_qual = encontrar_qualificador('FPE')
+        if fpe_qual:
+            session.add(RubricaFormula(
+                seq_qualificador=fpe_qual.seq_qualificador,
+                nom_formula='Projeção FPE',
+                dsc_formula_expressao='base * (1 + ipca + pib)',
+                cod_metodo_base='MEDIA_SIMPLES',
+                json_config_base=json.dumps({'anos': [2024, 2025]}),
+            ))
+
+        session.commit()
+        print("Seeded RubricaFormula data")

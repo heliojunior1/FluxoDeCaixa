@@ -39,16 +39,102 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Ano Base</label>
-                    <input type="number" name="ano_base" required
+                    <input type="number" name="ano_base" id="input_ano_base" required
                         class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
                         value="{{ simulador.ano_base if simulador else current_year }}">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Meses de Projeção</label>
-                    <input type="number" name="meses_projecao" required min="1" max="60"
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Periodicidade</label>
+                    <select name="cod_periodicidade" id="cod_periodicidade"
+                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
+                        onchange="onPeriodicidadeChange()">
+                        <option value="ANUAL" {% if simulador and simulador.cod_periodicidade == 'ANUAL' %}selected{% endif %}>Anual</option>
+                        <option value="MENSAL" {% if not simulador or simulador.cod_periodicidade == 'MENSAL' %}selected{% endif %}>Mensal</option>
+                        <option value="QUINZENAL" {% if simulador and simulador.cod_periodicidade == 'QUINZENAL' %}selected{% endif %}>Quinzenal</option>
+                        <option value="SEMANAL" {% if simulador and simulador.cod_periodicidade == 'SEMANAL' %}selected{% endif %}>Semanal</option>
+                    </select>
+                </div>
+                <div>
+                    <label id="label_periodos" class="block text-sm font-medium text-gray-700 mb-1">Meses de Projeção</label>
+                    <input type="number" name="meses_projecao" id="input_periodos" required min="1" max="60"
                         class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2 border"
                         value="{{ simulador.meses_projecao if simulador else 12 }}">
                 </div>
+            </div>
+        </div>
+
+        <!-- 1.5. Configuração da Base Histórica -->
+        <div class="mb-8 p-4 bg-indigo-50 rounded-lg border border-indigo-200">
+            <h3 class="text-lg font-medium text-indigo-800 mb-4 flex items-center gap-2">
+                <i data-lucide="database" class="h-5 w-5"></i>
+                Configuração da Base Histórica
+            </h3>
+            <p class="text-xs text-indigo-600 mb-4">Define como o valor base será calculado a partir dos dados históricos. Esta configuração é usada para projeções que dependem de dados passados.</p>
+
+            <!-- Método -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Método de Cálculo</label>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <label class="relative cursor-pointer">
+                        <input type="radio" name="cod_metodo_base" value="MEDIA_SIMPLES"
+                            {% if not simulador or simulador.cod_metodo_base == 'MEDIA_SIMPLES' %}checked{% endif %}
+                            class="peer sr-only" onchange="toggleMetodoBaseCenario()">
+                        <div class="p-3 border-2 border-gray-200 rounded-xl peer-checked:border-indigo-500 peer-checked:bg-indigo-50 transition-all">
+                            <p class="text-sm font-medium text-gray-700">Média Simples</p>
+                            <p class="text-xs text-gray-400 mt-0.5">Média aritmética dos anos selecionados</p>
+                        </div>
+                    </label>
+                    <label class="relative cursor-pointer">
+                        <input type="radio" name="cod_metodo_base" value="MEDIA_PONDERADA"
+                            {% if simulador and simulador.cod_metodo_base == 'MEDIA_PONDERADA' %}checked{% endif %}
+                            class="peer sr-only" onchange="toggleMetodoBaseCenario()">
+                        <div class="p-3 border-2 border-gray-200 rounded-xl peer-checked:border-indigo-500 peer-checked:bg-indigo-50 transition-all">
+                            <p class="text-sm font-medium text-gray-700">Média Ponderada</p>
+                            <p class="text-xs text-gray-400 mt-0.5">Com pesos configuráveis por ano</p>
+                        </div>
+                    </label>
+                    <label class="relative cursor-pointer">
+                        <input type="radio" name="cod_metodo_base" value="VALOR_FIXO"
+                            {% if simulador and simulador.cod_metodo_base == 'VALOR_FIXO' %}checked{% endif %}
+                            class="peer sr-only" onchange="toggleMetodoBaseCenario()">
+                        <div class="p-3 border-2 border-gray-200 rounded-xl peer-checked:border-indigo-500 peer-checked:bg-indigo-50 transition-all">
+                            <p class="text-sm font-medium text-gray-700">Valor Fixo</p>
+                            <p class="text-xs text-gray-400 mt-0.5">Informado manualmente</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Seleção de Anos (para MEDIA_SIMPLES e MEDIA_PONDERADA) -->
+            <div id="secao_anos_cenario">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Selecione os Anos Históricos</label>
+                <div id="anos_checkboxes_cenario" class="flex flex-wrap gap-3">
+                    {% for ano in anos_disponiveis %}
+                    <label class="relative cursor-pointer">
+                        <input type="checkbox" value="{{ ano }}"
+                            class="peer sr-only ano-cenario-checkbox"
+                            onchange="atualizarAnosCenario()">
+                        <div class="px-4 py-2.5 border-2 border-gray-200 rounded-xl text-sm font-medium text-gray-600
+                            peer-checked:border-indigo-500 peer-checked:bg-indigo-50 peer-checked:text-indigo-700 transition-all">
+                            {{ ano }}
+                        </div>
+                    </label>
+                    {% endfor %}
+                </div>
+                <input type="hidden" name="anos_selecionados_cenario" id="anos_selecionados_cenario" value="[]">
+            </div>
+
+            <!-- Pesos (para MEDIA_PONDERADA) -->
+            <div id="secao_pesos_cenario" class="hidden mt-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Pesos por Ano</label>
+                <div id="pesos_inputs_cenario" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+            </div>
+
+            <!-- Valor Fixo -->
+            <div id="secao_valor_fixo_cenario" class="hidden mt-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Valor Fixo da Base (R$)</label>
+                <input type="number" name="valor_fixo_cenario" step="0.01" placeholder="150000.00"
+                    class="w-full max-w-xs px-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none">
             </div>
         </div>
 
@@ -85,6 +171,9 @@
                     <option value="LIGHTGBM" {% if cenario_completo and
                         cenario_completo.receita.config.cod_tipo_cenario=='LIGHTGBM' %}selected{% endif %}>LightGBM
                         (Microsoft Gradient Boosting)</option>
+                    <option value="FORMULA" {% if cenario_completo and
+                        cenario_completo.receita.config.cod_tipo_cenario=='FORMULA' %}selected{% endif %}>Fórmula
+                        Parametrizável</option>
                 </select>
             </div>
 
@@ -303,6 +392,7 @@
                     </div>
                 </div>
 
+
                 <!-- Parâmetros LightGBM -->
                 <div id="lightgbm_params" class="model-params hidden">
                     <p class="text-xs text-gray-500 mb-2">LightGBM — Gradient Boosting otimizado (Microsoft), mais rápido e eficiente</p>
@@ -338,6 +428,30 @@
                         class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm flex items-center gap-2">
                         <i data-lucide="play"></i> Calcular e Preencher Tabela
                     </button>
+                </div>
+            </div>
+
+            <!-- Parâmetros Fórmula Parametrizável (fora de receita_model_fields para poder ser mostrado independentemente) -->
+            <div id="formula_params" class="hidden mb-4 p-4 bg-white rounded border">
+                <div class="bg-violet-50 border border-violet-200 rounded-lg p-4 mb-3">
+                    <p class="text-sm text-violet-700 font-medium mb-1">Projeção por Fórmula Parametrizável</p>
+                    <p class="text-xs text-violet-600">O sistema usará as fórmulas cadastradas para cada rubrica. Configure os valores dos parâmetros abaixo.</p>
+                </div>
+                <div id="formula_params_loading" class="text-sm text-gray-500 py-4 text-center">
+                    <i data-lucide="loader-2" class="w-5 h-5 animate-spin inline-block mr-2"></i>
+                    Carregando parâmetros...
+                </div>
+                <div id="formula_params_container" class="hidden space-y-4">
+                    <div id="formula_params_list" class="grid grid-cols-2 md:grid-cols-3 gap-3"></div>
+                    <div id="formula_specific_params" class="hidden">
+                        <p class="text-xs text-orange-600 font-medium mb-2">⚠ Parâmetros específicos detectados nas fórmulas (não são globais):</p>
+                        <div id="formula_specific_list" class="grid grid-cols-2 md:grid-cols-3 gap-3"></div>
+                    </div>
+                    <div class="text-xs text-gray-500 border-t pt-3">
+                        <a href="/formulas" class="text-violet-600 underline hover:text-violet-800">Gerenciar Fórmulas</a>
+                        <span class="mx-2">•</span>
+                        <a href="/parametros-globais" class="text-violet-600 underline hover:text-violet-800">Gerenciar Parâmetros</a>
+                    </div>
                 </div>
             </div>
 
@@ -420,6 +534,9 @@
                     <option value="MEDIA_HISTORICA" {% if cenario_completo and
                         cenario_completo.despesa.config.cod_tipo_cenario=='MEDIA_HISTORICA' %}selected{% endif %}>Média
                         Histórica Ajustada</option>
+                    <option value="FORMULA" {% if cenario_completo and
+                        cenario_completo.despesa.config.cod_tipo_cenario=='FORMULA' %}selected{% endif %}>Fórmula
+                        Parametrizável</option>
                 </select>
             </div>
 
@@ -586,12 +703,27 @@
             filhosContainer.classList.add('hidden');
         }
 
+        // Sempre esconder formula_params primeiro (está fora de modelFields)
+        const formulaPanel = document.getElementById('formula_params');
+        if (formulaPanel) formulaPanel.classList.add('hidden');
+
         if (tipoSelect.value === 'MANUAL') {
             modelFields.classList.add('hidden');
+            // Desabilitar inputs para evitar erro de validação HTML5 em campos ocultos
+            modelFields.querySelectorAll('input, select').forEach(el => el.disabled = true);
+            return;
+        }
+        
+        if (tipoSelect.value === 'FORMULA') {
+            modelFields.classList.add('hidden');
+            modelFields.querySelectorAll('input, select').forEach(el => el.disabled = true);
+            carregarParametrosFormula();
             return;
         }
 
         modelFields.classList.remove('hidden');
+        // Re-habilitar inputs ao mostrar o painel
+        modelFields.querySelectorAll('input, select').forEach(el => el.disabled = false);
 
         if (tipoSelect.value === 'HOLT_WINTERS' && hwParams) {
             hwParams.classList.remove('hidden');
@@ -642,6 +774,9 @@
         }
         if (tipoSelect.value === 'MEDIA_HISTORICA' && mediaFields) {
             mediaFields.classList.remove('hidden');
+        }
+        if (tipoSelect.value === 'FORMULA') {
+            carregarParametrosFormula();
         }
     }
 
@@ -1195,6 +1330,152 @@
         }
     });
 
+    // ==================== Fórmula Parametrizável ====================
+
+    async function carregarParametrosFormula() {
+        const formulaSection = document.getElementById('formula_params');
+        const loadingDiv = document.getElementById('formula_params_loading');
+        const containerDiv = document.getElementById('formula_params_container');
+        const paramsList = document.getElementById('formula_params_list');
+        const specificSection = document.getElementById('formula_specific_params');
+        const specificList = document.getElementById('formula_specific_list');
+
+        if (!formulaSection) return;
+
+        // Mostrar seção de fórmula
+        const modelFields = document.getElementById('receita_model_fields');
+        if (modelFields) modelFields.classList.add('hidden');
+
+        formulaSection.classList.remove('hidden');
+        if (loadingDiv) loadingDiv.classList.remove('hidden');
+        if (containerDiv) containerDiv.classList.add('hidden');
+
+        try {
+            const [paramsResp, formulasResp] = await Promise.all([
+                fetch('/api/parametros-globais'),
+                fetch('/api/formulas'),
+            ]);
+            const paramsData = await paramsResp.json();
+            const formulasData = await formulasResp.json();
+
+            const parametros = paramsData.parametros || [];
+            const formulas = formulasData.formulas || [];
+
+            // Coletar todas as variáveis de todas as fórmulas
+            const todasVariaveis = new Set();
+            formulas.forEach(f => {
+                (f.variaveis || []).forEach(v => {
+                    if (v !== 'base') todasVariaveis.add(v);
+                });
+            });
+
+            // Separar em globais e específicos
+            const nomesGlobais = new Set(parametros.map(p => p.nom_parametro));
+            const varsEspecificas = [...todasVariaveis].filter(v => !nomesGlobais.has(v));
+
+            // Renderizar parâmetros globais
+            if (paramsList) {
+                if (parametros.length > 0) {
+                    paramsList.innerHTML = parametros.map(p => {
+                        const usado = todasVariaveis.has(p.nom_parametro);
+                        return `
+                            <div class="bg-white border ${usado ? 'border-violet-200' : 'border-gray-200'} rounded-lg p-3">
+                                <label class="block text-xs font-medium ${usado ? 'text-violet-700' : 'text-gray-500'} mb-1">
+                                    ${p.nom_parametro}
+                                    ${p.cod_tipo === 'P' ? '<span class="text-gray-400">(%)</span>' : '<span class="text-gray-400">(R$)</span>'}
+                                    ${usado ? '<span class="text-violet-500 ml-1">●</span>' : ''}
+                                </label>
+                                <input type="number" step="any"
+                                    name="formula_param_${p.nom_parametro}"
+                                    class="w-full border rounded p-1.5 text-sm ${usado ? 'border-violet-300' : ''}"
+                                    placeholder="${p.cod_tipo === 'P' ? '0.045' : '0.00'}">
+                                <p class="text-[10px] text-gray-400 mt-1">${p.dsc_parametro || ''}</p>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    paramsList.innerHTML = `
+                        <div class="col-span-full text-center py-6 text-gray-500">
+                            <p class="text-sm mb-2">Nenhum parâmetro cadastrado.</p>
+                            <a href="/parametros-globais" class="text-violet-600 underline text-sm">Cadastrar parâmetros</a>
+                        </div>
+                    `;
+                }
+            }
+
+            // Renderizar variáveis específicas
+            if (specificList && specificSection) {
+                if (varsEspecificas.length > 0) {
+                    specificSection.classList.remove('hidden');
+                    specificList.innerHTML = varsEspecificas.map(v => `
+                        <div class="bg-orange-50 border border-orange-200 rounded-lg p-3">
+                            <label class="block text-xs font-medium text-orange-700 mb-1">${v}</label>
+                            <input type="number" step="any"
+                                name="formula_param_${v}"
+                                class="w-full border border-orange-300 rounded p-1.5 text-sm"
+                                placeholder="0.00">
+                        </div>
+                    `).join('');
+                } else {
+                    specificSection.classList.add('hidden');
+                }
+            }
+
+            if (loadingDiv) loadingDiv.classList.add('hidden');
+            if (containerDiv) containerDiv.classList.remove('hidden');
+        } catch(e) {
+            console.error('Erro ao carregar parâmetros de fórmula:', e);
+            if (loadingDiv) loadingDiv.innerHTML = '<p class="text-red-500 text-sm">Erro ao carregar parâmetros</p>';
+        }
+    }
+
+    // ==================== Periodicidade ====================
+
+    function onPeriodicidadeChange() {
+        const periodicidade = document.getElementById('cod_periodicidade').value;
+        const labelPeriodos = document.getElementById('label_periodos');
+        const inputPeriodos = document.getElementById('input_periodos');
+        const config = {
+            'ANUAL':     { label: 'Anos de Projeção', min: 1, max: 10, default: 2 },
+            'MENSAL':    { label: 'Meses de Projeção', min: 1, max: 60, default: 12 },
+            'QUINZENAL': { label: 'Quinzenas de Projeção', min: 1, max: 104, default: 24 },
+            'SEMANAL':   { label: 'Semanas de Projeção', min: 1, max: 260, default: 52 },
+        };
+        const cfg = config[periodicidade] || config['MENSAL'];
+        if (labelPeriodos) labelPeriodos.textContent = cfg.label;
+        if (inputPeriodos) { inputPeriodos.min = cfg.min; inputPeriodos.max = cfg.max; inputPeriodos.value = cfg.default; }
+        const formulaOptRec = document.querySelector('#tipo_receita option[value="FORMULA"]');
+        const formulaOptDesp = document.querySelector('#tipo_despesa option[value="FORMULA"]');
+        const isAnual = periodicidade === 'ANUAL';
+        if (formulaOptRec) { formulaOptRec.disabled = !isAnual; if (!isAnual && document.getElementById('tipo_receita').value === 'FORMULA') { document.getElementById('tipo_receita').value = 'MANUAL'; toggleReceitaFields(); } }
+        if (formulaOptDesp) { formulaOptDesp.disabled = !isAnual; if (!isAnual && document.getElementById('tipo_despesa').value === 'FORMULA') { document.getElementById('tipo_despesa').value = 'MANUAL'; toggleDespesaFields(); } }
+    }
+
+    function toggleMetodoBaseCenario() {
+        const metodo = document.querySelector('[name="cod_metodo_base"]:checked')?.value || 'MEDIA_SIMPLES';
+        const secaoAnos = document.getElementById('secao_anos_cenario');
+        const secaoPesos = document.getElementById('secao_pesos_cenario');
+        const secaoFixo = document.getElementById('secao_valor_fixo_cenario');
+        if (secaoAnos) secaoAnos.classList.toggle('hidden', metodo === 'VALOR_FIXO');
+        if (secaoPesos) secaoPesos.classList.toggle('hidden', metodo !== 'MEDIA_PONDERADA');
+        if (secaoFixo) secaoFixo.classList.toggle('hidden', metodo !== 'VALOR_FIXO');
+        if (metodo === 'MEDIA_PONDERADA') atualizarAnosCenario();
+    }
+
+    function atualizarAnosCenario() {
+        const checkboxes = document.querySelectorAll('.ano-cenario-checkbox:checked');
+        const anos = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        const hidden = document.getElementById('anos_selecionados_cenario');
+        if (hidden) hidden.value = JSON.stringify(anos);
+        const metodo = document.querySelector('[name="cod_metodo_base"]:checked')?.value;
+        if (metodo === 'MEDIA_PONDERADA') {
+            const pesosDiv = document.getElementById('pesos_inputs_cenario');
+            if (pesosDiv) {
+                pesosDiv.innerHTML = anos.map(ano => '<div class="flex items-center gap-2"><label class="text-sm text-gray-600 font-medium w-12">' + ano + '</label><input type="number" name="peso_cenario_' + ano + '" value="1" min="0.1" step="0.1" class="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none"></div>').join('');
+            }
+        }
+    }
+
     // Expor funções globalmente
     window.toggleReceitaFields = toggleReceitaFields;
     window.toggleDespesaFields = toggleDespesaFields;
@@ -1204,6 +1485,10 @@
     window.aplicarMediaHistorica = aplicarMediaHistorica;
     window.toggleTodosQualificadores = toggleTodosQualificadores;
     window.atualizarContadorQualificadores = atualizarContadorQualificadores;
+    window.carregarParametrosFormula = carregarParametrosFormula;
+    window.onPeriodicidadeChange = onPeriodicidadeChange;
+    window.toggleMetodoBaseCenario = toggleMetodoBaseCenario;
+    window.atualizarAnosCenario = atualizarAnosCenario;
 })();
 </script>
 {% endblock %}

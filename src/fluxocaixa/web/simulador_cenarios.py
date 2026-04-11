@@ -43,6 +43,10 @@ async def simulador_novo(request: Request):
     qualificadores_receita = list_receita_qualificadores_folha()
     qualificadores_despesa = list_despesa_qualificadores_folha()
     
+    # Buscar todos os anos com dados históricos
+    from ..services.formula_engine import listar_todos_anos_disponiveis
+    anos_disponiveis = listar_todos_anos_disponiveis()
+    
     return templates.TemplateResponse(
         'simulador_criar.html',
         {
@@ -52,6 +56,7 @@ async def simulador_novo(request: Request):
             'current_year': date.today().year,
             'meses_nomes': MONTH_NAME_PT,
             'modo': 'criar',
+            'anos_disponiveis': anos_disponiveis,
         }
     )
 
@@ -67,6 +72,9 @@ async def simulador_criar(request: Request):
     dsc_cenario = form.get('dsc_cenario')
     ano_base = int(form.get('ano_base', date.today().year))
     meses_projecao = int(form.get('meses_projecao', 12))
+    cod_periodicidade = form.get('cod_periodicidade', 'MENSAL')
+    cod_metodo_base = form.get('cod_metodo_base', 'MEDIA_SIMPLES')
+    json_config_base = _parse_config_base_from_form(form)
     
     # Configuração de receita
     tipo_cenario_receita = form.get('tipo_cenario_receita', 'MANUAL')
@@ -94,7 +102,14 @@ async def simulador_criar(request: Request):
         config_despesa=config_despesa,
         ajustes_receita=ajustes_receita,
         ajustes_despesa=ajustes_despesa,
+        cod_periodicidade=cod_periodicidade,
+        cod_metodo_base=cod_metodo_base,
+        json_config_base=json_config_base,
     )
+    
+    # Salvar parâmetros de fórmula se tipo FORMULA
+    if tipo_cenario_receita == 'FORMULA' or tipo_cenario_despesa == 'FORMULA':
+        _salvar_parametros_formula(form, simulador.seq_simulador_cenario)
     
     # Redirecionar para visualização
     return RedirectResponse(
@@ -204,6 +219,10 @@ async def simulador_editar_get(request: Request, id: int):
             }
         }
     
+    # Buscar todos os anos com dados históricos
+    from ..services.formula_engine import listar_todos_anos_disponiveis
+    anos_disponiveis = listar_todos_anos_disponiveis()
+    
     return templates.TemplateResponse(
         'simulador_criar.html',
         {
@@ -214,6 +233,7 @@ async def simulador_editar_get(request: Request, id: int):
             'qualificadores_despesa': qualificadores_despesa,
             'meses_nomes': MONTH_NAME_PT,
             'modo': 'editar',
+            'anos_disponiveis': anos_disponiveis,
         }
     )
 
@@ -229,6 +249,9 @@ async def simulador_atualizar(request: Request, id: int):
     dsc_cenario = form.get('dsc_cenario')
     ano_base = int(form.get('ano_base'))
     meses_projecao = int(form.get('meses_projecao'))
+    cod_periodicidade = form.get('cod_periodicidade', 'MENSAL')
+    cod_metodo_base = form.get('cod_metodo_base', 'MEDIA_SIMPLES')
+    json_config_base = _parse_config_base_from_form(form)
     
     tipo_cenario_receita = form.get('tipo_cenario_receita')
     tipo_cenario_despesa = form.get('tipo_cenario_despesa')
@@ -254,7 +277,14 @@ async def simulador_atualizar(request: Request, id: int):
         config_despesa=config_despesa,
         ajustes_receita=ajustes_receita,
         ajustes_despesa=ajustes_despesa,
+        cod_periodicidade=cod_periodicidade,
+        cod_metodo_base=cod_metodo_base,
+        json_config_base=json_config_base,
     )
+    
+    # Salvar parâmetros de fórmula se tipo FORMULA
+    if tipo_cenario_receita == 'FORMULA' or tipo_cenario_despesa == 'FORMULA':
+        _salvar_parametros_formula(form, id)
     
     return RedirectResponse(url=f'/simulador/{id}', status_code=303)
 
@@ -550,3 +580,52 @@ def _dataframe_to_json(df):
             record['data'] = record['data'].strftime('%Y-%m-%d') if hasattr(record['data'], 'strftime') else str(record['data'])
     
     return records
+
+
+def _salvar_parametros_formula(form, seq_simulador_cenario: int):
+    """Extrai e salva parâmetros de fórmula do formulário."""
+    from ..repositories import formula_repository as f_repo
+    
+    parametros = {}
+    for key, value in form.items():
+        if key.startswith('formula_param_') and value:
+            nome = key.replace('formula_param_', '')
+            try:
+                parametros[nome] = float(value)
+            except (ValueError, TypeError):
+                pass
+    
+    if parametros:
+        f_repo.set_valores_cenario_batch(seq_simulador_cenario, parametros)
+
+
+def _parse_config_base_from_form(form) -> str:
+    """Extrai configuração da base histórica do formulário."""
+    cod_metodo_base = form.get('cod_metodo_base', 'MEDIA_SIMPLES')
+    config = {}
+    
+    if cod_metodo_base == 'VALOR_FIXO':
+        valor = form.get('valor_fixo_cenario', '0')
+        try:
+            config['valor'] = float(valor)
+        except (ValueError, TypeError):
+            config['valor'] = 0
+    else:
+        anos_str = form.get('anos_selecionados_cenario', '[]')
+        try:
+            anos = json.loads(anos_str)
+            config['anos'] = [int(a) for a in anos]
+        except (json.JSONDecodeError, TypeError):
+            config['anos'] = []
+        
+        if cod_metodo_base == 'MEDIA_PONDERADA' and config.get('anos'):
+            pesos = {}
+            for ano in config['anos']:
+                peso_val = form.get(f'peso_cenario_{ano}', '1')
+                try:
+                    pesos[str(ano)] = float(peso_val)
+                except (ValueError, TypeError):
+                    pesos[str(ano)] = 1.0
+            config['pesos'] = pesos
+    
+    return json.dumps(config)

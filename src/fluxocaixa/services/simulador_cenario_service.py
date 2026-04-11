@@ -46,13 +46,16 @@ def criar_simulador_cenario(
     dsc_cenario: str,
     ano_base: int,
     meses_projecao: int,
-    tipo_cenario_receita: str,  # 'MANUAL', 'HOLT_WINTERS', 'ARIMA', 'SARIMA', 'REGRESSAO'
-    config_receita: Dict,  # Configuração específica do modelo de receita
-    tipo_cenario_despesa: str,  # 'MANUAL', 'LOA', 'MEDIA_HISTORICA'
-    config_despesa: Dict,  # Configuração específica do modelo de despesa
-    ajustes_receita: Optional[Dict] = None,  # Ajustes mensais para cenário manual de receita
-    ajustes_despesa: Optional[Dict] = None,  # Ajustes mensais para cenário manual de despesa
-    user_id: int = 1,  # ID do usuário criando o cenário
+    tipo_cenario_receita: str,
+    config_receita: Dict,
+    tipo_cenario_despesa: str,
+    config_despesa: Dict,
+    ajustes_receita: Optional[Dict] = None,
+    ajustes_despesa: Optional[Dict] = None,
+    user_id: int = 1,
+    cod_periodicidade: str = 'MENSAL',
+    cod_metodo_base: str = 'MEDIA_SIMPLES',
+    json_config_base: Optional[str] = None,
 ) -> SimuladorCenario:
     """
     Cria um cenário simulador completo com receita e despesa.
@@ -69,6 +72,9 @@ def criar_simulador_cenario(
         config_despesa: Dicionário com configuração específica
         ajustes_despesa: Ajustes mensais para cenário manual (dict)
         user_id: ID do usuário criando o cenário
+        cod_periodicidade: 'ANUAL', 'MENSAL', 'QUINZENAL', 'SEMANAL'
+        cod_metodo_base: 'MEDIA_SIMPLES', 'MEDIA_PONDERADA', 'VALOR_FIXO'
+        json_config_base: JSON com config da base histórica
     
     Returns:
         SimuladorCenario criado
@@ -79,6 +85,9 @@ def criar_simulador_cenario(
         dsc_cenario=dsc_cenario,
         ano_base=ano_base,
         meses_projecao=meses_projecao,
+        cod_periodicidade=cod_periodicidade,
+        cod_metodo_base=cod_metodo_base,
+        json_config_base=json_config_base,
         ind_status='A',
         cod_pessoa_inclusao=user_id,
     )
@@ -198,13 +207,16 @@ def atualizar_simulador_cenario(
     dsc_cenario: str,
     ano_base: int,
     meses_projecao: int,
-    tipo_cenario_receita: str,  # 'MANUAL', 'HOLT_WINTERS', 'ARIMA', 'SARIMA', 'REGRESSAO'
-    config_receita: Dict,  # Configuração específica do modelo de receita
-    tipo_cenario_despesa: str,  # 'MANUAL', 'LOA', 'MEDIA_HISTORICA'
-    config_despesa: Dict,  # Configuração específica do modelo de despesa
-    ajustes_receita: Optional[Dict] = None,  # Ajustes mensais para cenário manual de receita
-    ajustes_despesa: Optional[Dict] = None,  # Ajustes mensais para cenário manual de despesa
-    user_id: int = 1,  # ID do usuário criando o cenário
+    tipo_cenario_receita: str,
+    config_receita: Dict,
+    tipo_cenario_despesa: str,
+    config_despesa: Dict,
+    ajustes_receita: Optional[Dict] = None,
+    ajustes_despesa: Optional[Dict] = None,
+    user_id: int = 1,
+    cod_periodicidade: str = 'MENSAL',
+    cod_metodo_base: str = 'MEDIA_SIMPLES',
+    json_config_base: Optional[str] = None,
 ) -> Optional[SimuladorCenario]:
     """Atualiza um cenário simulador existente."""
     simulador = repo.get_simulador_by_id(seq_simulador_cenario)
@@ -223,6 +235,9 @@ def atualizar_simulador_cenario(
     simulador.dsc_cenario = dsc_cenario
     simulador.ano_base = ano_base
     simulador.meses_projecao = meses_projecao
+    simulador.cod_periodicidade = cod_periodicidade
+    simulador.cod_metodo_base = cod_metodo_base
+    simulador.json_config_base = json_config_base
     simulador.dat_alteracao = date.today()
     simulador.cod_pessoa_alteracao = user_id
     
@@ -580,6 +595,25 @@ def executar_simulacao(seq_simulador_cenario: int) -> Optional[Dict]:
             projecao_receita = pd.DataFrame({'data': [], 'valor_projetado': []})
         projecao_receita_detalhada = None
 
+    elif tipo_receita == 'FORMULA':
+        from .formula_engine import projetar_cenario_formula
+        config_base_dict = {}
+        if simulador.json_config_base:
+            try:
+                config_base_dict = json.loads(simulador.json_config_base)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        projecao_receita = projetar_cenario_formula(
+            seq_simulador_cenario=simulador.seq_simulador_cenario,
+            ano_base=ano_base,
+            periodos=meses_projecao,
+            tipo_fluxo='receita',
+            periodicidade=simulador.cod_periodicidade or 'ANUAL',
+            metodo_base=simulador.cod_metodo_base or 'MEDIA_SIMPLES',
+            config_base=config_base_dict,
+        )
+        projecao_receita_detalhada = projecao_receita.copy() if len(projecao_receita) > 0 else None
+
     else:
         # Fallback: cenário vazio
         projecao_receita = pd.DataFrame({
@@ -626,6 +660,24 @@ def executar_simulacao(seq_simulador_cenario: int) -> Optional[Dict]:
         else:
             projecao_despesa = pd.DataFrame({'data': [], 'valor_projetado': []})
         projecao_despesa_detalhada = None
+    elif tipo_despesa == 'FORMULA':
+        from .formula_engine import projetar_cenario_formula
+        config_base_dict_d = {}
+        if simulador.json_config_base:
+            try:
+                config_base_dict_d = json.loads(simulador.json_config_base)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        projecao_despesa = projetar_cenario_formula(
+            seq_simulador_cenario=simulador.seq_simulador_cenario,
+            ano_base=ano_base,
+            periodos=meses_projecao,
+            tipo_fluxo='despesa',
+            periodicidade=simulador.cod_periodicidade or 'ANUAL',
+            metodo_base=simulador.cod_metodo_base or 'MEDIA_SIMPLES',
+            config_base=config_base_dict_d,
+        )
+        projecao_despesa_detalhada = projecao_despesa.copy() if len(projecao_despesa) > 0 else None
     else:
         # Fallback
         projecao_despesa = pd.DataFrame({

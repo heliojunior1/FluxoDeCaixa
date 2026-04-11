@@ -22,6 +22,7 @@ from .simulador_cenario import (
 )
 from .simulador_cenario_historico import SimuladorCenarioHistorico
 from .loa import Loa
+from .formula import RubricaFormula, ParametroGlobal, CenarioParametroValor
 
 __all__ = [
     'db',
@@ -48,4 +49,7 @@ __all__ = [
     'ModeloEconomicoParametro',
     'SimuladorCenarioHistorico',
     'Loa',
+    'RubricaFormula',
+    'ParametroGlobal',
+    'CenarioParametroValor',
 ]
