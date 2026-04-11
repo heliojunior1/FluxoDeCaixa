@@ -1456,11 +1456,49 @@ def seed_data(session=None):
 
     if not ParametroGlobal.query.first():
         parametros = [
+            # Macro
             ParametroGlobal(nom_parametro='ipca', dsc_parametro='Índice Nacional de Preços ao Consumidor Amplo', cod_tipo='P'),
             ParametroGlobal(nom_parametro='pib', dsc_parametro='Crescimento Real do PIB', cod_tipo='P'),
+            ParametroGlobal(nom_parametro='pib_real', dsc_parametro='Crescimento real do PIB estadual', cod_tipo='P'),
             ParametroGlobal(nom_parametro='selic', dsc_parametro='Taxa Selic Meta', cod_tipo='P'),
             ParametroGlobal(nom_parametro='populacao', dsc_parametro='Crescimento Populacional', cod_tipo='P'),
             ParametroGlobal(nom_parametro='elasticidade', dsc_parametro='Elasticidade-renda do tributo', cod_tipo='V'),
+            # ICMS/IPVA/ITCMD
+            ParametroGlobal(nom_parametro='efeito_legislacao', dsc_parametro='Efeito ± de mudanças legais (R$)', cod_tipo='V'),
+            ParametroGlobal(nom_parametro='variacao_frota', dsc_parametro='Crescimento líquido da frota tributável (SENATRAN)', cod_tipo='P'),
+            ParametroGlobal(nom_parametro='variacao_fipe', dsc_parametro='Variação média da tabela FIPE veículos usados', cod_tipo='P'),
+            ParametroGlobal(nom_parametro='crescimento_transacoes', dsc_parametro='Variação estimada no volume de transmissões ITCMD', cod_tipo='P'),
+            # FECOEP
+            ParametroGlobal(nom_parametro='percentual_fecoep_sobre_icms', dsc_parametro='Participação histórica FECOEP/ICMS (ex: 0.05)', cod_tipo='P'),
+            # Aplicações Financeiras
+            ParametroGlobal(nom_parametro='saldo_medio_aplicado', dsc_parametro='Saldo médio projetado das disponibilidades aplicadas (R$)', cod_tipo='V'),
+            ParametroGlobal(nom_parametro='taxa_selic_projetada', dsc_parametro='Selic média projetada para o exercício (Focus/BCB)', cod_tipo='P'),
+            ParametroGlobal(nom_parametro='fator_eficiencia', dsc_parametro='% da Selic efetivamente capturado (0.85 a 0.98)', cod_tipo='P'),
+            # Folha de Pessoal
+            ParametroGlobal(nom_parametro='folha_atual_anualizada', dsc_parametro='Folha mensal atual × 13 anualizada (R$)', cod_tipo='V'),
+            ParametroGlobal(nom_parametro='vegetativo', dsc_parametro='Crescimento vegetativo da folha: progressões, anuênios', cod_tipo='P'),
+            ParametroGlobal(nom_parametro='reajuste_previsto', dsc_parametro='Reajuste salarial previsto em lei', cod_tipo='P'),
+            ParametroGlobal(nom_parametro='impacto_novas_admissoes', dsc_parametro='R$ estimado de concursos/contratações previstos', cod_tipo='V'),
+            # IR Retido
+            ParametroGlobal(nom_parametro='aliquota_efetiva_ir', dsc_parametro='Alíquota efetiva média de IRRF sobre a folha (0.06 a 0.10)', cod_tipo='P'),
+            # Custeio
+            ParametroGlobal(nom_parametro='contratos_novos_previstos', dsc_parametro='R$ de novas contratações previstas para o exercício', cod_tipo='V'),
+            # FPE
+            ParametroGlobal(nom_parametro='receita_federal_projetada_ir_ipi', dsc_parametro='Projeção federal de IR+IPI (PLOA União ou STN)', cod_tipo='V'),
+            ParametroGlobal(nom_parametro='coeficiente_al', dsc_parametro='Coeficiente de AL no FPE (fixado pelo TCU anualmente)', cod_tipo='P'),
+            ParametroGlobal(nom_parametro='deducao_fundeb', dsc_parametro='Dedução FUNDEB (20%) + PASEP (1%) = 0.21', cod_tipo='P'),
+            # Derivadas — Receitas que dependem de projeções de outras rubricas
+            ParametroGlobal(nom_parametro='projecao_icms', dsc_parametro='ICMS projetado — resultado da fórmula ICMS (R$)', cod_tipo='V'),
+            ParametroGlobal(nom_parametro='projecao_ipva', dsc_parametro='IPVA projetado — resultado da fórmula IPVA (R$)', cod_tipo='V'),
+            ParametroGlobal(nom_parametro='projecao_itcmd', dsc_parametro='ITCMD projetado — resultado da fórmula ITCMD (R$)', cod_tipo='V'),
+            ParametroGlobal(nom_parametro='projecao_fpe_bruto', dsc_parametro='FPE bruto projetado antes de deduções (R$)', cod_tipo='V'),
+            ParametroGlobal(nom_parametro='projecao_folha_bruta', dsc_parametro='Folha bruta projetada — resultado da fórmula FOLHA (R$)', cod_tipo='V'),
+            ParametroGlobal(nom_parametro='repasse_fundeb', dsc_parametro='Valor FUNDEB projetado — resultado da fórmula FUNDEB (R$)', cod_tipo='V'),
+            # Despesas derivadas — totais de receita
+            ParametroGlobal(nom_parametro='receita_corrente_projetada_total', dsc_parametro='Soma de todas as receitas correntes projetadas (R$)', cod_tipo='V'),
+            ParametroGlobal(nom_parametro='receita_impostos_transferencias', dsc_parametro='Base: impostos próprios + transferências constitucionais (R$)', cod_tipo='V'),
+            ParametroGlobal(nom_parametro='rcl_projetada', dsc_parametro='Receita Corrente Líquida projetada (R$)', cod_tipo='V'),
+            ParametroGlobal(nom_parametro='percentual_limite_poder', dsc_parametro='% da RCL do duodécimo de cada Poder (LDO/CE)', cod_tipo='P'),
         ]
         session.add_all(parametros)
         session.commit()
@@ -1469,41 +1507,86 @@ def seed_data(session=None):
     if not RubricaFormula.query.first():
         import json
 
-        # Fórmula para ICMS
-        icms_qual = encontrar_qualificador('ICMS')
-        if icms_qual:
-            session.add(RubricaFormula(
-                seq_qualificador=icms_qual.seq_qualificador,
-                nom_formula='Projeção ICMS',
-                dsc_formula_expressao='base * (1 + ipca) * (1 + pib * elasticidade)',
-                cod_metodo_base='MEDIA_SIMPLES',
-                json_config_base=json.dumps({'anos': [2023, 2024, 2025]}),
-            ))
+        formulas_config = [
+            # === RECEITAS ===
+            # ICMS
+            ('ICMS', 'Projeção ICMS',
+             'base * (1 + ipca) * (1 + pib_real * elasticidade) + efeito_legislacao',
+             'MEDIA_SIMPLES', {'anos': [2023, 2024, 2025]}),
+            # IPVA
+            ('IPVA', 'Projeção IPVA',
+             'base * (1 + variacao_frota) * (1 + variacao_fipe) + efeito_legislacao',
+             'MEDIA_SIMPLES', {'anos': [2023, 2024, 2025]}),
+            # ITCMD
+            ('ITCMD', 'Projeção ITCMD',
+             'base * (1 + ipca) * (1 + crescimento_transacoes) + efeito_legislacao',
+             'MEDIA_SIMPLES', {'anos': [2023, 2024, 2025]}),
+            # FPE
+            ('FPE', 'Projeção FPE',
+             'receita_federal_projetada_ir_ipi * 0.215 * coeficiente_al * (1 - deducao_fundeb)',
+             'MEDIA_SIMPLES', {'anos': [2024, 2025]}),
+            # FECOEP — derivada do ICMS
+            ('FECOEP', 'Projeção FECOEP',
+             'projecao_icms * percentual_fecoep_sobre_icms',
+             'MEDIA_SIMPLES', {'anos': [2023, 2024, 2025]}),
+            # APLICAÇÕES FINANCEIRAS
+            ('APLICAÇÕES FINANCEIRAS', 'Projeção Aplicações Financeiras',
+             'saldo_medio_aplicado * taxa_selic_projetada * fator_eficiencia',
+             'MEDIA_SIMPLES', {'anos': [2024, 2025]}),
+            # IR — derivada da folha
+            ('IR', 'Projeção IR Retido',
+             'projecao_folha_bruta * aliquota_efetiva_ir',
+             'MEDIA_SIMPLES', {'anos': [2024, 2025]}),
+            # OUTRAS RECEITAS
+            ('OUTRAS RECEITAS', 'Projeção Outras Receitas',
+             'base * (1 + ipca)',
+             'MEDIA_SIMPLES', {'anos': [2023, 2024, 2025]}),
+            # === DESPESAS ===
+            # FOLHA
+            ('FOLHA', 'Projeção Folha de Pessoal',
+             'folha_atual_anualizada * (1 + vegetativo) * (1 + reajuste_previsto) + impacto_novas_admissoes',
+             'MEDIA_SIMPLES', {'anos': [2024, 2025]}),
+            # PASEP — derivada da receita
+            ('PASEP', 'Projeção PASEP',
+             'receita_corrente_projetada_total * 0.01',
+             'MEDIA_SIMPLES', {'anos': [2024, 2025]}),
+            # CUSTEIO
+            ('CUSTEIO', 'Projeção Custeio',
+             'base * (1 + ipca) + contratos_novos_previstos',
+             'MEDIA_SIMPLES', {'anos': [2023, 2024, 2025]}),
+            # REPASSE MUNICÍPIOS — derivada
+            ('REPASSE MUNICÍPIOS', 'Projeção Repasse Municípios',
+             'projecao_icms * 0.25 + projecao_ipva * 0.50',
+             'MEDIA_SIMPLES', {'anos': [2024, 2025]}),
+            # REPASSE FUNDEB — derivada
+            ('REPASSE FUNDEB', 'Projeção Repasse FUNDEB',
+             '(projecao_icms + projecao_fpe_bruto + projecao_ipva + projecao_itcmd) * 0.20',
+             'MEDIA_SIMPLES', {'anos': [2024, 2025]}),
+            # SAÚDE 12% — derivada
+            ('SAÚDE 12%', 'Projeção Saúde 12%',
+             'receita_impostos_transferencias * 0.12',
+             'MEDIA_SIMPLES', {'anos': [2024, 2025]}),
+            # EDUCAÇÃO 5% — derivada
+            ('EDUCAÇÃO 5%', 'Projeção Educação 5%',
+             'receita_impostos_transferencias * 0.25 - repasse_fundeb',
+             'MEDIA_SIMPLES', {'anos': [2024, 2025]}),
+            # PODERES — derivada da RCL
+            ('PODERES', 'Projeção Poderes',
+             'rcl_projetada * percentual_limite_poder',
+             'MEDIA_SIMPLES', {'anos': [2024, 2025]}),
+        ]
 
-        # Fórmula para IPVA
-        ipva_qual = encontrar_qualificador('IPVA')
-        if ipva_qual:
-            session.add(RubricaFormula(
-                seq_qualificador=ipva_qual.seq_qualificador,
-                nom_formula='Projeção IPVA',
-                dsc_formula_expressao='base * (1 + ipca) * (1 + populacao)',
-                cod_metodo_base='MEDIA_PONDERADA',
-                json_config_base=json.dumps({
-                    'anos': [2023, 2024, 2025],
-                    'pesos': {'2023': 1, '2024': 2, '2025': 3},
-                }),
-            ))
-
-        # Fórmula para FPE
-        fpe_qual = encontrar_qualificador('FPE')
-        if fpe_qual:
-            session.add(RubricaFormula(
-                seq_qualificador=fpe_qual.seq_qualificador,
-                nom_formula='Projeção FPE',
-                dsc_formula_expressao='base * (1 + ipca + pib)',
-                cod_metodo_base='MEDIA_SIMPLES',
-                json_config_base=json.dumps({'anos': [2024, 2025]}),
-            ))
+        for nome_qual, nom_formula, expressao, metodo, config in formulas_config:
+            qual = encontrar_qualificador(nome_qual)
+            if qual:
+                session.add(RubricaFormula(
+                    seq_qualificador=qual.seq_qualificador,
+                    nom_formula=nom_formula,
+                    dsc_formula_expressao=expressao,
+                    cod_metodo_base=metodo,
+                    json_config_base=json.dumps(config),
+                ))
 
         session.commit()
-        print("Seeded RubricaFormula data")
+        print("Seeded RubricaFormula data (16 formulas)")
+
