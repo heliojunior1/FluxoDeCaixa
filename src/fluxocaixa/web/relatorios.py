@@ -149,8 +149,9 @@ async def relatorio_ldo_orcamento_data(request: Request):
     """API JSON para dados do gráfico de LDO & Orçamento."""
     params = request.query_params
     ano = int(params.get("ano", date.today().year))
+    tipo_fluxo = params.get("tipo", "ambos")  # receita, despesa, ambos
     
-    data = get_ldo_orcamento_data(ano)
+    data = get_ldo_orcamento_data(ano, tipo_fluxo)
     return JSONResponse(data)
 
 

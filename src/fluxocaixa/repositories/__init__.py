@@ -8,6 +8,7 @@ from .conta_bancaria_repository import ContaBancariaRepository
 from .conferencia_repository import ConferenciaRepository
 from .alerta_gerado_repository import AlertaGeradoRepository
 from .saldo_conta_repository import SaldoContaRepository
+from .loa_repository import LoaRepository
 
 __all__ = [
     'PagamentoRepository',
@@ -20,4 +21,5 @@ __all__ = [
     'ConferenciaRepository',
     'AlertaGeradoRepository',
     'SaldoContaRepository',
+    'LoaRepository',
 ]
