@@ -1,0 +1,527 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center mb-6">
+        <a href="{{ url_for('relatorios') }}" class="text-gray-500 hover:text-gray-700">
+            <i data-lucide="arrow-left-circle" class="w-8 h-8"></i>
+        </a>
+        <div class="ml-4">
+            <h2 class="text-2xl font-bold text-slate-800">Backtest de Modelos de Projeção</h2>
+            <p class="text-slate-500 mt-1">Compare modelos de previsão e descubra o mais acurado para cada rubrica</p>
+        </div>
+    </div>
+
+    <!-- Configuração -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6" id="config-panel">
+        <h3 class="text-lg font-semibold text-slate-700 mb-4 flex items-center gap-2">
+            <i data-lucide="settings-2" class="w-5 h-5 text-slate-500"></i>
+            Configuração do Backtest
+        </h3>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Anos de Treino -->
+            <div>
+                <label class="block text-sm font-medium text-slate-600 mb-2">Anos de Treino</label>
+                <p class="text-xs text-slate-400 mb-2">Dados usados para treinar os modelos</p>
+                <div class="space-y-1 max-h-48 overflow-y-auto border border-slate-200 rounded-lg p-3 bg-slate-50" id="anos-treino-container">
+                    {% for ano in anos_disponiveis %}
+                    <label class="flex items-center gap-2 cursor-pointer hover:bg-white p-1 rounded">
+                        <input type="checkbox" value="{{ ano }}" class="ano-treino-cb rounded text-blue-600 focus:ring-blue-500"
+                            {% if ano < anos_disponiveis[-1] %}checked{% endif %}>
+                        <span class="text-sm text-slate-700">{{ ano }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Anos de Teste -->
+            <div>
+                <label class="block text-sm font-medium text-slate-600 mb-2">Anos de Teste</label>
+                <p class="text-xs text-slate-400 mb-2">Dados usados para validar as projeções</p>
+                <div class="space-y-1 max-h-48 overflow-y-auto border border-slate-200 rounded-lg p-3 bg-slate-50" id="anos-teste-container">
+                    {% for ano in anos_disponiveis %}
+                    <label class="flex items-center gap-2 cursor-pointer hover:bg-white p-1 rounded">
+                        <input type="checkbox" value="{{ ano }}" class="ano-teste-cb rounded text-emerald-600 focus:ring-emerald-500"
+                            {% if ano == anos_disponiveis[-1] %}checked{% endif %}>
+                        <span class="text-sm text-slate-700">{{ ano }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+                <p class="text-xs text-amber-600 mt-1 flex items-center gap-1">
+                    <i data-lucide="alert-triangle" class="w-3 h-3"></i>
+                    Treino deve ser anterior ao teste
+                </p>
+            </div>
+
+            <!-- Modelos -->
+            <div>
+                <label class="block text-sm font-medium text-slate-600 mb-2">Modelos a Comparar</label>
+                <p class="text-xs text-slate-400 mb-2">Selecione os algoritmos de projeção</p>
+                <div class="space-y-1 max-h-48 overflow-y-auto border border-slate-200 rounded-lg p-3 bg-slate-50">
+                    {% for modelo in modelos_disponiveis %}
+                    <label class="flex items-center gap-2 cursor-pointer hover:bg-white p-1 rounded">
+                        <input type="checkbox" value="{{ modelo.codigo }}" class="modelo-cb rounded text-violet-600 focus:ring-violet-500" checked>
+                        <span class="text-sm text-slate-700">{{ modelo.nome }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Qualificadores -->
+        <div class="mt-6">
+            <div class="flex items-center justify-between mb-2">
+                <label class="block text-sm font-medium text-slate-600">Qualificadores</label>
+                <div class="flex gap-2">
+                    <button onclick="toggleAllQuals(true)" class="text-xs px-2 py-1 bg-blue-50 text-blue-600 rounded hover:bg-blue-100">Selecionar Todos</button>
+                    <button onclick="toggleAllQuals(false)" class="text-xs px-2 py-1 bg-slate-50 text-slate-600 rounded hover:bg-slate-100">Desmarcar Todos</button>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                {% for grupo_nome, quals in grupos_qualificadores.items() %}
+                {% for q in quals %}
+                <label class="flex items-center gap-1 cursor-pointer hover:bg-blue-50 p-1.5 rounded border border-slate-100 text-xs">
+                    <input type="checkbox" value="{{ q.seq_qualificador }}" class="qual-cb rounded text-blue-600" checked>
+                    <span class="text-slate-700 truncate" title="{{ q.dsc_qualificador }}">{{ q.dsc_qualificador }}</span>
+                </label>
+                {% endfor %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Botão Executar -->
+        <div class="mt-6 text-center">
+            <button onclick="executarBacktest()"
+                class="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-xl font-semibold hover:from-violet-700 hover:to-indigo-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                id="btn-executar">
+                <i data-lucide="flask-conical" class="w-5 h-5"></i>
+                Executar Backtest
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading-panel" class="hidden">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-12 text-center">
+            <div class="animate-spin w-12 h-12 border-4 border-violet-200 border-t-violet-600 rounded-full mx-auto mb-4"></div>
+            <p class="text-slate-600 font-medium">Executando backtest...</p>
+            <p class="text-slate-400 text-sm mt-1">Isso pode levar alguns segundos dependendo da quantidade de modelos</p>
+        </div>
+    </div>
+
+    <!-- Resultados (populados via JS) -->
+    <div id="resultados-panel" class="hidden space-y-6">
+
+        <!-- Ranking Geral -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6" id="ranking-geral">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-slate-700 flex items-center gap-2">
+                    <i data-lucide="trophy" class="w-5 h-5 text-amber-500"></i>
+                    Ranking Geral
+                </h3>
+                <div class="flex gap-2">
+                    <button onclick="aplicarMelhorModelo()"
+                        class="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg text-sm font-medium hover:from-emerald-600 hover:to-teal-600 transition-all shadow-md"
+                        id="btn-aplicar">
+                        <i data-lucide="zap" class="w-4 h-4"></i>
+                        Aplicar Melhor Modelo
+                    </button>
+                    <button onclick="exportarCSV()"
+                        class="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-medium hover:bg-slate-200 transition-all">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        Exportar CSV
+                    </button>
+                </div>
+            </div>
+            <div id="ranking-tabela"></div>
+        </div>
+
+        <!-- Resultado por Grupos -->
+        <div id="grupos-resultado"></div>
+
+        <!-- Gráfico -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+            <h3 class="text-lg font-semibold text-slate-700 flex items-center gap-2 mb-4">
+                <i data-lucide="line-chart" class="w-5 h-5 text-blue-500"></i>
+                Projetado vs Realizado
+            </h3>
+            <div class="flex gap-4 mb-4">
+                <select id="grafico-qualificador" class="text-sm border-slate-200 rounded-lg" onchange="atualizarGrafico()">
+                </select>
+                <select id="grafico-modelo" class="text-sm border-slate-200 rounded-lg" onchange="atualizarGrafico()">
+                </select>
+            </div>
+            <div class="relative" style="height: 350px;">
+                <canvas id="backtest-chart"></canvas>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+// ==================== ESTADO GLOBAL ====================
+let backtestResultado = null;
+let backtestChart = null;
+
+const MESES_NOMES = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+const SEMAFORO_CORES = {
+    verde: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', dot: 'bg-emerald-500' },
+    amarelo: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200', dot: 'bg-amber-500' },
+    vermelho: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', dot: 'bg-red-500' },
+    cinza: { bg: 'bg-slate-50', text: 'text-slate-500', border: 'border-slate-200', dot: 'bg-slate-400' },
+};
+
+const MEDALHAS = ['🥇', '🥈', '🥉'];
+
+// ==================== TOGGLE QUALIFICADORES ====================
+function toggleAllQuals(checked) {
+    document.querySelectorAll('.qual-cb').forEach(cb => cb.checked = checked);
+}
+
+// ==================== EXECUTAR BACKTEST ====================
+async function executarBacktest() {
+    const anosTreino = [...document.querySelectorAll('.ano-treino-cb:checked')].map(cb => parseInt(cb.value));
+    const anosTeste = [...document.querySelectorAll('.ano-teste-cb:checked')].map(cb => parseInt(cb.value));
+    const modelos = [...document.querySelectorAll('.modelo-cb:checked')].map(cb => cb.value);
+    const quals = [...document.querySelectorAll('.qual-cb:checked')].map(cb => parseInt(cb.value));
+
+    if (!anosTreino.length) return alert('Selecione pelo menos um ano de treino');
+    if (!anosTeste.length) return alert('Selecione pelo menos um ano de teste');
+    if (!modelos.length) return alert('Selecione pelo menos um modelo');
+
+    // Validar treino < teste
+    const maxTreino = Math.max(...anosTreino);
+    const minTeste = Math.min(...anosTeste);
+    if (maxTreino >= minTeste) {
+        return alert(`Ano de treino (${maxTreino}) deve ser anterior ao ano de teste (${minTeste})`);
+    }
+
+    document.getElementById('loading-panel').classList.remove('hidden');
+    document.getElementById('resultados-panel').classList.add('hidden');
+    document.getElementById('btn-executar').disabled = true;
+
+    try {
+        const resp = await fetch('/relatorios/backtest/executar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                anos_treino: anosTreino,
+                anos_teste: anosTeste,
+                modelos: modelos,
+                qualificadores_ids: quals.length ? quals : null,
+            }),
+        });
+
+        const data = await resp.json();
+
+        if (!resp.ok) {
+            alert(data.error || 'Erro ao executar backtest');
+            return;
+        }
+
+        backtestResultado = data;
+        renderResultados(data);
+        document.getElementById('resultados-panel').classList.remove('hidden');
+
+    } catch (e) {
+        alert('Erro de conexão: ' + e.message);
+    } finally {
+        document.getElementById('loading-panel').classList.add('hidden');
+        document.getElementById('btn-executar').disabled = false;
+    }
+}
+
+// ==================== RENDERIZAR RESULTADOS ====================
+function renderResultados(data) {
+    renderRanking(data.ranking_geral);
+    renderGrupos(data);
+    popularDropdownsGrafico(data);
+    atualizarGrafico();
+}
+
+function renderRanking(ranking) {
+    const container = document.getElementById('ranking-tabela');
+    if (!ranking.ranking.length) {
+        container.innerHTML = '<p class="text-slate-400 text-center py-4">Nenhum resultado disponível</p>';
+        return;
+    }
+
+    let html = `
+    <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="border-b border-slate-200">
+                <th class="text-left py-2 px-3 text-slate-500 font-medium">#</th>
+                <th class="text-left py-2 px-3 text-slate-500 font-medium">Modelo</th>
+                <th class="text-right py-2 px-3 text-slate-500 font-medium">WMAPE Médio</th>
+                <th class="text-right py-2 px-3 text-slate-500 font-medium">Qualif. Vencidos</th>
+                <th class="text-right py-2 px-3 text-slate-500 font-medium">Total Testados</th>
+            </tr>
+        </thead>
+        <tbody>`;
+
+    ranking.ranking.forEach((r, i) => {
+        const medalha = i < 3 ? MEDALHAS[i] : `${i+1}º`;
+        const destaque = i === 0 ? 'bg-amber-50 font-semibold' : '';
+        const wmape = r.wmape_medio !== null ? `${r.wmape_medio.toFixed(1)}%` : '-';
+
+        html += `
+            <tr class="${destaque} border-b border-slate-100 hover:bg-slate-50">
+                <td class="py-2.5 px-3 text-lg">${medalha}</td>
+                <td class="py-2.5 px-3 text-slate-800 font-medium">${r.nome}</td>
+                <td class="py-2.5 px-3 text-right font-mono">${wmape}</td>
+                <td class="py-2.5 px-3 text-right">${r.qualificadores_vencidos}</td>
+                <td class="py-2.5 px-3 text-right text-slate-500">${r.total_testados}</td>
+            </tr>`;
+    });
+
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+}
+
+function renderGrupos(data) {
+    const container = document.getElementById('grupos-resultado');
+    const modelos = data.modelos_testados;
+
+    // Agrupar filhos por pai
+    const gruposPai = {};
+    for (const pai of data.resultados_pai) {
+        gruposPai[pai.seq_qualificador] = {
+            pai: pai,
+            filhos: data.resultados_filho.filter(f => f.pai_seq === pai.seq_qualificador),
+        };
+    }
+
+    let html = '';
+
+    for (const [paiSeq, grupo] of Object.entries(gruposPai)) {
+        const pai = grupo.pai;
+        const semaforoCor = SEMAFORO_CORES[pai.semaforo || 'cinza'];
+
+        html += `
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-4">
+            <div class="flex items-center gap-2 mb-4">
+                <span class="w-2.5 h-2.5 rounded-full ${semaforoCor.dot}"></span>
+                <h4 class="text-md font-semibold text-slate-700">${pai.dsc_qualificador}</h4>
+                ${pai.melhor_modelo ? `<span class="text-xs px-2 py-0.5 rounded-full ${semaforoCor.bg} ${semaforoCor.text}">Melhor: ${modelos.find(m => m.codigo === pai.melhor_modelo)?.nome || pai.melhor_modelo}</span>` : ''}
+            </div>
+            <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-slate-200">
+                        <th class="text-left py-2 px-3 text-slate-500 font-medium">Qualificador</th>`;
+
+        for (const m of modelos) {
+            html += `<th class="text-center py-2 px-3 text-slate-500 font-medium">${m.nome}</th>`;
+        }
+        html += `<th class="text-center py-2 px-3 text-slate-500 font-medium">Melhor</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+        // Filhos
+        for (const filho of grupo.filhos) {
+            const sem = SEMAFORO_CORES[filho.semaforo || 'cinza'];
+            html += `<tr class="border-b border-slate-50 hover:bg-slate-50">
+                <td class="py-2 px-3 flex items-center gap-1.5">
+                    <span class="w-2 h-2 rounded-full ${sem.dot}"></span>
+                    <span class="text-slate-800">${filho.dsc_qualificador}</span>
+                </td>`;
+
+            for (const m of modelos) {
+                const mData = filho.modelos[m.codigo];
+                if (mData && mData.mape !== null) {
+                    const isMelhor = filho.melhor_modelo === m.codigo;
+                    const cls = isMelhor ? 'font-bold text-emerald-700' : 'text-slate-600';
+                    html += `<td class="py-2 px-3 text-center font-mono text-xs ${cls}">${mData.mape.toFixed(1)}%</td>`;
+                } else {
+                    html += `<td class="py-2 px-3 text-center text-slate-300">-</td>`;
+                }
+            }
+
+            const melhorNome = modelos.find(m => m.codigo === filho.melhor_modelo)?.nome || '-';
+            html += `<td class="py-2 px-3 text-center"><span class="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-medium">${melhorNome}</span></td>`;
+            html += `</tr>`;
+        }
+
+        // Linha do pai (total)
+        html += `<tr class="bg-slate-50 font-semibold">
+            <td class="py-2 px-3 text-slate-700">${pai.dsc_qualificador} (média)</td>`;
+        for (const m of modelos) {
+            const mData = pai.modelos[m.codigo];
+            if (mData && mData.mape !== null) {
+                const isMelhor = pai.melhor_modelo === m.codigo;
+                const cls = isMelhor ? 'font-bold text-emerald-700' : 'text-slate-600';
+                html += `<td class="py-2 px-3 text-center font-mono text-xs ${cls}">${mData.mape.toFixed(1)}%</td>`;
+            } else {
+                html += `<td class="py-2 px-3 text-center text-slate-300">-</td>`;
+            }
+        }
+        html += `<td class="py-2 px-3 text-center">-</td></tr>`;
+
+        html += '</tbody></table></div></div>';
+    }
+
+    container.innerHTML = html;
+}
+
+// ==================== GRÁFICO ====================
+function popularDropdownsGrafico(data) {
+    const selQual = document.getElementById('grafico-qualificador');
+    const selModelo = document.getElementById('grafico-modelo');
+
+    selQual.innerHTML = '';
+    for (const f of data.resultados_filho) {
+        if (Object.keys(f.modelos).length > 0) {
+            selQual.innerHTML += `<option value="${f.seq_qualificador}">${f.dsc_qualificador}</option>`;
+        }
+    }
+
+    selModelo.innerHTML = '';
+    for (const m of data.modelos_testados) {
+        selModelo.innerHTML += `<option value="${m.codigo}">${m.nome}</option>`;
+    }
+}
+
+function atualizarGrafico() {
+    if (!backtestResultado) return;
+
+    const seqQ = parseInt(document.getElementById('grafico-qualificador').value);
+    const modelo = document.getElementById('grafico-modelo').value;
+
+    const filho = backtestResultado.resultados_filho.find(f => f.seq_qualificador === seqQ);
+    if (!filho || !filho.modelos[modelo]) return;
+
+    const mData = filho.modelos[modelo];
+    // Usar o primeiro ano de teste para o gráfico
+    const detalhe = mData.detalhes_por_ano?.[0];
+    if (!detalhe) return;
+
+    const proj = detalhe.projecao || {};
+    const real = detalhe.real || {};
+
+    const labels = [];
+    const projVals = [];
+    const realVals = [];
+
+    for (let m = 1; m <= 12; m++) {
+        labels.push(MESES_NOMES[m-1]);
+        projVals.push(proj[String(m)] || 0);
+        realVals.push(real[String(m)] || 0);
+    }
+
+    if (backtestChart) backtestChart.destroy();
+
+    const ctx = document.getElementById('backtest-chart').getContext('2d');
+    backtestChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Realizado',
+                    data: realVals,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59,130,246,0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    borderWidth: 2.5,
+                    pointRadius: 4,
+                },
+                {
+                    label: `Projetado (${mData.nome})`,
+                    data: projVals,
+                    borderColor: '#8b5cf6',
+                    backgroundColor: 'rgba(139,92,246,0.1)',
+                    fill: true,
+                    tension: 0.3,
+                    borderWidth: 2.5,
+                    borderDash: [6, 3],
+                    pointRadius: 4,
+                },
+            ],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: ctx => `${ctx.dataset.label}: R$ ${ctx.raw.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`,
+                    },
+                },
+            },
+            scales: {
+                y: {
+                    ticks: {
+                        callback: v => `R$ ${(v/1000).toFixed(0)}k`,
+                    },
+                },
+            },
+        },
+    });
+}
+
+// ==================== APLICAR MELHOR MODELO ====================
+async function aplicarMelhorModelo() {
+    if (!backtestResultado) return;
+
+    const btn = document.getElementById('btn-aplicar');
+    btn.disabled = true;
+    btn.textContent = 'Salvando...';
+
+    try {
+        const resp = await fetch('/relatorios/backtest/salvar-recomendacao', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(backtestResultado),
+        });
+
+        const data = await resp.json();
+        if (resp.ok) {
+            alert(data.mensagem);
+            window.location.href = data.redirect_url;
+        } else {
+            alert(data.error || 'Erro ao salvar recomendações');
+        }
+    } catch (e) {
+        alert('Erro: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="zap" class="w-4 h-4"></i> Aplicar Melhor Modelo';
+    }
+}
+
+// ==================== EXPORTAR CSV ====================
+function exportarCSV() {
+    if (!backtestResultado) return;
+
+    const modelos = backtestResultado.modelos_testados;
+    let csv = 'Qualificador,' + modelos.map(m => `MAPE ${m.nome}`).join(',') + ',Melhor Modelo\n';
+
+    for (const f of backtestResultado.resultados_filho) {
+        let row = `"${f.dsc_qualificador}"`;
+        for (const m of modelos) {
+            const mData = f.modelos[m.codigo];
+            row += `,${mData?.mape !== null && mData?.mape !== undefined ? mData.mape.toFixed(2) : ''}`;
+        }
+        const melhorNome = modelos.find(m => m.codigo === f.melhor_modelo)?.nome || '';
+        row += `,"${melhorNome}"`;
+        csv += row + '\n';
+    }
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `backtest_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+}
+</script>
+
+{% endblock %}

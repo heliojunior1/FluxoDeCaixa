@@ -421,3 +421,104 @@ async def dfc_eventos(request: Request):
     data = get_dfc_eventos(seq, periodo, col, mes_ano, estrategia, cenario_id)
 
     return JSONResponse({"eventos": data["eventos"], "total": data["total"]})
+
+
+# ==================== BACKTEST ====================
+
+@router.get("/relatorios/backtest", name="relatorio_backtest")
+@handle_exceptions
+async def relatorio_backtest(request: Request):
+    """Página do relatório de Backtest de Modelos."""
+    from ..services.backtest_service import MODELOS_DISPONIVEIS
+
+    anos_disponiveis = get_available_years()
+    qualificadores = list_active_qualificadores()
+
+    # Agrupar qualificadores por pai
+    grupos = {}
+    filhos = []
+    por_seq = {q.seq_qualificador: q for q in qualificadores}
+
+    for q in qualificadores:
+        if q.cod_qualificador_pai is not None:
+            pai = por_seq.get(q.cod_qualificador_pai)
+            # Verificar se é filho (não tem filhos próprios)
+            tem_filhos = any(
+                qq.cod_qualificador_pai == q.seq_qualificador
+                for qq in qualificadores
+            )
+            if not tem_filhos:
+                pai_nome = pai.dsc_qualificador if pai else 'Outros'
+                if pai_nome not in grupos:
+                    grupos[pai_nome] = []
+                grupos[pai_nome].append(q)
+                filhos.append(q)
+
+    modelos = [
+        {'codigo': k, 'nome': v['nome']}
+        for k, v in MODELOS_DISPONIVEIS.items()
+    ]
+
+    return templates.TemplateResponse(
+        "rel_backtest.html",
+        {
+            "request": request,
+            "anos_disponiveis": sorted(anos_disponiveis),
+            "modelos_disponiveis": modelos,
+            "grupos_qualificadores": grupos,
+            "filhos": filhos,
+        },
+    )
+
+
+@router.post("/relatorios/backtest/executar", name="relatorio_backtest_executar")
+@handle_exceptions
+async def relatorio_backtest_executar(request: Request):
+    """Executa o backtest e retorna resultados JSON."""
+    from ..services.backtest_service import executar_backtest
+
+    data = await request.json()
+
+    anos_treino = data.get('anos_treino', [])
+    anos_teste = data.get('anos_teste', [])
+    modelos = data.get('modelos', [])
+    qualificadores_ids = data.get('qualificadores_ids')
+
+    if not anos_treino:
+        return JSONResponse({'error': 'Selecione pelo menos um ano de treino'}, status_code=400)
+    if not anos_teste:
+        return JSONResponse({'error': 'Selecione pelo menos um ano de teste'}, status_code=400)
+    if not modelos:
+        return JSONResponse({'error': 'Selecione pelo menos um modelo'}, status_code=400)
+
+    try:
+        resultado = executar_backtest(
+            anos_treino=[int(a) for a in anos_treino],
+            anos_teste=[int(a) for a in anos_teste],
+            modelos=modelos,
+            qualificadores_ids=[int(q) for q in qualificadores_ids] if qualificadores_ids else None,
+        )
+        return JSONResponse(resultado)
+    except ValueError as e:
+        return JSONResponse({'error': str(e)}, status_code=400)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({'error': f'Erro interno: {str(e)}'}, status_code=500)
+
+
+@router.post("/relatorios/backtest/salvar-recomendacao", name="backtest_salvar_recomendacao")
+@handle_exceptions
+async def backtest_salvar_recomendacao(request: Request):
+    """Salva recomendações do backtest e retorna contagem."""
+    from ..services.backtest_service import salvar_recomendacoes
+
+    data = await request.json()
+
+    count = salvar_recomendacoes(data)
+    return JSONResponse({
+        'mensagem': f'{count} recomendações salvas com sucesso',
+        'count': count,
+        'redirect_url': '/simulador/novo?usar_recomendacao=1',
+    })
+
