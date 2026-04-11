@@ -433,6 +433,36 @@ async def simulador_calcular_projecao(request: Request):
             
             resultado = modelos.projetar_lightgbm(dados_hist, meses_projecao, config, ano_base)
 
+        elif tipo_modelo == 'CRESCIMENTO_ANO':
+            from ..services.formula_engine import projetar_crescimento_ultimo_ano
+            anos_selecionados = data.get('anos_selecionados', [])
+            mes_referencia = int(config.get('mes_referencia', 6))
+            ano_ref = max(anos_selecionados) if anos_selecionados else ano_base - 1
+            
+            resultado = projetar_crescimento_ultimo_ano(
+                seq_qualificadores=seq_qualificadores,
+                ano_projecao=ano_base,
+                ano_referencia=ano_ref,
+                mes_referencia=mes_referencia,
+                meses_projecao=meses_projecao,
+            )
+
+        elif tipo_modelo == 'MEDIA_CRESCIMENTO':
+            from ..services.formula_engine import projetar_media_crescimento_anos
+            anos_selecionados = data.get('anos_selecionados', [])
+            mes_referencia = int(config.get('mes_referencia', 6))
+            
+            if not anos_selecionados:
+                return JSONResponse({'error': 'Selecione pelo menos um ano na Base Histórica'}, status_code=400)
+            
+            resultado = projetar_media_crescimento_anos(
+                seq_qualificadores=seq_qualificadores,
+                ano_projecao=ano_base,
+                anos_referencia=anos_selecionados,
+                mes_referencia=mes_referencia,
+                meses_projecao=meses_projecao,
+            )
+
         else:
             return JSONResponse({'error': 'Modelo não suportado para cálculo automático'}, status_code=400)
         
@@ -494,7 +524,7 @@ def _parse_model_config_from_form(form, tipo: str) -> dict:
         if key.startswith(f'{tipo}_config_'):
             param_name = key.replace(f'{tipo}_config_', '')
             # Converter valores numéricos
-            if param_name in ['seasonal_periods', 'p', 'd', 'q', 'P', 'D', 'Q', 's', 'periodo_meses', 'n_estimators', 'max_depth', 'num_leaves']:
+            if param_name in ['seasonal_periods', 'p', 'd', 'q', 'P', 'D', 'Q', 's', 'periodo_meses', 'n_estimators', 'max_depth', 'num_leaves', 'mes_referencia']:
                 try:
                     config[param_name] = int(value)
                 except (ValueError, TypeError):

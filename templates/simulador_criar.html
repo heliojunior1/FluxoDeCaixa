@@ -174,6 +174,12 @@
                     <option value="FORMULA" {% if cenario_completo and
                         cenario_completo.receita.config.cod_tipo_cenario=='FORMULA' %}selected{% endif %}>Fórmula
                         Parametrizável</option>
+                    <option value="CRESCIMENTO_ANO" {% if cenario_completo and
+                        cenario_completo.receita.config.cod_tipo_cenario=='CRESCIMENTO_ANO' %}selected{% endif %}>Crescimento
+                        do Último Ano</option>
+                    <option value="MEDIA_CRESCIMENTO" {% if cenario_completo and
+                        cenario_completo.receita.config.cod_tipo_cenario=='MEDIA_CRESCIMENTO' %}selected{% endif %}>Média
+                        de Crescimento (Anos Selecionados)</option>
                 </select>
             </div>
 
@@ -431,6 +437,48 @@
                 </div>
             </div>
 
+            <!-- Painel de Crescimento (fora de receita_model_fields) -->
+            <div id="crescimento_params" class="hidden mb-4 p-4 bg-amber-50 rounded-xl border border-amber-200">
+                <h4 class="text-sm font-medium text-amber-800 mb-3 flex items-center gap-2">
+                    <i data-lucide="bar-chart-3" class="h-4 w-4"></i>
+                    Configuração do Método de Crescimento
+                </h4>
+
+                <!-- Mês de Referência -->
+                <div class="mb-3">
+                    <label class="block text-xs font-medium text-gray-700 mb-1">
+                        Mês de Referência
+                        <span class="text-gray-400 ml-1">(até que mês existem dados reais no ano de projeção)</span>
+                    </label>
+                    <select name="receita_config_mes_referencia" id="receita_mes_referencia"
+                        class="w-full max-w-xs px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none">
+                        <option value="1">Janeiro (1)</option>
+                        <option value="2">Fevereiro (2)</option>
+                        <option value="3">Março (3)</option>
+                        <option value="4">Abril (4)</option>
+                        <option value="5">Maio (5)</option>
+                        <option value="6" selected>Junho (6)</option>
+                        <option value="7">Julho (7)</option>
+                        <option value="8">Agosto (8)</option>
+                        <option value="9">Setembro (9)</option>
+                        <option value="10">Outubro (10)</option>
+                        <option value="11">Novembro (11)</option>
+                        <option value="12">Dezembro (12)</option>
+                    </select>
+                </div>
+
+                <!-- Info contextual -->
+                <div id="crescimento_ano_info" class="hidden text-xs text-amber-700 bg-amber-100 p-2 rounded-lg">
+                    📈 Usa a taxa de crescimento do <strong>último ano selecionado</strong> na Base Histórica acima.
+                    <br>Fórmula: <code>Projeção = (Acumulado Atual / Acumulado Ano Ref.) × Total Ano Ref.</code>
+                </div>
+                <div id="media_crescimento_info" class="hidden text-xs text-blue-700 bg-blue-100 p-2 rounded-lg">
+                    📊 Usa a média das taxas de crescimento de <strong>todos os anos selecionados</strong> na Base Histórica.
+                    Suaviza distorções de anos atípicos.
+                    <br>Fórmula: <code>Projeção = Acumulado Atual × Média(Total_i / Acum_i)</code>
+                </div>
+            </div>
+
             <!-- Parâmetros Fórmula Parametrizável (fora de receita_model_fields para poder ser mostrado independentemente) -->
             <div id="formula_params" class="hidden mb-4 p-4 bg-white rounded border">
                 <div class="bg-violet-50 border border-violet-200 rounded-lg p-4 mb-3">
@@ -537,6 +585,12 @@
                     <option value="FORMULA" {% if cenario_completo and
                         cenario_completo.despesa.config.cod_tipo_cenario=='FORMULA' %}selected{% endif %}>Fórmula
                         Parametrizável</option>
+                    <option value="CRESCIMENTO_ANO" {% if cenario_completo and
+                        cenario_completo.despesa.config.cod_tipo_cenario=='CRESCIMENTO_ANO' %}selected{% endif %}>Crescimento
+                        do Último Ano</option>
+                    <option value="MEDIA_CRESCIMENTO" {% if cenario_completo and
+                        cenario_completo.despesa.config.cod_tipo_cenario=='MEDIA_CRESCIMENTO' %}selected{% endif %}>Média
+                        de Crescimento (Anos Selecionados)</option>
                 </select>
             </div>
 
@@ -671,8 +725,102 @@
 
 <script>
 (function () {
-    const TOTAL_MESES = 12;
+    let TOTAL_MESES = 12;  // Dinâmico — atualizado por reconstruirTabelaPeriodos()
     let qualificadoresFilhos = [];  // Cache dos qualificadores filhos carregados
+
+    function getNumPeriodos() {
+        return parseInt(document.getElementById('input_periodos')?.value || 12);
+    }
+
+    function getLabelsPeriodicidade() {
+        const periodicidade = document.getElementById('cod_periodicidade')?.value || 'MENSAL';
+        const numPeriodos = getNumPeriodos();
+        const anoBase = parseInt(document.querySelector('input[name="ano_base"]')?.value || new Date().getFullYear());
+        const mesesAbrev = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+        if (periodicidade === 'MENSAL') {
+            return mesesAbrev.slice(0, Math.min(numPeriodos, 12));
+        } else if (periodicidade === 'ANUAL') {
+            const labels = [];
+            for (let i = 0; i < numPeriodos; i++) labels.push(`${anoBase + i}`);
+            return labels;
+        } else if (periodicidade === 'QUINZENAL') {
+            const labels = [];
+            for (let i = 1; i <= numPeriodos; i++) labels.push(`Q${i}`);
+            return labels;
+        } else if (periodicidade === 'SEMANAL') {
+            const labels = [];
+            for (let i = 1; i <= numPeriodos; i++) labels.push(`S${i}`);
+            return labels;
+        }
+        return mesesAbrev;
+    }
+
+    function reconstruirTabelaPeriodos() {
+        const labels = getLabelsPeriodicidade();
+        TOTAL_MESES = labels.length;  // Atualizar variável global
+
+        // Reconstruir tabela de receita
+        _reconstruirTabela('receita_manual_fields', 'rec', '', 'bg-green-100', labels);
+        // Reconstruir tabela de despesa
+        _reconstruirTabela('despesa_manual_fields', 'desp', 'desp_', 'bg-red-100', labels);
+    }
+
+    function _reconstruirTabela(containerId, rowPrefix, fieldPrefix, headerBg, labels) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const table = container.querySelector('table');
+        if (!table) return;
+
+        // — Reconstruir headers —
+        const thead = table.querySelector('thead tr');
+        if (thead) {
+            // Remover headers de período (tudo exceto as 2 primeiras: Qualificador + Aplicar a Todos)
+            while (thead.children.length > 2) {
+                thead.removeChild(thead.lastChild);
+            }
+            // Adicionar novos headers
+            labels.forEach(label => {
+                const th = document.createElement('th');
+                th.className = 'p-2 text-center min-w-[80px]';
+                th.textContent = label;
+                thead.appendChild(th);
+            });
+        }
+
+        // — Reconstruir células de cada linha do tbody —
+        const tbody = table.querySelector('tbody');
+        if (!tbody) return;
+
+        tbody.querySelectorAll(`tr[data-row-id^="${rowPrefix}-"]`).forEach(row => {
+            const seq = row.dataset.rowId.split('-')[1];
+
+            // Remover células de período (tudo exceto as 2 primeiras: Qualificador + Aplicar a Todos)
+            while (row.children.length > 2) {
+                row.removeChild(row.lastChild);
+            }
+
+            // Adicionar novas células
+            labels.forEach((label, index) => {
+                const periodo = index + 1;
+                const td = document.createElement('td');
+                td.className = 'p-1 text-center';
+                td.innerHTML = `
+                    <div class="flex flex-col gap-1">
+                        <select name="cod_tipo_ajuste_${fieldPrefix}${periodo}_${seq}"
+                            class="text-[10px] border rounded p-0.5 w-full bg-gray-50">
+                            <option value="P">%</option>
+                            <option value="V">R$</option>
+                        </select>
+                        <input type="number" step="0.01"
+                            name="val_ajuste_${fieldPrefix}${periodo}_${seq}"
+                            class="w-full text-xs p-1 border rounded text-right" placeholder="0.00">
+                    </div>`;
+                row.appendChild(td);
+            });
+        });
+    }
 
     function toggleReceitaFields() {
         const tipoSelect = document.getElementById('tipo_receita');
@@ -703,9 +851,15 @@
             filhosContainer.classList.add('hidden');
         }
 
-        // Sempre esconder formula_params primeiro (está fora de modelFields)
+        // Sempre esconder formula_params e crescimento_params primeiro (estão fora de modelFields)
         const formulaPanel = document.getElementById('formula_params');
         if (formulaPanel) formulaPanel.classList.add('hidden');
+        const crescimentoPanel = document.getElementById('crescimento_params');
+        if (crescimentoPanel) crescimentoPanel.classList.add('hidden');
+        const crescAnoInfo = document.getElementById('crescimento_ano_info');
+        const mediaCrescInfo = document.getElementById('media_crescimento_info');
+        if (crescAnoInfo) crescAnoInfo.classList.add('hidden');
+        if (mediaCrescInfo) mediaCrescInfo.classList.add('hidden');
 
         if (tipoSelect.value === 'MANUAL') {
             modelFields.classList.add('hidden');
@@ -718,6 +872,18 @@
             modelFields.classList.add('hidden');
             modelFields.querySelectorAll('input, select').forEach(el => el.disabled = true);
             carregarParametrosFormula();
+            return;
+        }
+
+        if (tipoSelect.value === 'CRESCIMENTO_ANO' || tipoSelect.value === 'MEDIA_CRESCIMENTO') {
+            // Mostrar seleção de qualificadores
+            modelFields.classList.remove('hidden');
+            modelFields.querySelectorAll('input, select').forEach(el => el.disabled = false);
+            // Mostrar painel de crescimento
+            if (crescimentoPanel) crescimentoPanel.classList.remove('hidden');
+            // Mostrar info contextual
+            if (tipoSelect.value === 'CRESCIMENTO_ANO' && crescAnoInfo) crescAnoInfo.classList.remove('hidden');
+            if (tipoSelect.value === 'MEDIA_CRESCIMENTO' && mediaCrescInfo) mediaCrescInfo.classList.remove('hidden');
             return;
         }
 
@@ -885,7 +1051,7 @@
         if (!projecao || !Array.isArray(projecao)) return;
         
         projecao.forEach((p, index) => {
-            if (index < 12) {
+            if (index < TOTAL_MESES) {
                 const mes = index + 1;
                 const tipoField = document.querySelector(`select[name="cod_tipo_ajuste_${mes}_${seqQualificador}"]`);
                 const valorField = document.querySelector(`input[name="val_ajuste_${mes}_${seqQualificador}"]`);
@@ -1088,11 +1254,91 @@
             return;
         }
 
+        if (['CRESCIMENTO_ANO', 'MEDIA_CRESCIMENTO'].includes(tipoModelo)) {
+            // Estes métodos usam o mesmo fluxo de API que os modelos estatísticos
+            const btn = document.querySelector('button[onclick="aplicarModeloReceita()"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i data-lucide="loader" class="animate-spin"></i> Calculando...';
+            btn.disabled = true;
+            if (statusEl) statusEl.textContent = 'Processando método de crescimento...';
+            lucide.createIcons();
+
+            try {
+                const qualificadoresSelecionados = getQualificadoresSelecionados();
+                if (qualificadoresSelecionados.length === 0) {
+                    throw new Error('Selecione pelo menos um qualificador para projeção');
+                }
+
+                const mesesProjecao = document.querySelector('input[name="meses_projecao"]').value;
+                const anoBase = document.querySelector('input[name="ano_base"]').value;
+
+                // Obter anos selecionados na Base Histórica
+                const anosCheckboxes = document.querySelectorAll('.ano-cenario-checkbox:checked');
+                const anosSelecionados = Array.from(anosCheckboxes).map(cb => parseInt(cb.value));
+
+                // Obter mês de referência
+                const mesRef = parseInt(document.getElementById('receita_mes_referencia')?.value || 6);
+
+                const config = { mes_referencia: mesRef };
+
+                let sucessos = 0;
+                let erros = [];
+
+                for (const seqQualificador of qualificadoresSelecionados) {
+                    try {
+                        if (statusEl) {
+                            const nomeQual = document.querySelector(`.qualificador-checkbox[value="${seqQualificador}"]`)?.dataset.nome || seqQualificador;
+                            statusEl.textContent = `Calculando crescimento para ${nomeQual}...`;
+                        }
+
+                        const response = await fetch('/simulador/calcular-projecao', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                tipo_modelo: tipoModelo,
+                                seq_qualificador: seqQualificador,
+                                meses_projecao: mesesProjecao,
+                                ano_base: anoBase,
+                                config: config,
+                                anos_selecionados: anosSelecionados,
+                            })
+                        });
+
+                        const data = await response.json();
+                        if (!response.ok) throw new Error(data.error || 'Erro ao calcular projeção');
+
+                        preencherLinhaQualificador(seqQualificador, data.projecao);
+                        sucessos++;
+                    } catch (error) {
+                        const nomeQual = document.querySelector(`.qualificador-checkbox[value="${seqQualificador}"]`)?.dataset.nome || seqQualificador;
+                        erros.push(`${nomeQual}: ${error.message}`);
+                        console.error(`Erro no qualificador ${seqQualificador}:`, error);
+                    }
+                }
+
+                if (erros.length > 0) {
+                    if (statusEl) statusEl.textContent = `✓ ${sucessos} calculado(s), ✗ ${erros.length} erro(s)`;
+                    alert(`Projeção calculada!\n\nSucessos: ${sucessos}\nErros: ${erros.length}\n\nErros:\n${erros.join('\n')}`);
+                } else {
+                    if (statusEl) statusEl.textContent = `✓ ${tipoModelo} calculado com sucesso para ${sucessos} qualificador(es)`;
+                    alert(`Projeção por crescimento calculada com sucesso para ${sucessos} qualificador(es)!`);
+                }
+            } catch (error) {
+                console.error(error);
+                if (statusEl) statusEl.textContent = `✗ Erro: ${error.message}`;
+                alert('Erro: ' + error.message);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                lucide.createIcons();
+            }
+            return;
+        }
+
         alert('Cálculo automático não disponível para este método.');
     }
 
     function preencherTabelaReceita(valorFixo) {
-        const TOTAL_MESES = 12;
         document.querySelectorAll('tr[data-row-id^="rec-"]').forEach(row => {
             const [, seq] = row.dataset.rowId.split('-');
             for (let i = 1; i <= TOTAL_MESES; i++) {
@@ -1436,7 +1682,7 @@
         const labelPeriodos = document.getElementById('label_periodos');
         const inputPeriodos = document.getElementById('input_periodos');
         const config = {
-            'ANUAL':     { label: 'Anos de Projeção', min: 1, max: 10, default: 2 },
+            'ANUAL':     { label: 'Anos de Projeção', min: 1, max: 10, default: 1 },
             'MENSAL':    { label: 'Meses de Projeção', min: 1, max: 60, default: 12 },
             'QUINZENAL': { label: 'Quinzenas de Projeção', min: 1, max: 104, default: 24 },
             'SEMANAL':   { label: 'Semanas de Projeção', min: 1, max: 260, default: 52 },
@@ -1449,6 +1695,9 @@
         const isAnual = periodicidade === 'ANUAL';
         if (formulaOptRec) { formulaOptRec.disabled = !isAnual; if (!isAnual && document.getElementById('tipo_receita').value === 'FORMULA') { document.getElementById('tipo_receita').value = 'MANUAL'; toggleReceitaFields(); } }
         if (formulaOptDesp) { formulaOptDesp.disabled = !isAnual; if (!isAnual && document.getElementById('tipo_despesa').value === 'FORMULA') { document.getElementById('tipo_despesa').value = 'MANUAL'; toggleDespesaFields(); } }
+        
+        // Reconstruir tabelas de ajuste com novos períodos
+        reconstruirTabelaPeriodos();
     }
 
     function toggleMetodoBaseCenario() {

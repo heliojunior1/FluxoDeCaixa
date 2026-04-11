@@ -614,6 +614,41 @@ def executar_simulacao(seq_simulador_cenario: int) -> Optional[Dict]:
         )
         projecao_receita_detalhada = projecao_receita.copy() if len(projecao_receita) > 0 else None
 
+    elif tipo_receita == 'CRESCIMENTO_ANO':
+        from .formula_engine import projetar_crescimento_ultimo_ano
+        config = json.loads(config_receita.json_configuracao or '{}')
+        seq_qualificadores = config.get('seq_qualificadores', [])
+        mes_referencia = config.get('mes_referencia', 6)
+        config_base = json.loads(simulador.json_config_base or '{}')
+        anos = config_base.get('anos', [])
+        ano_ref = max(anos) if anos else ano_base - 1
+        
+        projecao_receita = projetar_crescimento_ultimo_ano(
+            seq_qualificadores=seq_qualificadores,
+            ano_projecao=ano_base,
+            ano_referencia=ano_ref,
+            mes_referencia=mes_referencia,
+            meses_projecao=meses_projecao,
+        )
+        projecao_receita_detalhada = projecao_receita.copy() if len(projecao_receita) > 0 else None
+
+    elif tipo_receita == 'MEDIA_CRESCIMENTO':
+        from .formula_engine import projetar_media_crescimento_anos
+        config = json.loads(config_receita.json_configuracao or '{}')
+        seq_qualificadores = config.get('seq_qualificadores', [])
+        mes_referencia = config.get('mes_referencia', 6)
+        config_base = json.loads(simulador.json_config_base or '{}')
+        anos = config_base.get('anos', [])
+        
+        projecao_receita = projetar_media_crescimento_anos(
+            seq_qualificadores=seq_qualificadores,
+            ano_projecao=ano_base,
+            anos_referencia=anos,
+            mes_referencia=mes_referencia,
+            meses_projecao=meses_projecao,
+        )
+        projecao_receita_detalhada = projecao_receita.copy() if len(projecao_receita) > 0 else None
+
     else:
         # Fallback: cenário vazio
         projecao_receita = pd.DataFrame({
@@ -678,6 +713,42 @@ def executar_simulacao(seq_simulador_cenario: int) -> Optional[Dict]:
             config_base=config_base_dict_d,
         )
         projecao_despesa_detalhada = projecao_despesa.copy() if len(projecao_despesa) > 0 else None
+
+    elif tipo_despesa == 'CRESCIMENTO_ANO':
+        from .formula_engine import projetar_crescimento_ultimo_ano
+        config_d = json.loads(config_despesa.json_configuracao or '{}')
+        seq_qualificadores_d = config_d.get('seq_qualificadores', [])
+        mes_referencia_d = config_d.get('mes_referencia', 6)
+        config_base_d = json.loads(simulador.json_config_base or '{}')
+        anos_d = config_base_d.get('anos', [])
+        ano_ref_d = max(anos_d) if anos_d else ano_base - 1
+        
+        projecao_despesa = projetar_crescimento_ultimo_ano(
+            seq_qualificadores=seq_qualificadores_d,
+            ano_projecao=ano_base,
+            ano_referencia=ano_ref_d,
+            mes_referencia=mes_referencia_d,
+            meses_projecao=meses_projecao,
+        )
+        projecao_despesa_detalhada = projecao_despesa.copy() if len(projecao_despesa) > 0 else None
+
+    elif tipo_despesa == 'MEDIA_CRESCIMENTO':
+        from .formula_engine import projetar_media_crescimento_anos
+        config_d = json.loads(config_despesa.json_configuracao or '{}')
+        seq_qualificadores_d = config_d.get('seq_qualificadores', [])
+        mes_referencia_d = config_d.get('mes_referencia', 6)
+        config_base_d = json.loads(simulador.json_config_base or '{}')
+        anos_d = config_base_d.get('anos', [])
+        
+        projecao_despesa = projetar_media_crescimento_anos(
+            seq_qualificadores=seq_qualificadores_d,
+            ano_projecao=ano_base,
+            anos_referencia=anos_d,
+            mes_referencia=mes_referencia_d,
+            meses_projecao=meses_projecao,
+        )
+        projecao_despesa_detalhada = projecao_despesa.copy() if len(projecao_despesa) > 0 else None
+
     else:
         # Fallback
         projecao_despesa = pd.DataFrame({

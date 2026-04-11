@@ -16,6 +16,7 @@ from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
 from py_expression_eval import Parser
+from sqlalchemy import Integer as db_Integer
 
 from ..repositories import formula_repository as formula_repo
 
@@ -466,3 +467,242 @@ def projetar_cenario_formula(
         return pd.DataFrame(columns=['data', 'seq_qualificador', 'valor_projetado'])
 
     return pd.concat(all_records, ignore_index=True)
+
+
+# ==================== Projeções por Crescimento ====================
+
+
+def _soma_acumulada(seq_qualificadores: List[int], ano: int, mes_ini: int, mes_fim: int) -> float:
+    """Soma dos lançamentos no período [mes_ini, mes_fim] do ano.
+
+    Args:
+        seq_qualificadores: Lista de IDs dos qualificadores a somar
+        ano: Ano dos lançamentos
+        mes_ini: Mês inicial (1-12)
+        mes_fim: Mês final (1-12)
+
+    Returns:
+        Soma absoluta dos lançamentos no período
+    """
+    from ..models import Lancamento
+    from ..models.base import SessionLocal
+    from sqlalchemy import func
+
+    session = SessionLocal()
+    try:
+        total = (
+            session.query(func.sum(func.abs(Lancamento.val_lancamento)))
+            .filter(
+                Lancamento.seq_qualificador.in_(seq_qualificadores),
+                func.strftime('%Y', Lancamento.dat_lancamento) == str(ano),
+                func.cast(func.strftime('%m', Lancamento.dat_lancamento), db_Integer).between(mes_ini, mes_fim),
+                Lancamento.ind_status == 'A',
+            )
+            .scalar()
+        )
+        return float(total) if total else 0.0
+    except Exception as e:
+        print(f"[formula_engine] Erro ao calcular soma acumulada: {e}")
+        return 0.0
+
+
+def _perfil_sazonal(seq_qualificadores: List[int], ano: int) -> Dict[int, float]:
+    """Retorna o perfil sazonal de um ano: {mes: proporção}.
+
+    Ex: {1: 0.08, 2: 0.07, ..., 12: 0.11} onde a soma = 1.0.
+    Se o total do ano for 0, retorna distribuição uniforme (1/12).
+
+    Args:
+        seq_qualificadores: Lista de IDs dos qualificadores
+        ano: Ano para calcular o perfil
+
+    Returns:
+        Dicionário {mês: proporção}
+    """
+    from ..models import Lancamento
+    from ..models.base import SessionLocal
+    from sqlalchemy import func
+
+    session = SessionLocal()
+    try:
+        mes_col = func.cast(func.strftime('%m', Lancamento.dat_lancamento), db_Integer)
+        resultados = (
+            session.query(
+                mes_col.label('mes'),
+                func.sum(func.abs(Lancamento.val_lancamento)).label('total')
+            )
+            .filter(
+                Lancamento.seq_qualificador.in_(seq_qualificadores),
+                func.strftime('%Y', Lancamento.dat_lancamento) == str(ano),
+                Lancamento.ind_status == 'A',
+            )
+            .group_by(mes_col)
+            .all()
+        )
+
+        valores = {int(r.mes): float(r.total) for r in resultados}
+        total_ano = sum(valores.values())
+
+        if total_ano > 0:
+            return {m: valores.get(m, 0) / total_ano for m in range(1, 13)}
+        else:
+            return {m: 1.0 / 12 for m in range(1, 13)}
+    except Exception as e:
+        print(f"[formula_engine] Erro ao calcular perfil sazonal: {e}")
+        return {m: 1.0 / 12 for m in range(1, 13)}
+
+
+def _perfil_sazonal_medio(seq_qualificadores: List[int], anos: List[int]) -> Dict[int, float]:
+    """Média dos perfis sazonais de vários anos.
+
+    Args:
+        seq_qualificadores: Lista de IDs dos qualificadores
+        anos: Lista de anos para calcular a média
+
+    Returns:
+        Dicionário {mês: proporção média}
+    """
+    if not anos:
+        return {m: 1.0 / 12 for m in range(1, 13)}
+
+    perfis = [_perfil_sazonal(seq_qualificadores, ano) for ano in anos]
+
+    resultado = {}
+    for mes in range(1, 13):
+        valores_mes = [p.get(mes, 0) for p in perfis]
+        resultado[mes] = sum(valores_mes) / len(valores_mes)
+
+    return resultado
+
+
+def projetar_crescimento_ultimo_ano(
+    seq_qualificadores: List[int],
+    ano_projecao: int,
+    ano_referencia: int,
+    mes_referencia: int,
+    meses_projecao: int = 12,
+) -> pd.DataFrame:
+    """Projeção por Crescimento do Último Ano.
+
+    Calcula a taxa de crescimento do acumulado parcial do ano de projeção
+    vs. o mesmo período do ano de referência, e extrapola para o ano completo.
+
+    Fórmula:
+        taxa = Acum(ano_projecao, 1..M) / Acum(ano_referencia, 1..M)
+        projecao_total = taxa × Total(ano_referencia)
+
+    Os meses já realizados (1..M) usam o valor real.
+    Os meses restantes (M+1..12) são distribuídos pelo perfil sazonal do ano de referência.
+
+    Args:
+        seq_qualificadores: Lista de IDs dos qualificadores a projetar
+        ano_projecao: Ano que está sendo projetado (ex: 2026)
+        ano_referencia: Ano de referência para a taxa de crescimento (ex: 2025)
+        mes_referencia: Até que mês existem dados reais no ano de projeção
+        meses_projecao: Número de meses a projetar (padrão 12)
+
+    Returns:
+        DataFrame com colunas: data, valor_projetado
+    """
+    # 1. Calcular acumulados parciais
+    acum_atual = _soma_acumulada(seq_qualificadores, ano_projecao, 1, mes_referencia)
+    acum_referencia = _soma_acumulada(seq_qualificadores, ano_referencia, 1, mes_referencia)
+    total_referencia = _soma_acumulada(seq_qualificadores, ano_referencia, 1, 12)
+
+    # 2. Calcular taxa de crescimento
+    if acum_referencia > 0:
+        taxa_crescimento = acum_atual / acum_referencia
+    else:
+        taxa_crescimento = 1.0
+
+    # 3. Projeção total do ano
+    projecao_total = taxa_crescimento * total_referencia
+
+    # 4. Distribuir: meses reais + meses projetados
+    perfil = _perfil_sazonal(seq_qualificadores, ano_referencia)
+
+    registros = []
+    for mes in range(1, 13):
+        if mes <= mes_referencia:
+            # Mês com dados reais: usar valor real
+            valor = _soma_acumulada(seq_qualificadores, ano_projecao, mes, mes)
+        else:
+            # Mês projetado: distribuir pelo perfil sazonal
+            valor = projecao_total * perfil.get(mes, 1.0 / 12)
+
+        registros.append({
+            'data': date(ano_projecao, mes, 1),
+            'valor_projetado': round(valor, 2),
+        })
+
+    return pd.DataFrame(registros)
+
+
+def projetar_media_crescimento_anos(
+    seq_qualificadores: List[int],
+    ano_projecao: int,
+    anos_referencia: List[int],
+    mes_referencia: int,
+    meses_projecao: int = 12,
+) -> pd.DataFrame:
+    """Projeção por Média de Crescimento de Anos Selecionados.
+
+    Calcula a taxa de projeção (Total/Acumulado parcial) para cada ano
+    de referência, faz a média das taxas, e aplica ao acumulado parcial
+    do ano de projeção. Suaviza distorções de anos atípicos.
+
+    Fórmula:
+        taxa_i = Total(ano_i) / Acum(ano_i, 1..M)
+        taxa_media = mean(taxa_i)
+        projecao_total = Acum(ano_projecao, 1..M) × taxa_media
+
+    Args:
+        seq_qualificadores: Lista de IDs dos qualificadores a projetar
+        ano_projecao: Ano que está sendo projetado (ex: 2026)
+        anos_referencia: Lista de anos para média (ex: [2023, 2024, 2025])
+        mes_referencia: Até que mês existem dados reais no ano de projeção
+        meses_projecao: Número de meses a projetar (padrão 12)
+
+    Returns:
+        DataFrame com colunas: data, valor_projetado
+    """
+    if not anos_referencia:
+        return pd.DataFrame(columns=['data', 'valor_projetado'])
+
+    # 1. Calcular taxa para cada ano de referência
+    taxas = []
+    for ano in anos_referencia:
+        acum_parcial = _soma_acumulada(seq_qualificadores, ano, 1, mes_referencia)
+        total_ano = _soma_acumulada(seq_qualificadores, ano, 1, 12)
+
+        if acum_parcial > 0:
+            taxas.append(total_ano / acum_parcial)
+
+    # 2. Média das taxas
+    if taxas:
+        taxa_media = sum(taxas) / len(taxas)
+    else:
+        taxa_media = 1.0
+
+    # 3. Aplicar ao acumulado atual
+    acum_atual = _soma_acumulada(seq_qualificadores, ano_projecao, 1, mes_referencia)
+    projecao_total = acum_atual * taxa_media
+
+    # 4. Distribuir: meses reais + meses projetados (perfil sazonal médio)
+    perfil = _perfil_sazonal_medio(seq_qualificadores, anos_referencia)
+
+    registros = []
+    for mes in range(1, 13):
+        if mes <= mes_referencia:
+            valor = _soma_acumulada(seq_qualificadores, ano_projecao, mes, mes)
+        else:
+            valor = projecao_total * perfil.get(mes, 1.0 / 12)
+
+        registros.append({
+            'data': date(ano_projecao, mes, 1),
+            'valor_projetado': round(valor, 2),
+        })
+
+    return pd.DataFrame(registros)
+
+
