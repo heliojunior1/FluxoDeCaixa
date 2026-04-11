@@ -14,10 +14,20 @@
     <div>
         <label class="block text-sm font-medium text-gray-700">Métrica</label>
         <select name="metric" id="metric" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
-            <option value="saldo">Saldo Final da Conta</option>
-            <option value="qualificador">Valor de um Qualificador</option>
-            <option value="comparativo">Comparativo Realizado vs Projetado</option>
+            <optgroup label="Métricas Básicas">
+                <option value="saldo">Saldo Final da Conta</option>
+                <option value="qualificador">Valor de um Qualificador</option>
+                <option value="comparativo">Comparativo Realizado vs Projetado</option>
+            </optgroup>
+            <optgroup label="Métricas Inteligentes">
+                <option value="desvio_projecao">Desvio da Projeção (%)</option>
+                <option value="meta_lrf">Meta LRF (% da RCL)</option>
+                <option value="tendencia_queda">Tendência de Queda</option>
+                <option value="sazonalidade_atipica">Sazonalidade Atípica</option>
+                <option value="concentracao_despesa">Concentração de Despesa</option>
+            </optgroup>
         </select>
+        <p id="metric-desc" class="mt-1 text-xs text-gray-400"></p>
     </div>
     <div id="qualificador-select" class="hidden">
         <label class="block text-sm font-medium text-gray-700">Qualificador</label>
@@ -43,8 +53,9 @@
         </select>
     </div>
     <div id="value-input">
-        <label class="block text-sm font-medium text-gray-700">Valor</label>
+        <label id="value-label" class="block text-sm font-medium text-gray-700">Valor</label>
         <input type="number" step="0.01" name="valor" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+        <p id="value-hint" class="mt-1 text-xs text-gray-400"></p>
     </div>
     <label class="flex items-center">
         <input type="checkbox" name="notif_system" value="S" class="h-4 w-4 rounded border-gray-300 mr-2"> Notificação no Sistema
@@ -69,12 +80,36 @@
         const periodDiv = document.getElementById('period-select');
         const emailChk = document.getElementById('chk-email');
         const emailInput = document.getElementById('email-input');
+        const valueLabel = document.getElementById('value-label');
+        const valueHint = document.getElementById('value-hint');
+        const metricDesc = document.getElementById('metric-desc');
+        const logicSelect = document.getElementById('logic');
+
+        const METRIC_CONFIG = {
+            saldo:                { qualifier: false, period: true,  label: 'Valor (R$)',              hint: '', desc: 'Alerta com base no saldo final da conta' },
+            qualificador:         { qualifier: true,  period: true,  label: 'Valor (R$)',              hint: '', desc: 'Alerta com base no valor de um qualificador' },
+            comparativo:          { qualifier: true,  period: false, label: 'Valor',                   hint: '', desc: 'Compara realizado com projetado' },
+            desvio_projecao:      { qualifier: true,  period: true,  label: 'Limiar de desvio (%)',    hint: 'Ex: 10 para alertar quando desvio for maior que 10%', desc: 'Alerta quando a diferença entre realizado e projetado ultrapassa o limiar' },
+            meta_lrf:             { qualifier: false, period: true,  label: 'Limite (% da RCL)',       hint: 'Ex: 57 para limite prudencial de pessoal (57% da RCL)', desc: 'Alerta de proximidade dos limites da Lei de Responsabilidade Fiscal' },
+            tendencia_queda:      { qualifier: true,  period: true,  label: 'Meses consecutivos',      hint: 'Ex: 3 para alertar após 3 meses de queda', desc: 'Alerta quando receita apresenta tendência negativa por N meses consecutivos' },
+            sazonalidade_atipica: { qualifier: true,  period: true,  label: 'Desvio sazonal (%)',      hint: 'Ex: 20 para alertar quando mês desvia mais de 20% da média sazonal', desc: 'Alerta quando o valor do mês desvia do padrão sazonal histórico' },
+            concentracao_despesa: { qualifier: true,  period: true,  label: 'Concentração máxima (%)', hint: 'Ex: 40 para alertar quando rubrica concentra mais de 40% do total', desc: 'Alerta quando uma rubrica de despesa concentra percentual excessivo' },
+        };
+
         function toggleFields(){
-            const needsQualifier = metric.value === 'qualificador' || metric.value === 'comparativo';
-            qualifierDiv.classList.toggle('hidden', !needsQualifier);
-            const needsPeriod = metric.value !== 'comparativo';
-            periodDiv.classList.toggle('hidden', !needsPeriod);
+            const cfg = METRIC_CONFIG[metric.value] || {};
+            qualifierDiv.classList.toggle('hidden', !cfg.qualifier);
+            periodDiv.classList.toggle('hidden', !cfg.period);
+            valueLabel.textContent = cfg.label || 'Valor';
+            valueHint.textContent = cfg.hint || '';
+            metricDesc.textContent = cfg.desc || '';
+
+            // Para métricas inteligentes, default lógica = maior
+            if (['desvio_projecao','meta_lrf','tendencia_queda','sazonalidade_atipica','concentracao_despesa'].includes(metric.value)) {
+                logicSelect.value = 'maior';
+            }
         }
+
         metric.addEventListener('change', toggleFields);
         emailChk.addEventListener('change', () => {
             emailInput.classList.toggle('hidden', !emailChk.checked);

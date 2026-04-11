@@ -11,6 +11,7 @@ from ..models import (
     TipoLancamento,
 
     Conferencia,
+    Alerta,
     AlertaGerado,
     SaldoConta,
     SimuladorCenario,
@@ -996,9 +997,10 @@ def seed_data(session=None):
     # Seed alertas gerados (para demonstração do sistema de alertas)
     if not AlertaGerado.query.first():
         alertas_demo = [
-            # Alerta CRITICAL - Despesa de Pessoal
+            # ===== EXISTENTES =====
+            # 1. CRITICAL - Despesa de Pessoal
             AlertaGerado(
-                dat_processamento=None,  # NULL = sempre visível
+                dat_processamento=None,
                 dat_referencia=date.today(),
                 mensagem='Limite prudencial (46.2%) atingido. Novas contratações requerem atenção do TCE.',
                 categoria='DESPESA_PESSOAL',
@@ -1006,9 +1008,9 @@ def seed_data(session=None):
                 valor_obtido=46.2,
                 valor_esperado=46.0,
             ),
-            # Alerta WARNING - Receita
+            # 2. WARNING - Receita
             AlertaGerado(
-                dat_processamento=None,  # NULL = sempre visível
+                dat_processamento=None,
                 dat_referencia=date(2025, 12, 1),
                 mensagem='Queda de arrecadação PPE prevista para Dezembro (-2%) devido à desaceleração econômica.',
                 categoria='RECEITA',
@@ -1016,9 +1018,9 @@ def seed_data(session=None):
                 valor_obtido=-2.0,
                 valor_esperado=0.0,
             ),
-            # Alerta INFO - Saldo
+            # 3. INFO - Saldo
             AlertaGerado(
-                dat_processamento=None,  # NULL = sempre visível
+                dat_processamento=None,
                 dat_referencia=date.today(),
                 mensagem='Superávit orçamentário de R$ 1.2M identificado. Considere investimentos estratégicos.',
                 categoria='SALDO',
@@ -1026,8 +1028,167 @@ def seed_data(session=None):
                 valor_obtido=1200000.0,
                 valor_esperado=0.0,
             ),
+
+            # ===== NOVOS: DESVIO DE PROJEÇÃO =====
+            # 4. CRITICAL - ICMS abaixo do projetado
+            AlertaGerado(
+                dat_processamento=None,
+                dat_referencia=date(2026, 3, 1),
+                mensagem='ICMS em Março/2026: R$ 380M realizado vs R$ 450M projetado '
+                         '(desvio de -15.6%). '
+                         'Ação sugerida: contingenciar R$ 70M em custeio e '
+                         'postergar investimentos não prioritários.',
+                categoria='DESVIO_PROJECAO',
+                severidade='CRITICAL',
+                valor_obtido=380000000,
+                valor_esperado=450000000,
+            ),
+            # 5. WARNING - IPVA acima do projetado
+            AlertaGerado(
+                dat_processamento=None,
+                dat_referencia=date(2026, 2, 1),
+                mensagem='IPVA em Fevereiro/2026: R$ 95M realizado vs R$ 82M projetado '
+                         '(desvio de +15.9%). '
+                         'Ação sugerida: avaliar reclassificação do excedente de R$ 13M '
+                         'para amortização de dívida ou investimento.',
+                categoria='DESVIO_PROJECAO',
+                severidade='WARNING',
+                valor_obtido=95000000,
+                valor_esperado=82000000,
+            ),
+            # 6. INFO - FPE dentro da faixa
+            AlertaGerado(
+                dat_processamento=None,
+                dat_referencia=date(2026, 3, 1),
+                mensagem='FPE em Março/2026: R$ 210M realizado vs R$ 205M projetado '
+                         '(desvio de +2.4%). Projeção dentro da faixa aceitável.',
+                categoria='DESVIO_PROJECAO',
+                severidade='INFO',
+                valor_obtido=210000000,
+                valor_esperado=205000000,
+            ),
+
+            # ===== NOVOS: META LRF =====
+            # 7. WARNING - Pessoal próximo do limite prudencial
+            AlertaGerado(
+                dat_processamento=None,
+                dat_referencia=date(2026, 3, 1),
+                mensagem='Despesa de Pessoal atingiu 48.5% da RCL '
+                         '(limite máximo: 60%, prudencial: 57%). '
+                         'Ação sugerida: revisar reposições de vacância e '
+                         'adiar reajustes salariais previstos.',
+                categoria='META_LRF',
+                severidade='WARNING',
+                valor_obtido=48.5,
+                valor_esperado=57.0,
+            ),
+
+            # ===== NOVOS: TENDÊNCIA DE QUEDA =====
+            # 8. WARNING - Receita em queda consecutiva
+            AlertaGerado(
+                dat_processamento=None,
+                dat_referencia=date(2026, 3, 1),
+                mensagem='FECOEP apresenta tendência de queda por 3 meses consecutivos '
+                         '(Jan: R$ 15M, Fev: R$ 13M, Mar: R$ 11M). '
+                         'Ação sugerida: revisar estimativas do exercício e '
+                         'avaliar necessidade de crédito suplementar.',
+                categoria='TENDENCIA_QUEDA',
+                severidade='WARNING',
+                valor_obtido=3,
+                valor_esperado=0,
+            ),
+
+            # ===== NOVOS: SAZONALIDADE ATÍPICA =====
+            # 9. INFO - Mês fora do padrão sazonal
+            AlertaGerado(
+                dat_processamento=None,
+                dat_referencia=date(2026, 1, 1),
+                mensagem='Royalties em Janeiro/2026: R$ 28M está 35% acima '
+                         'da média histórica de Janeiro (R$ 20.7M). '
+                         'Ação sugerida: verificar se é recebimento extraordinário '
+                         'e não considerar para projeções recorrentes.',
+                categoria='SAZONALIDADE_ATIPICA',
+                severidade='INFO',
+                valor_obtido=28000000,
+                valor_esperado=20700000,
+            ),
+
+            # ===== NOVOS: CONCENTRAÇÃO DE DESPESA =====
+            # 10. WARNING - Folha concentra muito
+            AlertaGerado(
+                dat_processamento=None,
+                dat_referencia=date(2026, 3, 1),
+                mensagem='Folha de Pagamento concentra 42% do total de despesas '
+                         '(limiar configurado: 40%). '
+                         'Ação sugerida: avaliar terceirização de serviços '
+                         'e otimização de processos para reduzir peso da folha.',
+                categoria='CONCENTRACAO_DESPESA',
+                severidade='WARNING',
+                valor_obtido=42,
+                valor_esperado=40,
+            ),
+
+            # 11. CRITICAL - Dívida fora do esperado
+            AlertaGerado(
+                dat_processamento=None,
+                dat_referencia=date(2026, 3, 1),
+                mensagem='Serviço da Dívida em Março/2026: R$ 85M executado vs '
+                         'R$ 60M projetado (desvio de +41.7%). '
+                         'Ação sugerida: verificar vencimentos antecipados e '
+                         'avaliar renegociação de parcelas.',
+                categoria='DESVIO_PROJECAO',
+                severidade='CRITICAL',
+                valor_obtido=85000000,
+                valor_esperado=60000000,
+            ),
         ]
         session.add_all(alertas_demo)
+        session.commit()
+
+    # Seed regras de alerta pré-configuradas
+    if not Alerta.query.first():
+        regras_demo = [
+            Alerta(
+                nom_alerta='Desvio ICMS > 10%',
+                metric='desvio_projecao',
+                seq_qualificador=3,
+                logic='maior',
+                valor=10.0,
+                period='mes',
+                notif_system='S',
+                cod_pessoa_inclusao=1,
+            ),
+            Alerta(
+                nom_alerta='Meta LRF Pessoal (Prudencial)',
+                metric='meta_lrf',
+                logic='maior',
+                valor=57.0,
+                period='mes',
+                notif_system='S',
+                cod_pessoa_inclusao=1,
+            ),
+            Alerta(
+                nom_alerta='Queda consecutiva FECOEP',
+                metric='tendencia_queda',
+                seq_qualificador=9,
+                logic='maior',
+                valor=3.0,
+                period='mes',
+                notif_system='S',
+                cod_pessoa_inclusao=1,
+            ),
+            Alerta(
+                nom_alerta='Concentração Folha > 40%',
+                metric='concentracao_despesa',
+                seq_qualificador=16,
+                logic='maior',
+                valor=40.0,
+                period='mes',
+                notif_system='S',
+                cod_pessoa_inclusao=1,
+            ),
+        ]
+        session.add_all(regras_demo)
         session.commit()
 
     # Seed daily account balances (SaldoConta)

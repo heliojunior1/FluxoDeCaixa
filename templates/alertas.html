@@ -36,7 +36,7 @@
                         <i data-lucide="edit" class="w-4 h-4"></i>
                     </a>
                     {% if r.ind_status == 'A' %}
-                    <form method="post" action="{{ url_for('delete_alerta', seq_alerta=r.seq_alerta) }}" class="inline" onsubmit="return confirm('Desativar este alerta?')">
+                    <form method="post" action="{{ url_for('deletar_alerta', seq_alerta=r.seq_alerta) }}" class="inline" onsubmit="return confirm('Desativar este alerta?')">
                         <button type="submit" class="text-red-600 hover:text-red-800">
                             <i data-lucide="trash-2" class="w-4 h-4"></i>
                         </button>
