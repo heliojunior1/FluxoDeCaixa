@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% set va = comparativo.versao_a %}
+{% set vb = comparativo.versao_b %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between bg-white p-6 rounded-lg shadow-md border">
+        <div class="flex items-center">
+            <a href="/simulador/{{ simulador.seq_simulador_cenario }}/historico"
+               class="text-blue-600 hover:text-blue-800 mr-4">
+                <i data-lucide="arrow-left-circle" class="h-6 w-6"></i>
+            </a>
+            <div>
+                <h2 class="text-2xl font-semibold text-gray-800">Comparativo de Versões</h2>
+                <p class="text-sm text-gray-500">{{ simulador.nom_cenario }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cabeçalho das versões -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white p-5 rounded-lg shadow-md border">
+            <div class="text-xs uppercase text-gray-500 mb-1">Versão A (anterior)</div>
+            <div class="font-semibold text-gray-800">{{ va.nom_versao }}</div>
+            <div class="text-xs text-gray-500">
+                {{ va.dat_versao.strftime('%d/%m/%Y %H:%M') if va.dat_versao else '-' }}
+            </div>
+            <div class="text-lg font-bold text-gray-800 mt-2">
+                R$ {{ "{:,.2f}".format(comparativo.total_a).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+            </div>
+        </div>
+        <div class="bg-white p-5 rounded-lg shadow-md border">
+            <div class="text-xs uppercase text-gray-500 mb-1">Versão B (mais recente)</div>
+            <div class="font-semibold text-gray-800">{{ vb.nom_versao }}</div>
+            <div class="text-xs text-gray-500">
+                {{ vb.dat_versao.strftime('%d/%m/%Y %H:%M') if vb.dat_versao else '-' }}
+            </div>
+            <div class="text-lg font-bold text-gray-800 mt-2">
+                R$ {{ "{:,.2f}".format(comparativo.total_b).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+            </div>
+        </div>
+        <div class="bg-white p-5 rounded-lg shadow-md border {{ 'border-green-200' if comparativo.delta_total >= 0 else 'border-red-200' }}">
+            <div class="text-xs uppercase text-gray-500 mb-1">Δ Total (B − A)</div>
+            <div class="text-lg font-bold {{ 'text-green-700' if comparativo.delta_total >= 0 else 'text-red-700' }}">
+                R$ {{ "{:,.2f}".format(comparativo.delta_total).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+            </div>
+            {% if comparativo.total_a %}
+            <div class="text-xs text-gray-500 mt-1">
+                {{ "{:+.2f}".format((comparativo.delta_total / comparativo.total_a) * 100) }}%
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Tabela detalhada -->
+    <div class="bg-white p-6 rounded-lg shadow-md border">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-800">Detalhe por linha</h3>
+            <div class="text-sm text-gray-500">{{ comparativo.linhas|length }} linhas</div>
+        </div>
+        <div class="overflow-x-auto max-h-[600px] overflow-y-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-50 text-gray-700 sticky top-0">
+                    <tr>
+                        <th class="px-3 py-2 text-left">Tipo</th>
+                        <th class="px-3 py-2 text-left">Qualificador</th>
+                        <th class="px-3 py-2 text-center">Ano</th>
+                        <th class="px-3 py-2 text-center">Mês</th>
+                        <th class="px-3 py-2 text-right">A</th>
+                        <th class="px-3 py-2 text-right">B</th>
+                        <th class="px-3 py-2 text-right">Δ R$</th>
+                        <th class="px-3 py-2 text-right">Δ %</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for l in comparativo.linhas %}
+                    <tr class="{{ 'bg-red-50' if l.delta < 0 else ('bg-green-50' if l.delta > 0 else '') }}">
+                        <td class="px-3 py-1.5">
+                            {% if l.cod_tipo == 'R' %}
+                                <span class="text-green-700 font-semibold">Receita</span>
+                            {% else %}
+                                <span class="text-red-700 font-semibold">Despesa</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-3 py-1.5">
+                            {{ l.qualificador_desc or ('Agregado' if not l.seq_qualificador else 'Q' ~ l.seq_qualificador) }}
+                        </td>
+                        <td class="px-3 py-1.5 text-center text-gray-600">{{ l.ano }}</td>
+                        <td class="px-3 py-1.5 text-center text-gray-600">{{ meses_nomes[l.mes - 1] }}</td>
+                        <td class="px-3 py-1.5 text-right text-gray-700">
+                            {{ "{:,.2f}".format(l.val_a).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                        </td>
+                        <td class="px-3 py-1.5 text-right text-gray-700">
+                            {{ "{:,.2f}".format(l.val_b).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                        </td>
+                        <td class="px-3 py-1.5 text-right font-semibold {{ 'text-green-700' if l.delta >= 0 else 'text-red-700' }}">
+                            {{ "{:,.2f}".format(l.delta).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                        </td>
+                        <td class="px-3 py-1.5 text-right {{ 'text-green-700' if (l.delta_pct or 0) >= 0 else 'text-red-700' }}">
+                            {% if l.delta_pct is not none %}
+                                {{ "{:+.2f}".format(l.delta_pct) }}%
+                            {% else %}
+                                <span class="text-gray-400">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () { if (window.lucide) lucide.createIcons(); });
+</script>
+{% endblock %}

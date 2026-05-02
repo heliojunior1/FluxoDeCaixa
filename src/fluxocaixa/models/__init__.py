@@ -21,6 +21,7 @@ from .simulador_cenario import (
     ModeloEconomicoParametro,
 )
 from .simulador_cenario_historico import SimuladorCenarioHistorico
+from .projecao_versao import ProjecaoVersao, ProjecaoValor
 from .loa import Loa
 from .formula import RubricaFormula, ParametroGlobal, CenarioParametroValor
 
@@ -48,6 +49,8 @@ __all__ = [
     'CenarioDespesaAjuste',
     'ModeloEconomicoParametro',
     'SimuladorCenarioHistorico',
+    'ProjecaoVersao',
+    'ProjecaoValor',
     'Loa',
     'RubricaFormula',
     'ParametroGlobal',

@@ -1,0 +1,124 @@
+{% extends 'base.html' %}
+
+{% set v = detalhe.versao %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex items-center justify-between bg-white p-6 rounded-lg shadow-md border">
+        <div class="flex items-center">
+            <a href="/simulador/{{ simulador.seq_simulador_cenario }}/historico"
+               class="text-blue-600 hover:text-blue-800 mr-4">
+                <i data-lucide="arrow-left-circle" class="h-6 w-6"></i>
+            </a>
+            <div>
+                <h2 class="text-2xl font-semibold text-gray-800">{{ v.nom_versao }}</h2>
+                <p class="text-sm text-gray-500">
+                    {{ simulador.nom_cenario }} ·
+                    {{ v.dat_versao.strftime('%d/%m/%Y %H:%M') if v.dat_versao else '-' }}
+                    {% if v.dsc_motivo %} · {{ v.dsc_motivo }}{% endif %}
+                </p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            {% if v.ind_publicado == 'S' %}
+            <span class="inline-flex items-center px-3 py-1 rounded text-sm bg-green-100 text-green-800">Publicada</span>
+            {% else %}
+            <span class="inline-flex items-center px-3 py-1 rounded text-sm bg-yellow-100 text-yellow-800">Rascunho</span>
+            {% endif %}
+            <form method="post"
+                  action="/simulador/{{ simulador.seq_simulador_cenario }}/historico/{{ v.seq_projecao_versao }}/atualizar-realizado"
+                  onsubmit="return confirm('Atualizar valores realizados desta versão a partir dos lançamentos?');">
+                <button type="submit"
+                        class="px-3 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 flex items-center gap-2 text-sm">
+                    <i data-lucide="refresh-ccw" class="h-4 w-4"></i>
+                    Atualizar realizado
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Resumo -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-lg shadow-md border border-green-100">
+            <h3 class="text-sm font-medium text-gray-500 mb-2">Receita Total</h3>
+            <p class="text-2xl font-bold text-green-600">
+                R$ {{ "{:,.2f}".format(detalhe.resumo.get('total_receita', 0)).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+            </p>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow-md border border-red-100">
+            <h3 class="text-sm font-medium text-gray-500 mb-2">Despesa Total</h3>
+            <p class="text-2xl font-bold text-red-600">
+                R$ {{ "{:,.2f}".format(detalhe.resumo.get('total_despesa', 0)).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+            </p>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow-md border border-blue-100">
+            <h3 class="text-sm font-medium text-gray-500 mb-2">Saldo Final</h3>
+            <p class="text-2xl font-bold {{ 'text-blue-600' if detalhe.resumo.get('saldo_final', 0) >= 0 else 'text-red-600' }}">
+                R$ {{ "{:,.2f}".format(detalhe.resumo.get('saldo_final', 0)).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+            </p>
+        </div>
+    </div>
+
+    {% macro tabela_linhas(titulo, linhas, cor) %}
+    <div class="bg-white p-6 rounded-lg shadow-md border">
+        <h3 class="text-lg font-semibold text-gray-800 mb-4">{{ titulo }} ({{ linhas|length }} linhas)</h3>
+        {% if linhas %}
+        <div class="overflow-x-auto max-h-[500px] overflow-y-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-50 text-gray-700 sticky top-0">
+                    <tr>
+                        <th class="px-3 py-2 text-left">Qualificador</th>
+                        <th class="px-3 py-2 text-center">Ano</th>
+                        <th class="px-3 py-2 text-center">Mês</th>
+                        <th class="px-3 py-2 text-right">Projetado</th>
+                        <th class="px-3 py-2 text-right">Realizado</th>
+                        <th class="px-3 py-2 text-right">Δ Realiz - Proj</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200">
+                    {% for l in linhas %}
+                    <tr>
+                        <td class="px-3 py-1.5">
+                            {{ l.qualificador_desc or ('Agregado' if not l.seq_qualificador else 'Q' ~ l.seq_qualificador) }}
+                        </td>
+                        <td class="px-3 py-1.5 text-center text-gray-600">{{ l.ano }}</td>
+                        <td class="px-3 py-1.5 text-center text-gray-600">{{ meses_nomes[l.mes - 1] }}</td>
+                        <td class="px-3 py-1.5 text-right {{ cor }}">
+                            {{ "{:,.2f}".format(l.val_projetado).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                        </td>
+                        <td class="px-3 py-1.5 text-right text-gray-700">
+                            {% if l.val_realizado is not none %}
+                            {{ "{:,.2f}".format(l.val_realizado).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                            {% else %}
+                            <span class="text-gray-400">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-3 py-1.5 text-right">
+                            {% if l.val_realizado is not none %}
+                                {% set diff = l.val_realizado - l.val_projetado %}
+                                <span class="{{ 'text-green-700' if diff >= 0 else 'text-red-700' }}">
+                                    {{ "{:,.2f}".format(diff).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                                </span>
+                            {% else %}
+                                <span class="text-gray-400">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-sm text-gray-500 italic">Nenhuma linha registrada.</p>
+        {% endif %}
+    </div>
+    {% endmacro %}
+
+    {{ tabela_linhas('Receita', detalhe.receita, 'text-green-700') }}
+    {{ tabela_linhas('Despesa', detalhe.despesa, 'text-red-700') }}
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () { if (window.lucide) lucide.createIcons(); });
+</script>
+{% endblock %}

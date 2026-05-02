@@ -647,7 +647,7 @@ def _parse_config_base_from_form(form) -> str:
             config['anos'] = [int(a) for a in anos]
         except (json.JSONDecodeError, TypeError):
             config['anos'] = []
-        
+
         if cod_metodo_base == 'MEDIA_PONDERADA' and config.get('anos'):
             pesos = {}
             for ano in config['anos']:
@@ -657,5 +657,144 @@ def _parse_config_base_from_form(form) -> str:
                 except (ValueError, TypeError):
                     pesos[str(ano)] = 1.0
             config['pesos'] = pesos
-    
+
     return json.dumps(config)
+
+
+# ==================== Histórico de Projeções ====================
+
+@router.get('/simulador/{id}/historico')
+@handle_exceptions
+async def simulador_historico_listar(request: Request, id: int):
+    """Lista as versões salvas da projeção de um cenário."""
+    from ..services import projecao_versao_service as historico_service
+
+    simulador = get_simulador(id)
+    if not simulador:
+        return RedirectResponse(url='/simulador', status_code=303)
+
+    versoes = historico_service.list_versoes(id)
+    return templates.TemplateResponse(
+        'simulador_historico.html',
+        {
+            'request': request,
+            'simulador': simulador,
+            'versoes': versoes,
+        },
+    )
+
+
+@router.post('/simulador/{id}/historico/salvar')
+@handle_exceptions
+async def simulador_historico_salvar(request: Request, id: int):
+    """Salva o estado atual da projeção como uma nova versão."""
+    from ..services import projecao_versao_service as historico_service
+
+    form = await request.form()
+    nom_versao = (form.get('nom_versao') or '').strip()
+    dsc_motivo = (form.get('dsc_motivo') or '').strip() or None
+    publicar = form.get('publicar') in ('S', 'on', 'true', '1')
+
+    if not nom_versao:
+        return JSONResponse({'error': 'nom_versao é obrigatório'}, status_code=400)
+
+    try:
+        historico_service.salvar_projecao_como_versao(
+            seq_simulador_cenario=id,
+            nom_versao=nom_versao,
+            dsc_motivo=dsc_motivo,
+            publicar=publicar,
+        )
+    except ValueError as exc:
+        return JSONResponse({'error': str(exc)}, status_code=400)
+
+    return RedirectResponse(url=f'/simulador/{id}/historico', status_code=303)
+
+
+@router.get('/simulador/{id}/historico/comparar')
+@handle_exceptions
+async def simulador_historico_comparar(request: Request, id: int, v1: int, v2: int):
+    """Comparativo entre duas versões salvas (RF-25)."""
+    from ..services import projecao_versao_service as historico_service
+
+    simulador = get_simulador(id)
+    if not simulador:
+        return RedirectResponse(url='/simulador', status_code=303)
+
+    try:
+        comparativo = historico_service.comparar_versoes(v1, v2)
+    except ValueError as exc:
+        return JSONResponse({'error': str(exc)}, status_code=400)
+
+    if comparativo is None:
+        return RedirectResponse(url=f'/simulador/{id}/historico', status_code=303)
+
+    return templates.TemplateResponse(
+        'simulador_historico_comparar.html',
+        {
+            'request': request,
+            'simulador': simulador,
+            'comparativo': comparativo,
+            'meses_nomes': MONTH_NAME_PT,
+        },
+    )
+
+
+@router.get('/simulador/{id}/historico/{seq_versao}')
+@handle_exceptions
+async def simulador_historico_detalhe(request: Request, id: int, seq_versao: int):
+    """Visualiza o detalhe (linhas) de uma versão salva."""
+    from ..services import projecao_versao_service as historico_service
+
+    simulador = get_simulador(id)
+    if not simulador:
+        return RedirectResponse(url='/simulador', status_code=303)
+
+    detalhe = historico_service.get_versao_detalhe(seq_versao)
+    if detalhe is None:
+        return RedirectResponse(url=f'/simulador/{id}/historico', status_code=303)
+
+    return templates.TemplateResponse(
+        'simulador_historico_detalhe.html',
+        {
+            'request': request,
+            'simulador': simulador,
+            'detalhe': detalhe,
+            'meses_nomes': MONTH_NAME_PT,
+        },
+    )
+
+
+@router.post('/simulador/{id}/historico/{seq_versao}/publicar')
+@handle_exceptions
+async def simulador_historico_publicar(request: Request, id: int, seq_versao: int):
+    """Marca uma versão como publicada (imutável)."""
+    from ..services import projecao_versao_service as historico_service
+    historico_service.publicar_versao(seq_versao)
+    return RedirectResponse(url=f'/simulador/{id}/historico', status_code=303)
+
+
+@router.post('/simulador/{id}/historico/{seq_versao}/deletar')
+@handle_exceptions
+async def simulador_historico_deletar(request: Request, id: int, seq_versao: int):
+    """Deleta uma versão (apenas rascunhos)."""
+    from ..services import projecao_versao_service as historico_service
+    try:
+        historico_service.deletar_versao(seq_versao)
+    except ValueError as exc:
+        return JSONResponse({'error': str(exc)}, status_code=400)
+    return RedirectResponse(url=f'/simulador/{id}/historico', status_code=303)
+
+
+@router.post('/simulador/{id}/historico/{seq_versao}/atualizar-realizado')
+@handle_exceptions
+async def simulador_historico_atualizar_realizado(request: Request, id: int, seq_versao: int):
+    """Preenche val_realizado agregando flc_lancamento (frustração x excesso)."""
+    from ..services import projecao_versao_service as historico_service
+    try:
+        historico_service.atualizar_realizados_de_lancamentos(seq_versao)
+    except ValueError as exc:
+        return JSONResponse({'error': str(exc)}, status_code=400)
+    return RedirectResponse(
+        url=f'/simulador/{id}/historico/{seq_versao}', status_code=303
+    )

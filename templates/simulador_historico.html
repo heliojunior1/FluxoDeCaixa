@@ -1,0 +1,178 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between bg-white p-6 rounded-lg shadow-md border">
+        <div class="flex items-center">
+            <a href="/simulador/{{ simulador.seq_simulador_cenario }}" class="text-blue-600 hover:text-blue-800 mr-4">
+                <i data-lucide="arrow-left-circle" class="h-6 w-6"></i>
+            </a>
+            <div>
+                <h2 class="text-2xl font-semibold text-gray-800">Histórico de Projeções</h2>
+                <p class="text-sm text-gray-500">{{ simulador.nom_cenario }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Salvar nova versão -->
+    <form method="post" action="/simulador/{{ simulador.seq_simulador_cenario }}/historico/salvar"
+          class="bg-white p-6 rounded-lg shadow-md border space-y-4">
+        <h3 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+            <i data-lucide="save" class="h-5 w-5"></i> Salvar projeção atual como nova versão
+        </h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nome da versão *</label>
+                <input type="text" name="nom_versao" required maxlength="80" placeholder="Ex.: 1ª Reestimativa"
+                       class="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Motivo (opcional)</label>
+                <input type="text" name="dsc_motivo" maxlength="255" placeholder="Ex.: ajuste pós-LOA"
+                       class="w-full border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-primary-500 focus:border-primary-500" />
+            </div>
+        </div>
+        <div class="flex items-center justify-between">
+            <label class="inline-flex items-center text-sm text-gray-700">
+                <input type="checkbox" name="publicar" value="S" class="mr-2"> Publicar imediatamente (versão imutável)
+            </label>
+            <button type="submit" class="px-4 py-2 bg-primary-600 text-white rounded hover:bg-primary-700 flex items-center gap-2">
+                <i data-lucide="save" class="h-4 w-4"></i> Salvar versão
+            </button>
+        </div>
+    </form>
+
+    <!-- Tabela de versões -->
+    <div class="bg-white p-6 rounded-lg shadow-md border">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-800">Versões salvas</h3>
+            <span class="text-sm text-gray-500">{{ versoes|length }} versão(ões)</span>
+        </div>
+
+        {% if versoes %}
+        <form method="get" id="formCompararVersoes"
+              action="/simulador/{{ simulador.seq_simulador_cenario }}/historico/comparar" class="space-y-3">
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="bg-gray-50 text-gray-700">
+                        <tr>
+                            <th class="px-3 py-2 text-left">Comparar</th>
+                            <th class="px-3 py-2 text-left">Versão</th>
+                            <th class="px-3 py-2 text-left">Data</th>
+                            <th class="px-3 py-2 text-left">Status</th>
+                            <th class="px-3 py-2 text-right">Receita</th>
+                            <th class="px-3 py-2 text-right">Despesa</th>
+                            <th class="px-3 py-2 text-right">Saldo</th>
+                            <th class="px-3 py-2 text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        {% for v in versoes %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-3 py-2">
+                                <input type="checkbox" class="cmp-versao" value="{{ v.seq_projecao_versao }}" />
+                            </td>
+                            <td class="px-3 py-2">
+                                <a href="/simulador/{{ simulador.seq_simulador_cenario }}/historico/{{ v.seq_projecao_versao }}"
+                                   class="text-primary-700 hover:underline font-medium">{{ v.nom_versao }}</a>
+                                {% if v.dsc_motivo %}
+                                <div class="text-xs text-gray-500">{{ v.dsc_motivo }}</div>
+                                {% endif %}
+                            </td>
+                            <td class="px-3 py-2 text-gray-600">
+                                {{ v.dat_versao.strftime('%d/%m/%Y %H:%M') if v.dat_versao else '-' }}
+                            </td>
+                            <td class="px-3 py-2">
+                                {% if v.ind_publicado == 'S' %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-green-100 text-green-800">
+                                    Publicada
+                                </span>
+                                {% else %}
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs bg-yellow-100 text-yellow-800">
+                                    Rascunho
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="px-3 py-2 text-right text-green-700 font-medium">
+                                R$ {{ "{:,.2f}".format(v.total_receita).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                            </td>
+                            <td class="px-3 py-2 text-right text-red-700 font-medium">
+                                R$ {{ "{:,.2f}".format(v.total_despesa).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                            </td>
+                            <td class="px-3 py-2 text-right font-semibold {{ 'text-blue-700' if v.saldo_final >= 0 else 'text-red-700' }}">
+                                R$ {{ "{:,.2f}".format(v.saldo_final).replace(',', 'X').replace('.', ',').replace('X', '.') }}
+                            </td>
+                            <td class="px-3 py-2">
+                                <div class="flex gap-2 justify-center">
+                                    <a href="/simulador/{{ simulador.seq_simulador_cenario }}/historico/{{ v.seq_projecao_versao }}"
+                                       class="text-blue-600 hover:text-blue-800" title="Ver detalhes">
+                                        <i data-lucide="eye" class="h-4 w-4"></i>
+                                    </a>
+                                    {% if v.ind_publicado != 'S' %}
+                                    <form method="post"
+                                          action="/simulador/{{ simulador.seq_simulador_cenario }}/historico/{{ v.seq_projecao_versao }}/publicar"
+                                          onsubmit="return confirm('Publicar versão? Após publicada não poderá ser deletada.');">
+                                        <button type="submit" class="text-green-600 hover:text-green-800" title="Publicar">
+                                            <i data-lucide="check-circle" class="h-4 w-4"></i>
+                                        </button>
+                                    </form>
+                                    <form method="post"
+                                          action="/simulador/{{ simulador.seq_simulador_cenario }}/historico/{{ v.seq_projecao_versao }}/deletar"
+                                          onsubmit="return confirm('Deletar esta versão?');">
+                                        <button type="submit" class="text-red-600 hover:text-red-800" title="Deletar">
+                                            <i data-lucide="trash-2" class="h-4 w-4"></i>
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="flex items-center justify-end gap-3 pt-2">
+                <span class="text-xs text-gray-500">Selecione duas versões para comparar.</span>
+                <button type="button" id="btnComparar" disabled
+                        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center gap-2">
+                    <i data-lucide="git-compare" class="h-4 w-4"></i> Comparar selecionadas
+                </button>
+            </div>
+        </form>
+        {% else %}
+        <p class="text-sm text-gray-500 italic">Nenhuma versão salva ainda. Use o formulário acima para criar a primeira.</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (window.lucide) lucide.createIcons();
+
+        const checkboxes = document.querySelectorAll('.cmp-versao');
+        const btn = document.getElementById('btnComparar');
+        if (!btn) return;
+
+        function atualizar() {
+            const selecionadas = Array.from(checkboxes).filter(c => c.checked);
+            btn.disabled = selecionadas.length !== 2;
+            // Limita a 2 seleções
+            if (selecionadas.length > 2) {
+                selecionadas[0].checked = false;
+            }
+        }
+
+        checkboxes.forEach(c => c.addEventListener('change', atualizar));
+
+        btn.addEventListener('click', function () {
+            const selecionadas = Array.from(checkboxes).filter(c => c.checked);
+            if (selecionadas.length !== 2) return;
+            // v1 = mais antiga, v2 = mais recente (a tabela está ordenada DESC, então segunda é mais antiga)
+            const ids = selecionadas.map(c => parseInt(c.value, 10)).sort((a, b) => a - b);
+            const url = "/simulador/{{ simulador.seq_simulador_cenario }}/historico/comparar?v1=" + ids[0] + "&v2=" + ids[1];
+            window.location.href = url;
+        });
+    });
+</script>
+{% endblock %}

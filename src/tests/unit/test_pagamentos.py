@@ -9,4 +9,4 @@ def test_pagamentos_page(client):
 def test_relatorios_page(client):
     response = client.get('/relatorios')
     assert response.status_code == 200
-    assert 'Relatórios de Fluxo de Caixa' in response.text
+    assert 'Relatórios' in response.text

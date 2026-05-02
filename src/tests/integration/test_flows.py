@@ -105,7 +105,7 @@ def test_editar_e_desativar_alerta_flow(client: TestClient):
     assert alerta.nom_alerta == 'Editado'
     assert alerta.logic == 'maior'
 
-    resp = client.post(f'/alertas/delete/{alerta.seq_alerta}', follow_redirects=False)
+    resp = client.post(f'/alertas/{alerta.seq_alerta}/deletar', follow_redirects=False)
     assert resp.status_code == 303
     db.session.refresh(alerta)
     assert alerta.ind_status == 'I'
